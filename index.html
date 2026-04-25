@@ -3,61 +3,220 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Vilnius Time</title>
+  <title>Quiz</title>
   <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
-      margin: 0;
       min-height: 100vh;
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
       background: #1a1a2e;
       color: #eaeaea;
       font-family: 'Segoe UI', sans-serif;
+      padding: 20px;
+    }
+
+    .card {
+      background: #16213e;
+      border-radius: 16px;
+      padding: 40px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
     }
 
     h1 {
-      font-size: 1.4rem;
-      letter-spacing: 0.2em;
+      font-size: 1.6rem;
+      margin-bottom: 8px;
+      color: #fff;
+    }
+
+    p.subtitle {
+      color: #a0a8d0;
+      margin-bottom: 32px;
+      font-size: 0.95rem;
+    }
+
+    .field {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.85rem;
+      color: #a0a8d0;
+      margin-bottom: 6px;
       text-transform: uppercase;
-      color: #a0a8d0;
-      margin-bottom: 12px;
-    }
-
-    #clock {
-      font-size: 5rem;
-      font-weight: 700;
       letter-spacing: 0.05em;
-      color: #ffffff;
     }
 
-    #date {
-      margin-top: 12px;
-      font-size: 1.1rem;
+    input {
+      width: 100%;
+      padding: 12px 16px;
+      background: #0f3460;
+      border: 1.5px solid #1a4a80;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus {
+      border-color: #4f8ef7;
+    }
+
+    input.error {
+      border-color: #e05c5c;
+    }
+
+    .error-msg {
+      font-size: 0.8rem;
+      color: #e05c5c;
+      margin-top: 4px;
+      display: none;
+    }
+
+    .error-msg.visible {
+      display: block;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      background: #4f8ef7;
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background 0.2s;
+    }
+
+    button:hover { background: #3a7be0; }
+    button:disabled { background: #2a4a80; cursor: not-allowed; }
+
+    .success {
+      text-align: center;
+      display: none;
+    }
+
+    .success h2 {
+      font-size: 1.4rem;
+      margin-bottom: 8px;
+      color: #4ff7a0;
+    }
+
+    .success p {
       color: #a0a8d0;
+    }
+
+    .checkmark {
+      font-size: 3rem;
+      margin-bottom: 16px;
     }
   </style>
 </head>
 <body>
-  <h1>Vilnius, Lithuania</h1>
-  <div id="clock">--:--:--</div>
-  <div id="date"></div>
+  <div class="card">
+    <div id="form-section">
+      <h1>Quick Quiz</h1>
+      <p class="subtitle">Fill in your details below to participate.</p>
 
+      <div class="field">
+        <label for="name">First Name</label>
+        <input type="text" id="name" placeholder="John">
+        <div class="error-msg" id="name-error">Please enter your first name.</div>
+      </div>
+
+      <div class="field">
+        <label for="surname">Last Name</label>
+        <input type="text" id="surname" placeholder="Doe">
+        <div class="error-msg" id="surname-error">Please enter your last name.</div>
+      </div>
+
+      <div class="field">
+        <label for="dob">Date of Birth</label>
+        <input type="date" id="dob">
+        <div class="error-msg" id="dob-error">Please enter a valid date of birth.</div>
+      </div>
+
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" id="email" placeholder="john@example.com">
+        <div class="error-msg" id="email-error">Please enter a valid email address.</div>
+      </div>
+
+      <button id="submit-btn" onclick="submitForm()">Submit</button>
+    </div>
+
+    <div class="success" id="success-section">
+      <div class="checkmark">✓</div>
+      <h2>You're in!</h2>
+      <p>Thanks, <span id="success-name"></span>. Your details have been saved.</p>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    function updateTime() {
-      const now = new Date();
-      const options = { timeZone: 'Europe/Vilnius' };
+    const SUPABASE_URL = 'https://twvlnpbeafnkdocqvwei.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_1unHCAvdmcAQn-1UjPFAWA_PPMvtp2D';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-      const time = now.toLocaleTimeString('en-GB', { ...options, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      const date = now.toLocaleDateString('en-GB', { ...options, weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-
-      document.getElementById('clock').textContent = time;
-      document.getElementById('date').textContent = date;
+    function showError(id, show) {
+      const input = document.getElementById(id);
+      const msg = document.getElementById(id + '-error');
+      input.classList.toggle('error', show);
+      msg.classList.toggle('visible', show);
     }
 
-    updateTime();
-    setInterval(updateTime, 1000);
+    function validateEmail(email) {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+
+    function validateDob(dob) {
+      if (!dob) return false;
+      const date = new Date(dob);
+      const now = new Date();
+      return date < now && date.getFullYear() > 1900;
+    }
+
+    async function submitForm() {
+      const name = document.getElementById('name').value.trim();
+      const surname = document.getElementById('surname').value.trim();
+      const dob = document.getElementById('dob').value;
+      const email = document.getElementById('email').value.trim();
+
+      let valid = true;
+
+      if (!name) { showError('name', true); valid = false; } else { showError('name', false); }
+      if (!surname) { showError('surname', true); valid = false; } else { showError('surname', false); }
+      if (!validateDob(dob)) { showError('dob', true); valid = false; } else { showError('dob', false); }
+      if (!validateEmail(email)) { showError('email', true); valid = false; } else { showError('email', false); }
+
+      if (!valid) return;
+
+      const btn = document.getElementById('submit-btn');
+      btn.disabled = true;
+      btn.textContent = 'Submitting...';
+
+      const { error } = await supabase.from('quiz_entries').insert([{ name, surname, dob, email }]);
+
+      if (error) {
+        alert('Something went wrong: ' + error.message);
+        btn.disabled = false;
+        btn.textContent = 'Submit';
+        return;
+      }
+
+      document.getElementById('form-section').style.display = 'none';
+      document.getElementById('success-name').textContent = name;
+      document.getElementById('success-section').style.display = 'block';
+    }
   </script>
 </body>
 </html>
