@@ -151,7 +151,7 @@
         <div class="error-msg" id="email-error">Please enter a valid email address.</div>
       </div>
 
-      <button id="submit-btn" onclick="submitForm()">Submit</button>
+      <button id="submit-btn">Submit</button>
     </div>
 
     <div class="success" id="success-section">
@@ -164,8 +164,44 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const SUPABASE_URL = 'https://twvlnpbeafnkdocqvwei.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_1unHCAvdmcAQn-1UjPFAWA_PPMvtp2D';
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR3dmxucGJlYWZua2RvY3F2d2VpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxNDE5MTgsImV4cCI6MjA5MjcxNzkxOH0.ty4l6yD9bGDJBlLHAt9tO7hUjRfoIvRhKIEVPPIC0qs';
+
+    document.addEventListener('DOMContentLoaded', function () {
+      const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+      document.getElementById('submit-btn').addEventListener('click', async function () {
+        const name = document.getElementById('name').value.trim();
+        const surname = document.getElementById('surname').value.trim();
+        const dob = document.getElementById('dob').value;
+        const email = document.getElementById('email').value.trim();
+
+        let valid = true;
+
+        if (!name) { showError('name', true); valid = false; } else { showError('name', false); }
+        if (!surname) { showError('surname', true); valid = false; } else { showError('surname', false); }
+        if (!validateDob(dob)) { showError('dob', true); valid = false; } else { showError('dob', false); }
+        if (!validateEmail(email)) { showError('email', true); valid = false; } else { showError('email', false); }
+
+        if (!valid) return;
+
+        const btn = document.getElementById('submit-btn');
+        btn.disabled = true;
+        btn.textContent = 'Submitting...';
+
+        const { error } = await db.from('quiz_entries').insert([{ name, surname, dob, email }]);
+
+        if (error) {
+          alert('Something went wrong: ' + error.message);
+          btn.disabled = false;
+          btn.textContent = 'Submit';
+          return;
+        }
+
+        document.getElementById('form-section').style.display = 'none';
+        document.getElementById('success-name').textContent = name;
+        document.getElementById('success-section').style.display = 'block';
+      });
+    });
 
     function showError(id, show) {
       const input = document.getElementById(id);
@@ -185,38 +221,6 @@
       return date < now && date.getFullYear() > 1900;
     }
 
-    async function submitForm() {
-      const name = document.getElementById('name').value.trim();
-      const surname = document.getElementById('surname').value.trim();
-      const dob = document.getElementById('dob').value;
-      const email = document.getElementById('email').value.trim();
-
-      let valid = true;
-
-      if (!name) { showError('name', true); valid = false; } else { showError('name', false); }
-      if (!surname) { showError('surname', true); valid = false; } else { showError('surname', false); }
-      if (!validateDob(dob)) { showError('dob', true); valid = false; } else { showError('dob', false); }
-      if (!validateEmail(email)) { showError('email', true); valid = false; } else { showError('email', false); }
-
-      if (!valid) return;
-
-      const btn = document.getElementById('submit-btn');
-      btn.disabled = true;
-      btn.textContent = 'Submitting...';
-
-      const { error } = await supabase.from('quiz_entries').insert([{ name, surname, dob, email }]);
-
-      if (error) {
-        alert('Something went wrong: ' + error.message);
-        btn.disabled = false;
-        btn.textContent = 'Submit';
-        return;
-      }
-
-      document.getElementById('form-section').style.display = 'none';
-      document.getElementById('success-name').textContent = name;
-      document.getElementById('success-section').style.display = 'block';
-    }
   </script>
 </body>
 </html>
