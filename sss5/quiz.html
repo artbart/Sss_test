@@ -1583,8 +1583,16 @@ function renderEmail(){
 
   // Mobile-only UX: when keyboard is open (input focused), hide awards image
   // and let the inline CTA sit directly under the input — no scrolling needed.
+  // We DO NOT remove this class on blur, because tapping the CTA itself fires
+  // a blur first; if we removed the class then, the layout would shift before
+  // the tap registered as a click and the user would have to tap twice.
+  // The class persists for the lifetime of this step (next() rerenders).
   input.addEventListener("focus", ()=>{ root.classList.add("email-focused"); });
-  input.addEventListener("blur",  ()=>{ root.classList.remove("email-focused"); });
+
+  // Belt-and-braces: prevent the input from losing focus when the user
+  // interacts with the CTA, so the page never reshuffles mid-tap.
+  cta.addEventListener("mousedown", (e)=>{ e.preventDefault(); });
+  cta.addEventListener("touchstart", (e)=>{ /* allow native tap, just don't blur */ }, { passive: true });
 
   cta.onclick = ()=>{
     const val = input.value.trim();
