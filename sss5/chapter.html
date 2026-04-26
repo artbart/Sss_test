@@ -124,20 +124,39 @@ function renderStatus(title, sub, mediaUrl) {
 async function postChoice(payload) {
   try { console.log("[MHS chapter] -> submit-choice", payload); } catch (_) {}
 
-  const res = await fetch(SUBMIT_CHOICE_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "apikey": SUPABASE_ANON_KEY,
-      "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
-    },
-    body: JSON.stringify(payload),
-  });
+  const body = JSON.stringify(payload);
+  const delays = [1200, 2500];
+  let lastErr = null;
 
-  const raw = await res.text();
-  if (!raw) throw new Error("Empty response from server");
-  try { return JSON.parse(raw); }
-  catch (_) { throw new Error("Invalid JSON response: " + raw.slice(0, 80)); }
+  for (let attempt = 0; attempt <= delays.length; attempt++) {
+    try {
+      const res = await fetch(SUBMIT_CHOICE_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": SUPABASE_ANON_KEY,
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+        body: body,
+      });
+      if (res.ok) {
+        if (attempt > 0) console.warn(`[MHS chapter] submit-choice succeeded on attempt ${attempt + 1}`);
+        const raw = await res.text();
+        if (!raw) throw new Error("Empty response from server");
+        try { return JSON.parse(raw); }
+        catch (_) { throw new Error("Invalid JSON response: " + raw.slice(0, 80)); }
+      }
+      lastErr = new Error(`HTTP ${res.status}`);
+      try { console.warn(`[MHS chapter] submit-choice attempt ${attempt + 1} failed:`, lastErr.message); } catch (_) {}
+    } catch (err) {
+      lastErr = err;
+      try { console.warn(`[MHS chapter] submit-choice attempt ${attempt + 1} threw:`, err); } catch (_) {}
+    }
+    if (attempt < delays.length) {
+      await new Promise(r => setTimeout(r, delays[attempt]));
+    }
+  }
+  throw lastErr || new Error("submit-choice failed after 3 attempts");
 }
 
 const params = new URLSearchParams(window.location.search);

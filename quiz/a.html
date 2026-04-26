@@ -1126,15 +1126,15 @@ let progressiveTestimonialInterval = null;
 // preload one step ahead inside render() so by the time the user advances,
 // the next page's images are already in the browser cache.
 const STEP_ASSETS = {
-  intro2:     ["/media/logos_1.webp"],
-  interrupt1: ["/media/woman_read.webp"],
-  email:      ["/media/awards_email.webp"],
+  intro2:     ["media/logos_1.webp"],
+  interrupt1: ["media/woman_read.webp"],
+  email:      ["media/awards_email.webp"],
   checkout: [
-    "/media/before_reading.webp", "/media/after_reading2.webp",
-    "/media/book_A2.webp", "/media/book_b.webp", "/media/book_c.webp",
-    "/media/book_d.webp", "/media/book_e.webp", "/media/book_f.webp",
-    "/media/book_eg.webp", "/media/money-back.png",
-    "/media/maestro.png", "/media/mastercard.png", "/media/visa.png"
+    "media/before_reading.webp", "media/after_reading2.webp",
+    "media/book_A2.webp", "media/book_b.webp", "media/book_c.webp",
+    "media/book_d.webp", "media/book_e.webp", "media/book_f.webp",
+    "media/book_eg.webp", "media/money-back.png",
+    "media/maestro.png", "media/mastercard.png", "media/visa.png"
   ]
 };
 const _preloaded = new Set();
@@ -1188,26 +1188,48 @@ function cleanupIntervals(){
 
 // POST to the submit-quiz edge function. Body shape:
 //   { session_id, event, payload }
-// Console-logged on top so the browser console still shows what was sent.
-function postQuizEvent(event, payload){
+// Retries up to 3 times with backoff (1.2s, 2.5s) to survive cold-start
+// 503s and transient network blips. Critical for payment_successful — if
+// that single event is lost, the story never gets created.
+async function postQuizEvent(event, payload){
   try { console.log("[MHS quiz] -> submit-quiz", event, payload); } catch (_) {}
 
-  return fetch(SUBMIT_QUIZ_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "apikey": SUPABASE_ANON_KEY,
-      "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
-    },
-    body: JSON.stringify({
-      session_id: session_id,
-      event: event,
-      payload: payload || {},
-    }),
-    keepalive: true,
-  }).catch((err) => {
-    try { console.warn("[MHS quiz] submit-quiz failed:", err); } catch (_) {}
+  const body = JSON.stringify({
+    session_id: session_id,
+    event: event,
+    payload: payload || {},
   });
+
+  const delays = [1200, 2500];
+  let lastErr = null;
+
+  for (let attempt = 0; attempt <= delays.length; attempt++) {
+    try {
+      const res = await fetch(SUBMIT_QUIZ_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": SUPABASE_ANON_KEY,
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+        body: body,
+        keepalive: true,
+      });
+      if (res.ok) {
+        if (attempt > 0) console.warn(`[MHS quiz] submit-quiz succeeded on attempt ${attempt + 1}`);
+        return res;
+      }
+      lastErr = new Error(`HTTP ${res.status}`);
+      try { console.warn(`[MHS quiz] submit-quiz attempt ${attempt + 1} failed:`, lastErr.message); } catch (_) {}
+    } catch (err) {
+      lastErr = err;
+      try { console.warn(`[MHS quiz] submit-quiz attempt ${attempt + 1} threw:`, err); } catch (_) {}
+    }
+    if (attempt < delays.length) {
+      await new Promise(r => setTimeout(r, delays[attempt]));
+    }
+  }
+  console.error("[MHS quiz] submit-quiz GAVE UP after 3 attempts. Event lost:", event, lastErr);
 }
 
 function sendEmailCapture(){
@@ -1247,9 +1269,12 @@ function sendPlanSelection(){
   });
 }
 
-function sendPaymentSuccess(){
+async function sendPaymentSuccess(){
   if(!state.email) return;
-  postQuizEvent("payment_successful", {
+  // AWAIT this one — the user is on the "You're in!" success screen and
+  // isn't going anywhere. If the network is slow or the function cold-starts,
+  // we want to give it the full retry window before we move on.
+  await postQuizEvent("payment_successful", {
     email: state.email,
     plan: state.plan || "",
   });
@@ -1327,7 +1352,7 @@ function renderIntro2(){
         <div style="font-size:34px;margin-bottom:10px;">247,000+ people</div>
         <div class="ss-sub">Have discovered what they really want and stopped apologizing for it.</div>
         <div style="background:#7a0d2b;border-radius:14px;padding:16px;margin-top:20px;">"My Hidden Story gives readers a private space to explore their fantasies through personalized, interactive romance fiction."</div>
-        <div style="margin-top:20px;"><img src="/media/logos_1.webp" style="width:100%;border-radius:14px;"></div>
+        <div style="margin-top:20px;"><img src="media/logos_1.webp" style="width:100%;border-radius:14px;"></div>
       </div>
       <button class="ss-btn" id="nextBtn" style="margin-top:30px;">CONTINUE</button>
     </div>
@@ -1417,7 +1442,7 @@ function renderInterrupt1(){
       <div class="ss-title">You don't just read this story.<br>You decide what happens.</div>
       <div class="ss-sub">Every scene has a choice. The heat rises or slows based on what you want. No two stories are ever the same.</div>
       <div style="margin-bottom:20px;text-align:center;">
-        <img src="/media/woman_read.webp" style="width:80%;border-radius:16px;display:block;margin:0 auto;">
+        <img src="media/woman_read.webp" style="width:80%;border-radius:16px;display:block;margin:0 auto;">
       </div>
       <div style="background:rgba(255,255,255,0.08);padding:20px;border-radius:14px;font-size:14px;margin-bottom:20px;">
         <div style="color:#4caf50;margin-bottom:6px;">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
@@ -1589,7 +1614,7 @@ function renderEmail(){
             <div>We respect your privacy and are committed to protecting your personal data</div>
           </div>
           <div class="email-awards-block" style="text-align:center;padding-top:10px;">
-            <img class="email-awards-img" src="/media/awards_email.webp" style="width:50%;border-radius:14px;height:auto;object-fit:contain;">
+            <img class="email-awards-img" src="media/awards_email.webp" style="width:50%;border-radius:14px;height:auto;object-fit:contain;">
           </div>
           <div class="email-inline-cta" id="emailInlineCta">
             <div id="emailAlert" style="opacity:0;transition:opacity .2s;color:#ff4d5e;font-size:14px;margin-bottom:10px;text-align:center;">Please, enter your email to continue</div>
@@ -1684,10 +1709,10 @@ function pricingShellHTML(withId){
       <div class="ss-trust">
         &#10003; Guaranteed safe checkout
         <div class="ss-payments">
-          <img src="/media/maestro.png" alt="Maestro">
-          <img src="/media/mastercard.png" alt="Mastercard">
-          <img src="/media/visa.png" alt="Visa">
-          <img src="/media/paypal.png" alt="PayPal">
+          <img src="media/maestro.png" alt="Maestro">
+          <img src="media/mastercard.png" alt="Mastercard">
+          <img src="media/visa.png" alt="Visa">
+          <img src="media/paypal.png" alt="PayPal">
         </div>
         <div class="ss-lock">&#128274; All transactions are secure and encrypted</div>
       </div>
@@ -1712,7 +1737,7 @@ function renderCheckout(){
           <div class="ss-compare-grid">
             <div class="ss-col">
               <div class="ss-col-title">Now</div>
-              <img class="ss-img" src="/media/before_reading.webp">
+              <img class="ss-img" src="media/before_reading.webp">
               <div class="ss-card">
                 <div class="ss-label">Sensation</div><div class="ss-value-red">Numb</div>
                 <div class="ss-label">Arousal</div><div>Barely there</div>
@@ -1723,7 +1748,7 @@ function renderCheckout(){
             </div>
             <div class="ss-col">
               <div class="ss-col-title">After Reading</div>
-              <img class="ss-img" src="/media/after_reading2.webp">
+              <img class="ss-img" src="media/after_reading2.webp">
               <div class="ss-card">
                 <div class="ss-label">Sensation</div><div class="ss-value-green">On fire</div>
                 <div class="ss-label">Arousal</div><div>Constant</div>
@@ -1739,12 +1764,12 @@ function renderCheckout(){
           <div class="ss-books-wrap">
             <div class="ss-books-title">4,000+ stories that won't let you put your phone down</div>
             <div class="ss-books-stage">
-              <img src="/media/book_A2.webp" class="ss-book">
-              <img src="/media/book_b.webp" class="ss-book">
-              <img src="/media/book_c.webp" class="ss-book">
-              <img src="/media/book_d.webp" class="ss-book">
-              <img src="/media/book_e.webp" class="ss-book">
-              <img src="/media/book_f.webp" class="ss-book">
+              <img src="media/book_A2.webp" class="ss-book">
+              <img src="media/book_b.webp" class="ss-book">
+              <img src="media/book_c.webp" class="ss-book">
+              <img src="media/book_d.webp" class="ss-book">
+              <img src="media/book_e.webp" class="ss-book">
+              <img src="media/book_f.webp" class="ss-book">
             </div>
             <div class="ss-books-sub">Join <span>248,550+</span> members already living their fantasies</div>
           </div>
@@ -1752,7 +1777,7 @@ function renderCheckout(){
 
         <div class="ss-block">
           <div class="ss-story-card">
-            <img src="/media/book_eg.webp" class="ss-story-bg">
+            <img src="media/book_eg.webp" class="ss-story-bg">
             <div class="ss-story-overlay">
               <div class="ss-story-title">WICKED VOWS</div>
               <div class="ss-story-tags">Instant Attraction | Intense | Possessive | Paranormal</div>
@@ -1803,12 +1828,12 @@ function renderCheckout(){
           <div class="ss-fantasy-card">
             <div class="ss-fantasy-title">What other user fantasies look like</div>
             <div class="ss-fantasy-books">
-              <img src="/media/book_01.webp">
-              <img src="/media/book_02.webp">
-              <img src="/media/book_03.webp">
-              <img src="/media/book_04.webp">
-              <img src="/media/book_05.webp">
-              <img src="/media/book_06.webp">
+              <img src="media/book_01.webp">
+              <img src="media/book_02.webp">
+              <img src="media/book_03.webp">
+              <img src="media/book_04.webp">
+              <img src="media/book_05.webp">
+              <img src="media/book_06.webp">
             </div>
             <button class="ss-fantasy-cta js-scroll-pricing">Read Your Story</button>
           </div>
@@ -1819,7 +1844,7 @@ function renderCheckout(){
         <div class="ss-block">
           <div class="ss-mbg">
             <div class="ss-mbg-row">
-              <div class="ss-mbg-icon"><img src="/media/money-back.png"></div>
+              <div class="ss-mbg-icon"><img src="media/money-back.png"></div>
               <div class="ss-mbg-content">
                 <div class="ss-mbg-title">14-Day Money-Back Guarantee</div>
                 <div class="ss-mbg-text">We believe SweetSecrets will change how you experience romance stories. But we also believe you should have time to decide for yourself. Subscribe today and you have 14 days to explore everything. If it's not what you hoped for, a full refund is available within that window.</div>
@@ -2080,7 +2105,7 @@ function renderSuccess(){
         <span style="color:#ffd76a;font-weight:bold;">${state.email || "your email"}</span>
       </div>
 
-      <video src="/media/success_video.mp4" autoplay muted loop playsinline style="width:100%;border-radius:16px;margin-bottom:24px;display:block;"></video>
+      <video src="media/success_video.mp4" autoplay muted loop playsinline style="width:100%;border-radius:16px;margin-bottom:24px;display:block;"></video>
 
       <div style="background:rgba(255,255,255,0.07);border-radius:18px;padding:20px;width:100%;margin-bottom:30px;">
         <div style="font-size:15px;opacity:.7;margin-bottom:14px;">Your plan summary</div>

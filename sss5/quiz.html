@@ -1188,26 +1188,48 @@ function cleanupIntervals(){
 
 // POST to the submit-quiz edge function. Body shape:
 //   { session_id, event, payload }
-// Console-logged on top so the browser console still shows what was sent.
-function postQuizEvent(event, payload){
+// Retries up to 3 times with backoff (1.2s, 2.5s) to survive cold-start
+// 503s and transient network blips. Critical for payment_successful — if
+// that single event is lost, the story never gets created.
+async function postQuizEvent(event, payload){
   try { console.log("[MHS quiz] -> submit-quiz", event, payload); } catch (_) {}
 
-  return fetch(SUBMIT_QUIZ_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "apikey": SUPABASE_ANON_KEY,
-      "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
-    },
-    body: JSON.stringify({
-      session_id: session_id,
-      event: event,
-      payload: payload || {},
-    }),
-    keepalive: true,
-  }).catch((err) => {
-    try { console.warn("[MHS quiz] submit-quiz failed:", err); } catch (_) {}
+  const body = JSON.stringify({
+    session_id: session_id,
+    event: event,
+    payload: payload || {},
   });
+
+  const delays = [1200, 2500];
+  let lastErr = null;
+
+  for (let attempt = 0; attempt <= delays.length; attempt++) {
+    try {
+      const res = await fetch(SUBMIT_QUIZ_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": SUPABASE_ANON_KEY,
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+        body: body,
+        keepalive: true,
+      });
+      if (res.ok) {
+        if (attempt > 0) console.warn(`[MHS quiz] submit-quiz succeeded on attempt ${attempt + 1}`);
+        return res;
+      }
+      lastErr = new Error(`HTTP ${res.status}`);
+      try { console.warn(`[MHS quiz] submit-quiz attempt ${attempt + 1} failed:`, lastErr.message); } catch (_) {}
+    } catch (err) {
+      lastErr = err;
+      try { console.warn(`[MHS quiz] submit-quiz attempt ${attempt + 1} threw:`, err); } catch (_) {}
+    }
+    if (attempt < delays.length) {
+      await new Promise(r => setTimeout(r, delays[attempt]));
+    }
+  }
+  console.error("[MHS quiz] submit-quiz GAVE UP after 3 attempts. Event lost:", event, lastErr);
 }
 
 function sendEmailCapture(){
@@ -1247,9 +1269,12 @@ function sendPlanSelection(){
   });
 }
 
-function sendPaymentSuccess(){
+async function sendPaymentSuccess(){
   if(!state.email) return;
-  postQuizEvent("payment_successful", {
+  // AWAIT this one — the user is on the "You're in!" success screen and
+  // isn't going anywhere. If the network is slow or the function cold-starts,
+  // we want to give it the full retry window before we move on.
+  await postQuizEvent("payment_successful", {
     email: state.email,
     plan: state.plan || "",
   });
