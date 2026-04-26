@@ -8,3 +8,6 @@ verify_jwt = false   # called from chapter.html with the anon key
 
 [functions.generate-chapter]
 verify_jwt = true    # internal only — called by the other two with the service role key
+
+[functions.resend-chapter-email]
+verify_jwt = true    # admin recovery tool — called manually via the Supabase Test panel
