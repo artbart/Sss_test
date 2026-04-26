@@ -232,6 +232,7 @@ body{
 .ss-check{
   color:#e04b57;
   margin-right:6px;
+  font-weight:bold;
 }
 
 .ss-testimonials-wrap{
@@ -1119,6 +1120,33 @@ let checkoutTimerInterval = null;
 let checkoutBooksInterval = null;
 let progressiveTestimonialInterval = null;
 
+// Preloading: each step type lists the media files it needs. We trigger
+// preload one step ahead inside render() so by the time the user advances,
+// the next page's images are already in the browser cache.
+const STEP_ASSETS = {
+  intro2:     ["media/logos_1.webp"],
+  interrupt1: ["media/woman_read.webp"],
+  email:      ["media/awards_email.webp"],
+  checkout: [
+    "media/before_reading.webp", "media/after_reading2.webp",
+    "media/book_A2.webp", "media/book_b.webp", "media/book_c.webp",
+    "media/book_d.webp", "media/book_e.webp", "media/book_f.webp",
+    "media/book_eg.webp", "media/money-back.png",
+    "media/maestro.png", "media/mastercard.png", "media/visa.png"
+  ]
+};
+const _preloaded = new Set();
+function preloadFor(stepType){
+  const list = STEP_ASSETS[stepType];
+  if (!list) return;
+  list.forEach(url => {
+    if (_preloaded.has(url)) return;
+    _preloaded.add(url);
+    const img = new Image();
+    img.src = url;
+  });
+}
+
 function upgradeInsecureMedia(root){
   const scope = root || document;
   scope.querySelectorAll('img[src^="http://"], video[src^="http://"], source[src^="http://"]').forEach((el)=>{
@@ -1262,6 +1290,12 @@ function render(){
   cleanupIntervals();
   const s = steps[step];
   if(!s) return;
+
+  // Kick off preloading for the next step's images so they're cached
+  // by the time the user advances. Cheap fire-and-forget.
+  const nextStep = steps[step + 1];
+  if (nextStep) preloadFor(nextStep.type);
+
   if(s.type==="intro1") return renderIntro1();
   if(s.type==="intro2") return renderIntro2();
   if(s.type==="single") return renderSingle(s);
@@ -1917,7 +1951,7 @@ function renderPayment(){
           </div>
           <div style="flex:1;">
             <div style="font-size:12px;color:#7b6c80;margin-bottom:4px;">CVV / CVC</div>
-            <input id="cvv" type="password" inputmode="numeric" placeholder="***" maxlength="3" style="width:100%;box-sizing:border-box;border-radius:12px;border:1px solid #e4d5c5;padding:10px 12px;font-size:14px;outline:none;background:#fff;color:#2a1b22;font-family:system-ui,sans-serif;">
+            <input id="cvv" type="tel" inputmode="numeric" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-form-type="other" placeholder="***" maxlength="3" style="width:100%;box-sizing:border-box;border-radius:12px;border:1px solid #e4d5c5;padding:10px 12px;font-size:14px;outline:none;background:#fff;color:#2a1b22;font-family:system-ui,sans-serif;-webkit-text-security:disc;text-security:disc;">
             <div id="cvvErr" style="color:#c93a29;font-size:12px;min-height:16px;margin-top:3px;"></div>
           </div>
         </div>
