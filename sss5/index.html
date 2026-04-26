@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Hidden Story</title>
+
+  <!-- Meta Pixel Code -->
+  <script>
+  !function(f,b,e,v,n,t,s)
+  {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+  n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+  if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+  n.queue=[];t=b.createElement(e);t.async=!0;
+  t.src=v;s=b.getElementsByTagName(e)[0];
+  s.parentNode.insertBefore(t,s)}(window, document,'script',
+  'https://connect.facebook.net/en_US/fbevents.js');
+  fbq('init', '1749662932494618');
+  fbq('track', 'PageView');
+  </script>
+  <!-- End Meta Pixel Code -->
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-top: #4b0018;
+      --bg-bottom: #1a0008;
+      --text: #ffffff;
+      --muted: rgba(255,255,255,0.86);
+      --faint: rgba(255,255,255,0.66);
+      --brand-gold: #f0d48c;
+      --cta: #e04b57;
+      --cta-hover: #c63d49;
+      --bullet-glow: #ffd76a;
+      --shadow: 0 18px 45px rgba(0,0,0,0.38);
+    }
+
+    html, body {
+      min-height: 100%;
+      background: linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+      color: var(--text);
+      font-family: Georgia, serif;
+    }
+
+    body {
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    .hero {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      background: linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+      isolation: isolate;
+    }
+
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(90deg, rgba(10,0,5,0.90) 0%, rgba(12,1,6,0.86) 26%, rgba(18,3,10,0.54) 48%, rgba(20,5,13,0.14) 70%, rgba(16,3,9,0.22) 100%),
+        url('media/mhs_dektop.webp');
+      background-repeat: no-repeat;
+      background-size: cover;
+      background-position: center right;
+      z-index: -2;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(102deg, rgba(255,255,255,0) 0 18px, rgba(255,255,255,0.06) 18px 19px, rgba(255,255,255,0) 19px 46px);
+      opacity: 0.35;
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    .wrap {
+      width: 100%;
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 24px 32px 20px;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: Arial, sans-serif;
+      font-size: 18px;
+      font-weight: 500;
+      color: #fff4ec;
+      margin-bottom: 10px;
+      margin-left: 18px;
+    }
+
+    .brand::before,
+    .brand::after {
+      content: '•';
+      color: var(--brand-gold);
+      font-size: 14px;
+      line-height: 1;
+    }
+
+    .content {
+      width: min(100%, 550px);
+      padding: 8px 0 0 18px;
+    }
+
+    h1 {
+      font-size: clamp(32px, 3.5vw, 48px);
+      line-height: 0.98;
+      font-weight: 400;
+      letter-spacing: -0.03em;
+      margin-top: 10px;
+    }
+
+    .gold {
+      color: var(--brand-gold);
+      font-weight: 700;
+      text-shadow: 0 0 16px rgba(240, 212, 140, 0.18);
+    }
+
+    .subtext {
+      margin-top: 24px;
+      color: var(--muted);
+      font-family: Arial, sans-serif;
+      font-size: 18px;
+      line-height: 1.2;
+    }
+
+    .cta {
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      width: min(100%, 305px);
+      min-height: 56px;
+      margin-top: 18px;
+      border-radius: 6px;
+      background: var(--cta);
+      color: #fff;
+      text-decoration: none;
+      font-family: Arial, sans-serif;
+      font-size: 16px;
+      font-weight: 600;
+      box-shadow: var(--shadow);
+      transition: background 0.2s ease, transform 0.2s ease;
+    }
+
+    .cta:hover { background: var(--cta-hover); transform: translateY(-1px); }
+
+    .features {
+      list-style: none;
+      margin-top: 22px;
+      display: grid;
+      gap: 14px;
+      max-width: 570px;
+    }
+
+    .features li {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.35;
+    }
+
+    .dot {
+      width: 16px;
+      height: 16px;
+      min-width: 16px;
+      margin-top: 4px;
+      border-radius: 50%;
+      position: relative;
+      background: radial-gradient(circle at 35% 35%, #fff9c7, var(--bullet-glow) 52%, #9a7616 100%);
+      box-shadow: 0 0 14px rgba(255, 215, 106, 0.38);
+    }
+
+    .dot::before,
+    .dot::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255,255,255,0.95);
+      border-radius: 999px;
+    }
+
+    .dot::before { width: 7px; height: 1.5px; }
+    .dot::after { width: 1.5px; height: 7px; }
+
+    .footer {
+      margin-top: 48px;
+      max-width: 760px;
+      color: var(--faint);
+      font-family: Arial, sans-serif;
+      font-size: 10px;
+      line-height: 1.45;
+    }
+
+    .footer a { color: var(--faint); text-decoration: underline; }
+
+    @media (max-width: 900px) {
+      .hero { align-items: flex-start; }
+      .hero::before {
+        background-image:
+          linear-gradient(180deg, rgba(10,0,5,0.74) 0%, rgba(16,2,8,0.50) 30%, rgba(18,3,10,0.82) 100%),
+          url('media/mhs_mobile.webp');
+        background-position: center top;
+      }
+      .wrap { padding: 20px 20px 16px; }
+      .content { width: 100%; padding-left: 0; padding-top: 8px; }
+      .brand { font-size: 17px; margin-bottom: 26px; margin-left: 0; }
+      h1 { font-size: clamp(28px, 8.5vw, 38px); }
+      .subtext { font-size: 15px; }
+      .cta { width: 100%; max-width: 100%; }
+      .features li { font-size: 16px; }
+      .footer { margin-top: 34px; }
+    }
+  </style>
+</head>
+<body>
+  <section class="hero">
+    <div class="wrap">
+      <div class="brand">My Hidden Story</div>
+      <div class="content">
+        <h1>
+          Step into <span class="gold">your fantasy.</span><br>
+          <span class="gold">Choose</span> what happens next.
+        </h1>
+
+        <p class="subtext">
+          Take the quiz to create the romance you've been craving and steer every breathless moment.
+        </p>
+
+        <a class="cta" id="startQuizLink" href="quiz.html">Get Started</a>
+
+        <ul class="features">
+          <li><span class="dot"></span><span>Unlimited romance novels, anywhere, anytime</span></li>
+          <li><span class="dot"></span><span>Interactive scenes where your decisions change what happens next</span></li>
+          <li><span class="dot"></span><span>Start multiple stories; switch anytime without losing progress</span></li>
+          <li><span class="dot"></span><span>Heat control from sweet to all-consuming, adjustable anytime</span></li>
+          <li><span class="dot"></span><span>Replay choices for new twists and alternate scenes</span></li>
+        </ul>
+
+        <div class="footer">
+          2026 &copy; All Rights Reserved My Hidden Story. By continuing you agree to our
+          <a href="#">Privacy Policy</a>,
+          <a href="#">Terms and Conditions</a>,
+          <a href="#">Acceptable Use Policy</a>
+          and
+          <a href="#">Subscriptions and Refund Policy</a>.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <noscript><img height="1" width="1" style="display:none"
+  src="https://www.facebook.com/tr?id=1749662932494618&ev=PageView&noscript=1"
+  /></noscript>
+
+  <script>
+    // Forward any query string (e.g. ?fbclid=...) to the quiz so attribution is preserved.
+    (function () {
+      var link = document.getElementById("startQuizLink");
+      if (!link) return;
+      if (window.location.search) {
+        link.href = "quiz.html" + window.location.search;
+      }
+    })();
+  </script>
+</body>
+</html>
