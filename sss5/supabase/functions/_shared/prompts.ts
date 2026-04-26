@@ -1,5 +1,5 @@
 // Chapter prompts — adapted from the old Make.com CSV.
-// Two flavors: chapter 1 (full setup, ~2000 words) and chapter 2+ (~200 words
+// Two flavors: chapter 1 (full setup, ~2000 words) and chapter 2+ (~2000 words
 // continuation honoring the user's selected option).
 
 export interface QuizContext {
@@ -251,7 +251,7 @@ IMPORTANT INSTRUCTIONS:
 - The selected option must clearly influence this chapter.
 - The 3 next options must be clearly different and plausible.
 - Keep structured fields concise but useful.
-- Limit CHAPTER_TEXT to approximately 200 words (max 230).
+- Limit CHAPTER_TEXT to approximately 2000 words (max 2300).
 - Never begin the chapter with the words "You don't". Vary the opening sentence structure each chapter.
 
 STORY CONTEXT:

@@ -246,7 +246,7 @@ async function generateChapterN(db: ReturnType<typeof adminClient>, story: any, 
   };
 
   const prompt = chapterNPrompt(ctx);
-  const raw = await callClaude({ user: prompt, maxTokens: 2048 });
+  const raw = await callClaude({ user: prompt, maxTokens: 6000 });
   const parsed = parseLabeled(raw);
   if (!parsed.ok) {
     throw new Error(`AI returned error for chapter ${n}: ${parsed.errorReason ?? "unknown"}; raw[0..200]=${raw.slice(0, 200)}`);
