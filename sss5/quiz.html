@@ -153,6 +153,32 @@ body{
   max-width:450px;
 }
 
+/* Intro1 CTA — inline on desktop (closer to content / aligned with intro2 button),
+   behaves like fixed footer on mobile so the original UX is preserved. */
+.ss-intro1-cta{
+  display:flex;
+  justify-content:center;
+  margin-top:24px;
+}
+
+.ss-intro1-cta .ss-btn{
+  width:100%;
+  max-width:450px;
+}
+
+@media (max-width: 900px){
+  .ss-intro1-cta{
+    position:fixed;
+    bottom:0;
+    left:0;
+    width:100%;
+    margin-top:0;
+    padding:16px;
+    background:linear-gradient(to top, rgba(0,0,0,.6), transparent);
+    z-index:1000;
+  }
+}
+
 .ss-input{
   width:100%;
   padding:16px;
@@ -262,7 +288,7 @@ body{
 }
 
 .ss-text{
-  font-family:Arial;
+  font-family:Georgia, serif;
   font-size:14px;
   line-height:1.5;
   text-align:center;
@@ -277,7 +303,9 @@ body{
 .ss-author{
   text-align:center;
   opacity:.8;
-  font-family:Arial;
+  font-family:Georgia, serif;
+  font-size:14px;
+  line-height:1.5;
 }
 
 .ss-modal{
@@ -434,6 +462,34 @@ body{
   cursor:pointer;
 }
 
+/* By default the email CTA floats at the bottom of the viewport,
+   matching the original desktop and unfocused-mobile behavior. */
+.email-inline-cta{
+  position:fixed;
+  bottom:0;
+  left:0;
+  width:100%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:16px;
+  background:linear-gradient(to top, rgba(0,0,0,.6), transparent);
+  z-index:1000;
+}
+
+/* Mobile only: when the email input is focused (keyboard up),
+   pull the CTA inline right under the input and hide the awards image
+   so the user doesn't have to dismiss the keyboard to see the button. */
+@media (max-width: 900px){
+  .email-root.email-focused .email-awards-block{ display:none; }
+  .email-root.email-focused .email-inline-cta{
+    position:static;
+    padding:16px 0 0;
+    background:none;
+    width:auto;
+  }
+}
+
 .ss-block{
   margin-bottom:24px;
 }
@@ -470,6 +526,7 @@ body{
   font-weight:bold;
   border:none;
   cursor:pointer;
+  text-transform:uppercase;
 }
 
 .ss-compare-grid{
@@ -722,32 +779,23 @@ body{
   border-radius:16px;
   padding:14px;
   position:relative;
+  text-align:center;
 }
 
-.ss-quote{
-  font-size:30px;
-  color:#ff3f86;
-  margin-bottom:6px;
-  line-height:1;
-}
-
-.ss-review-head{
-  display:flex;
-  justify-content:space-between;
-  font-size:13px;
-  margin-bottom:6px;
-  gap:8px;
-}
-
-.ss-date{
-  opacity:.6;
-  white-space:nowrap;
-}
-
-.ss-review-text{
+.ss-review .ss-review-text{
   font-size:13px;
   line-height:1.4;
   opacity:.9;
+  margin-bottom:10px;
+}
+
+.ss-review .ss-stars{
+  margin:6px 0;
+}
+
+.ss-review-head{
+  font-size:13px;
+  margin-top:6px;
 }
 
 .ss-fantasy-card{
@@ -1232,9 +1280,9 @@ function renderIntro1(){
       <div class="ss-title">You know exactly what you want. You just haven't said it out loud yet.</div>
       <div class="ss-sub">This is where you say it. A few choices, and we turn them into a story only you will ever read.</div>
       <div style="text-align:center;font-family:Arial;font-size:14px;margin-bottom:30px;"><span style="color:#ffd76a;">&#9733;&#9733;&#9733;&#9733;&#9733;</span> &nbsp; 4.8 out of 5 | 19k reviews</div>
-    </div>
-    <div class="ss-footer">
-      <button class="ss-btn" id="nextBtn">CREATE MY STORY</button>
+      <div class="ss-intro1-cta">
+        <button class="ss-btn" id="nextBtn">CREATE MY STORY</button>
+      </div>
     </div>
   `;
   document.getElementById("nextBtn").onclick = next;
@@ -1314,7 +1362,7 @@ function renderMulti(s){
   q.options.forEach(opt=>{
     const el = document.createElement("div");
     el.className = "ss-option";
-    el.innerHTML = `<div style="display:flex;gap:10px;align-items:center;width:100%;"><div style="font-size:20px">${opt.split(" ")[0]}</div><div style="flex:1">${opt.substring(opt.indexOf(" ")+1)}</div><div class="check" style="width:20px;height:20px;border:2px solid rgba(255,255,255,0.4);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;"></div></div>`;
+    el.innerHTML = `<div style="display:flex;gap:10px;align-items:center;width:100%;"><div style="font-size:20px">${opt.split(" ")[0]}</div><div style="flex:1">${opt.substring(opt.indexOf(" ")+1)}</div><div class="check" style="width:20px;height:20px;border:2px solid rgba(255,255,255,0.4);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;color:#e04b57;font-weight:bold;"></div></div>`;
     el.onclick = ()=>{
       selected[opt] = !selected[opt];
       el.classList.toggle("active");
@@ -1340,7 +1388,7 @@ function renderInterrupt1(){
       <div style="margin-bottom:20px;text-align:center;">
         <img src="media/woman_read.webp" style="width:80%;border-radius:16px;display:block;margin:0 auto;">
       </div>
-      <div style="background:rgba(255,255,255,0.08);padding:20px;border-radius:14px;font-family:Arial;font-size:14px;margin-bottom:20px;">
+      <div style="background:rgba(255,255,255,0.08);padding:20px;border-radius:14px;font-size:14px;margin-bottom:20px;">
         <div style="color:#4caf50;margin-bottom:6px;">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
         <div style="opacity:.8;font-size:12px;text-align:right;margin-bottom:6px;">@ashley</div>
         Best romance app I've tried, and I've tried a lot. My choices actually change what happens, so it feels like MY story. Some scenes had me putting my phone down just to breathe.
@@ -1361,7 +1409,7 @@ function renderInterrupt2(){
       <div style="text-align:center;margin:20px 0;"><div style="font-size:42px;color:#ff4d5e;">87%</div><div>felt confident asking for what they want</div></div>
       <div style="text-align:center;margin:20px 0;"><div style="font-size:42px;color:#ff4d5e;">93%</div><div>stopped feeling guilty about their fantasies</div></div>
       <div style="text-align:center;margin:20px 0;"><div style="font-size:42px;color:#ff4d5e;">81%</div><div>brought the spark back</div></div>
-      <button class="ss-btn" id="nextBtn">CONTINUE</button>
+      <button class="ss-btn" id="nextBtn" style="margin-top:80px;">CONTINUE</button>
     </div>
   `;
   document.getElementById("nextBtn").onclick = next;
@@ -1423,13 +1471,13 @@ function renderProgressive(){
     setTimeout(()=>{
       const item = testimonials[t % testimonials.length];
       testimonialEl.innerText = item.text;
-      authorEl.innerText = "by " + item.author;
+      authorEl.innerText = item.author;
       testimonialEl.classList.remove("fade");
       t++;
     }, 300);
   }
 
-  progressiveTestimonialInterval = setInterval(updateTestimonial, 1500);
+  progressiveTestimonialInterval = setInterval(updateTestimonial, 2500);
   updateTestimonial();
 
   function runLoader(onDone, subtitleEl){
@@ -1498,7 +1546,7 @@ function renderProgressive(){
 
 function renderEmail(){
   app.innerHTML = `
-    <div class="email-root">
+    <div class="email-root" id="emailRoot">
       <div class="email-page">
         <div class="email-container">
           <div class="email-logo" style="font-size:24px;font-weight:bold;margin-bottom:24px;">My Hidden Story</div>
@@ -1509,20 +1557,21 @@ function renderEmail(){
             <div class="email-check">&#10003;</div>
             <div>We respect your privacy and are committed to protecting your personal data</div>
           </div>
-          <div style="text-align:center;padding-top:10px;">
-            <img src="media/awards_email.webp" style="width:50%;border-radius:14px;height:auto;object-fit:contain;">
+          <div class="email-awards-block" style="text-align:center;padding-top:10px;">
+            <img class="email-awards-img" src="media/awards_email.webp" style="width:50%;border-radius:14px;height:auto;object-fit:contain;">
+          </div>
+          <div class="email-inline-cta" id="emailInlineCta">
+            <div id="emailAlert" style="opacity:0;transition:opacity .2s;color:#ff4d5e;font-size:14px;margin-bottom:10px;text-align:center;">Please, enter your email to continue</div>
+            <button id="emailCta" class="ss-btn email-btn" style="max-width:320px;">CONTINUE</button>
           </div>
         </div>
-      </div>
-      <div class="ss-footer" style="flex-direction:column;align-items:center;">
-        <div id="emailAlert" style="opacity:0;transition:opacity .2s;color:#ff4d5e;font-size:14px;margin-bottom:10px;">Please, enter your email to continue</div>
-        <button id="emailCta" class="ss-btn email-btn" style="max-width:320px;">CONTINUE</button>
       </div>
     </div>
   `;
 
   const input = document.getElementById("emailInput");
   const cta = document.getElementById("emailCta");
+  const root = document.getElementById("emailRoot");
 
   setTimeout(()=>{ const t = document.querySelector(".email-title"); if(t) cta.style.maxWidth = t.offsetWidth + "px"; }, 10);
 
@@ -1531,6 +1580,11 @@ function renderEmail(){
   input.addEventListener("input", ()=>{
     cta.classList.toggle("active", isValidEmail(input.value.trim()));
   });
+
+  // Mobile-only UX: when keyboard is open (input focused), hide awards image
+  // and let the inline CTA sit directly under the input — no scrolling needed.
+  input.addEventListener("focus", ()=>{ root.classList.add("email-focused"); });
+  input.addEventListener("blur",  ()=>{ root.classList.remove("email-focused"); });
 
   cta.onclick = ()=>{
     const val = input.value.trim();
@@ -1698,10 +1752,10 @@ function renderCheckout(){
           <div class="ss-reviews">
             <div class="ss-reviews-title">Why people love My Hidden Story</div>
             <div class="ss-reviews-grid">
-              <div class="ss-review"><div class="ss-quote">"</div><div class="ss-review-head"><div>Harper Wilson</div><div class="ss-date">2 days ago</div></div><div class="ss-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div><div class="ss-review-text">I read 50+ books a year and was NOT expecting app-based stories to be actually good...</div></div>
-              <div class="ss-review"><div class="ss-quote">"</div><div class="ss-review-head"><div>Linda Hoffman</div><div class="ss-date">Sep 14, 2025</div></div><div class="ss-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div><div class="ss-review-text">Personalization actually works as advertised. Already recommended it.</div></div>
-              <div class="ss-review"><div class="ss-quote">"</div><div class="ss-review-head"><div>Catherine W.</div><div class="ss-date">May 13, 2025</div></div><div class="ss-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div><div class="ss-review-text">Strong tension, addictive pacing. Didn't expect this level.</div></div>
-              <div class="ss-review"><div class="ss-quote">"</div><div class="ss-review-head"><div>James K.</div><div class="ss-date">5 days ago</div></div><div class="ss-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div><div class="ss-review-text">Way better than expected. Honestly hard to stop reading.</div></div>
+              <div class="ss-review"><div class="ss-review-text">I read 50+ books a year and was NOT expecting app-based stories to be actually good...</div><div class="ss-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div><div class="ss-review-head"><div>Harper Wilson</div></div></div>
+              <div class="ss-review"><div class="ss-review-text">Personalization actually works as advertised. Already recommended it.</div><div class="ss-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div><div class="ss-review-head"><div>Linda Hoffman</div></div></div>
+              <div class="ss-review"><div class="ss-review-text">Strong tension, addictive pacing. Didn't expect this level.</div><div class="ss-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div><div class="ss-review-head"><div>Catherine W.</div></div></div>
+              <div class="ss-review"><div class="ss-review-text">Way better than expected. Honestly hard to stop reading.</div><div class="ss-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div><div class="ss-review-head"><div>James K.</div></div></div>
             </div>
           </div>
         </div>
