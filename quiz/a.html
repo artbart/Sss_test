@@ -1,0 +1,2121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>My Hidden Story — Build your story</title>
+</head>
+<body>
+<!-- ================= ROOT ================= -->
+<div id="app"></div>
+
+<!-- Meta Pixel Code -->
+<script>
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '1749662932494618');
+fbq('track', 'PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none"
+src="https://www.facebook.com/tr?id=1749662932494618&ev=PageView&noscript=1"
+/></noscript>
+<!-- End Meta Pixel Code -->
+
+<!-- ================= STYLES ================= -->
+<style>
+
+html, body{
+  width:100%;
+  max-width:100%;
+  overflow-x:hidden;
+  -webkit-text-size-adjust:100%;
+}
+
+
+*,
+*::before,
+*::after{
+  box-sizing:border-box;
+}
+
+body{
+  margin:0;
+  font-family:Georgia, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", serif;
+  background:linear-gradient(180deg,#4b0018,#1a0008);
+  color:#fff;
+}
+
+#app{
+  max-width:450px;
+  margin:0 auto;
+  min-height:100vh;
+  transition: opacity 0.25s ease;
+}
+
+.ss-container{
+  width:100%;
+  max-width:450px;
+  padding:20px 16px 120px;
+  box-sizing:border-box;
+}
+
+.ss-title{
+  font-size:26px;
+  text-align:center;
+  margin-bottom:20px;
+}
+
+.ss-sub{
+  text-align:center;
+  opacity:.8;
+  margin-bottom:20px;
+}
+
+.ss-btn{
+  width:100%;
+  padding:16px;
+  border-radius:14px;
+  border:none;
+  background:#e04b57;
+  color:#fff;
+  font-size:16px;
+  cursor:pointer;
+}
+
+.ss-btn:disabled{
+  background:#5c1e25;
+  color:#a1686e;
+  cursor:not-allowed;
+  opacity:1;
+}
+
+.ss-options{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.ss-option{
+  background:rgba(255,255,255,0.08);
+  padding:16px;
+  border-radius:14px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  cursor:pointer;
+  transition:all .15s ease;
+}
+
+.ss-option:hover{
+  background:rgba(255,255,255,0.18);
+  transform:translateY(-2px);
+}
+
+.ss-option.active{
+  background:rgba(255,255,255,0.22);
+  border:1px solid rgba(255,255,255,0.4);
+}
+
+.ss-progress{
+  height:4px;
+  background:#5a1a2a;
+  margin:12px 0 20px;
+  border-radius:4px;
+  overflow:hidden;
+}
+
+.ss-fill{
+  height:100%;
+  background:#ff6b7c;
+  width:0%;
+  transition:width .25s ease;
+}
+
+.ss-footer{
+  position:fixed;
+  bottom:0;
+  left:0;
+  width:100%;
+  display:flex;
+  justify-content:center;
+  padding:16px;
+  background:linear-gradient(to top, rgba(0,0,0,.6), transparent);
+  z-index:1000;
+}
+
+.ss-footer .ss-btn{
+  max-width:450px;
+}
+
+/* Intro1 CTA — inline on desktop (closer to content / aligned with intro2 button),
+   behaves like fixed footer on mobile so the original UX is preserved. */
+.ss-intro1-cta{
+  display:flex;
+  justify-content:center;
+  margin-top:24px;
+}
+
+.ss-intro1-cta .ss-btn{
+  width:100%;
+  max-width:450px;
+}
+
+@media (max-width: 900px){
+  .ss-intro1-cta{
+    position:fixed;
+    bottom:0;
+    left:0;
+    width:100%;
+    margin-top:0;
+    padding:16px;
+    background:linear-gradient(to top, rgba(0,0,0,.6), transparent);
+    z-index:1000;
+  }
+}
+
+.ss-input{
+  width:100%;
+  padding:16px;
+  border-radius:12px;
+  border:none;
+  background:rgba(255,255,255,0.2);
+  color:#fff;
+}
+
+.ss-page{
+  display:flex;
+  justify-content:center;
+  min-height:100vh;
+}
+
+.ss-logo{
+  text-align:center;
+}
+
+.ss-logo img{
+  height:28px;
+  margin-bottom:20px;
+}
+
+.ss-percent{
+  font-size:56px;
+  text-align:center;
+}
+
+.ss-bar{
+  height:16px;
+  background:#4a1c27;
+  border-radius:10px;
+  margin:10px 0 20px;
+  overflow:hidden;
+}
+
+.ss-bar-fill{
+  height:100%;
+  width:0%;
+  background:#ff4d5e;
+}
+
+.ss-subtitle{
+  margin:8px 4px;
+  padding-left:4px;
+  color:#e8cfcf;
+  font-size:16px;
+}
+
+.ss-check{
+  color:#e04b57;
+  margin-right:6px;
+  font-weight:bold;
+}
+
+.ss-testimonials-wrap{
+  position:fixed;
+  top:75%;
+  left:0;
+  transform:translateY(-50%);
+  width:100%;
+  display:flex;
+  justify-content:center;
+  pointer-events:none;
+}
+
+.ss-testimonials-wrap * {
+  pointer-events:auto;
+}
+
+.ss-testimonials{
+  width:100%;
+  max-width:450px;
+  padding:0 16px;
+}
+
+.ss-test-title{
+  font-size:22px;
+  margin:0 0 12px;
+  line-height:1.3;
+  text-align:center;
+}
+
+.ss-card{
+  background:#6b1a2b;
+  border-radius:14px;
+  height:260px;
+  padding:20px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  margin-top:10px;
+}
+
+.ss-stars{
+  color:#5fd28f;
+  text-align:center;
+  margin:6px 0;
+}
+
+.ss-text-wrap{
+  flex:1;
+  display:flex;
+  align-items:flex-start;
+  justify-content:center;
+  margin-top:0;
+}
+
+.ss-text{
+  font-family:Georgia, serif;
+  font-size:14px;
+  line-height:1.5;
+  text-align:center;
+  opacity:1;
+  transition:opacity .4s ease;
+}
+
+.ss-text.fade{
+  opacity:0;
+}
+
+.ss-author{
+  text-align:center;
+  opacity:.8;
+  font-family:Georgia, serif;
+  font-size:14px;
+  line-height:1.5;
+}
+
+.ss-modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.7);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:9999;
+}
+
+.ss-modal-box{
+  width:90%;
+  max-width:360px;
+  background:#6b0f25;
+  padding:24px;
+  border-radius:16px;
+  text-align:center;
+}
+
+.ss-modal-title{
+  font-size:20px;
+  margin-bottom:20px;
+}
+
+.ss-row{
+  display:flex;
+  gap:10px;
+}
+
+.ss-row .ss-btn{
+  flex:1;
+  width:auto;
+}
+
+.email-root{
+  background:linear-gradient(180deg,#4b0018,#a80f4b);
+  min-height:100vh;
+  min-height:100dvh;
+}
+
+.email-page{
+  display:flex;
+  justify-content:center;
+}
+
+.email-container{
+  width:100%;
+  max-width:450px;
+  padding:24px 16px 140px;
+}
+
+.email-logo{
+  text-align:center;
+}
+
+.email-logo img{
+  height:28px;
+  margin-bottom:24px;
+}
+
+.email-title{
+  font-size:30px;
+  text-align:center;
+  margin-bottom:12px;
+}
+
+.email-sub{
+  text-align:center;
+  font-size:18px;
+  opacity:.85;
+  margin-bottom:24px;
+}
+
+.email-input{
+  width:100%;
+  padding:16px;
+  border-radius:14px;
+  border:none;
+  background:rgba(255,255,255,0.2);
+  color:#fff;
+  font-size:16px;
+}
+
+.email-input::placeholder{
+  color:rgba(255,255,255,0.6);
+}
+
+.email-privacy{
+  display:flex;
+  gap:10px;
+  align-items:flex-start;
+  margin:16px 0 24px;
+  font-size:14px;
+}
+
+.email-check{
+  width:22px;
+  height:22px;
+  min-width:22px;
+  min-height:22px;
+  aspect-ratio:1/1;
+  border-radius:50%;
+  background:#4CAF50;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:12px;
+  flex-shrink:0;
+  line-height:1;
+}
+
+.email-awards{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+}
+
+.email-awards img{
+  width:100%;
+  height:110px;
+  object-fit:cover;
+  border-radius:14px;
+}
+
+.email-footer{
+  position:fixed;
+  bottom:0;
+  left:0;
+  width:100%;
+  display:flex;
+  justify-content:center;
+  padding:16px;
+  background:linear-gradient(to top, rgba(0,0,0,.6), transparent);
+  z-index:1000;
+}
+
+.email-footer button{
+  width:100%;
+  max-width:430px;
+}
+
+.email-btn{
+  background:#9b3a45;
+  opacity:.6;
+  cursor:not-allowed;
+  transition:.2s;
+}
+
+.email-btn.active{
+  background:#e04b57;
+  opacity:1;
+  cursor:pointer;
+}
+
+/* By default the email CTA floats at the bottom of the viewport,
+   matching the original desktop and unfocused-mobile behavior. */
+.email-inline-cta{
+  position:fixed;
+  bottom:0;
+  left:0;
+  width:100%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:16px;
+  background:linear-gradient(to top, rgba(0,0,0,.6), transparent);
+  z-index:1000;
+}
+
+/* Mobile only: when the email input is focused (keyboard up),
+   pull the CTA inline right under the input and hide the awards image
+   so the user doesn't have to dismiss the keyboard to see the button. */
+@media (max-width: 900px){
+  .email-root.email-focused .email-awards-block{ display:none; }
+  .email-root.email-focused .email-inline-cta{
+    position:static;
+    padding:16px 0 0;
+    background:none;
+    width:auto;
+  }
+}
+
+.ss-block{
+  margin-bottom:24px;
+}
+
+.ss-sticky{
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  background:#7a1c2d;
+  z-index:1000;
+  padding:10px 12px;
+}
+
+.ss-sticky-inner{
+  max-width:450px;
+  margin:0 auto;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.ss-timer{
+  color:#ffd76a;
+  font-weight:bold;
+  font-size:22px;
+}
+
+.ss-cta-top{
+  background:#ffd76a;
+  color:#000;
+  padding:10px 14px;
+  border-radius:10px;
+  font-weight:bold;
+  border:none;
+  cursor:pointer;
+  text-transform:uppercase;
+}
+
+.ss-compare-grid{
+  display:flex;
+  gap:12px;
+}
+
+.ss-col{
+  flex:1;
+}
+
+.ss-col-title{
+  text-align:center;
+  margin-bottom:10px;
+  font-weight:bold;
+  min-height:42px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.ss-img{
+  width:100%;
+  border-radius:16px;
+  display:block;
+}
+
+.ss-label{
+  font-size:13px;
+  opacity:.7;
+}
+
+.ss-value-red{
+  color:#ff5c6d;
+  font-weight:bold;
+}
+
+.ss-value-green{
+  color:#8eff6d;
+  font-weight:bold;
+}
+
+.ss-bar2{
+  height:6px;
+  background:#2a0a11;
+  border-radius:6px;
+  margin:6px 0;
+  position:relative;
+  overflow:hidden;
+}
+
+.ss-bar2-fill{
+  height:100%;
+  border-radius:6px;
+}
+
+.ss-bar{
+  height:6px;
+  background:#2a0a11;
+  border-radius:6px;
+  margin:6px 0;
+  position:relative;
+  overflow:hidden;
+}
+
+.ss-bar::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:repeating-linear-gradient(to right,transparent,transparent 14px,rgba(255,255,255,0.2) 14px,rgba(255,255,255,0.2) 18px);
+  opacity:.4;
+}
+
+.ss-bar-fill{
+  height:100%;
+  border-radius:6px;
+}
+
+.ss-books-wrap{
+  background:#3a0012;
+  border-radius:20px;
+  padding:24px 16px 28px;
+  text-align:center;
+}
+
+.ss-books-title{
+  font-size:24px;
+  margin-bottom:20px;
+}
+
+.ss-books-stage{
+  position:relative;
+  height:210px;
+  margin-bottom:20px;
+}
+
+.ss-book{
+  position:absolute;
+  width:138px;
+  height:196px;
+  object-fit:cover;
+  border-radius:14px;
+  top:0;
+  left:50%;
+  transform:translateX(-50%);
+  transition:all .6s cubic-bezier(.22,.61,.36,1);
+  opacity:0;
+}
+
+.ss-pos-center{
+  transform:translateX(-50%) scale(1);
+  opacity:1;
+  z-index:5;
+  filter:none;
+  box-shadow:0 10px 30px rgba(0,0,0,0.5);
+}
+
+.ss-pos-right{
+  left:50%;
+  transform:translateX(calc(-50% + 110px)) scale(.78);
+  opacity:.7;
+  z-index:4;
+  filter:blur(1px) brightness(.9);
+  box-shadow:0 6px 18px rgba(0,0,0,0.3);
+}
+
+.ss-pos-left{
+  left:50%;
+  transform:translateX(calc(-50% - 110px)) scale(.78);
+  opacity:.7;
+  z-index:4;
+  filter:blur(1px) brightness(.9);
+  box-shadow:0 6px 18px rgba(0,0,0,0.3);
+}
+
+.ss-pos-hidden{
+  opacity:0;
+  transform:translateX(-50%) scale(.7);
+  filter:blur(2px);
+}
+
+.ss-books-sub{
+  font-size:16px;
+}
+
+.ss-books-sub span{
+  color:#ffd76a;
+  font-weight:bold;
+}
+
+.ss-story-card{
+  position:relative;
+  width:100%;
+  border-radius:18px;
+  overflow:hidden;
+  margin-top:0;
+}
+
+.ss-story-bg{
+  width:100%;
+  height:260px;
+  object-fit:cover;
+  display:block;
+}
+
+.ss-story-overlay{
+  position:absolute;
+  inset:0;
+  padding:18px;
+  display:flex;
+  flex-direction:column;
+  background:linear-gradient(to bottom,rgba(0,0,0,0.4),rgba(0,0,0,0.85));
+}
+
+.ss-story-title{
+  font-size:28px;
+  margin-bottom:6px;
+}
+
+.ss-story-tags{
+  font-size:13px;
+  opacity:.85;
+  margin-bottom:12px;
+}
+
+.ss-story-text{
+  font-size:14px;
+  line-height:1.5;
+}
+
+.ss-benefits{
+  padding:10px 4px;
+}
+
+.ss-benefits-title{
+  text-align:center;
+  font-size:30px;
+  margin-bottom:20px;
+}
+
+.ss-benefits-list{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.ss-item{
+  font-size:13px;
+  line-height:1.5;
+  opacity:.95;
+}
+
+.ss-rating{
+  margin-top:26px;
+  text-align:center;
+}
+
+.ss-rating-sub{
+  font-size:14px;
+  opacity:.8;
+}
+
+.ss-benefits-cta{
+  width:100%;
+  margin-top:20px;
+  background:#ff2f7d;
+  border:none;
+  padding:18px;
+  border-radius:16px;
+  font-size:20px;
+  font-weight:bold;
+  color:#fff;
+  cursor:pointer;
+}
+
+.ss-reviews-title{
+  font-size:26px;
+  margin-bottom:16px;
+  text-align:center;
+}
+
+.ss-reviews-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+
+.ss-review{
+  background:#6a1426;
+  border-radius:16px;
+  padding:14px;
+  position:relative;
+  text-align:center;
+}
+
+.ss-review .ss-review-text{
+  font-size:13px;
+  line-height:1.4;
+  opacity:.9;
+  margin-bottom:10px;
+}
+
+.ss-review .ss-stars{
+  margin:6px 0;
+}
+
+.ss-review-head{
+  font-size:13px;
+  margin-top:6px;
+}
+
+.ss-fantasy-card{
+  margin-top:20px;
+  background:#2a000b;
+  border-radius:20px;
+  padding:20px 16px;
+  text-align:center;
+  border:1px solid rgba(255,120,120,0.15);
+}
+
+.ss-fantasy-title{
+  font-size:22px;
+  margin-bottom:18px;
+}
+
+.ss-fantasy-books{
+  position:relative;
+  height:160px;
+  margin-bottom:20px;
+}
+
+.ss-fantasy-books img{
+  position:absolute;
+  width:85px;
+  height:125px;
+  object-fit:cover;
+  border-radius:12px;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  box-shadow:0 6px 20px rgba(0,0,0,.4);
+}
+
+.ss-fantasy-books img:nth-child(1){ transform:translate(-140%,-40%) rotate(-12deg) scale(.9); opacity:.7; }
+.ss-fantasy-books img:nth-child(2){ transform:translate(-80%,-80%) rotate(-6deg) scale(.95); }
+.ss-fantasy-books img:nth-child(3){ transform:translate(-50%,-50%) scale(1.15); z-index:3; }
+.ss-fantasy-books img:nth-child(4){ transform:translate(10%,-70%) rotate(6deg) scale(.95); }
+.ss-fantasy-books img:nth-child(5){ transform:translate(70%,-40%) rotate(10deg) scale(.9); opacity:.7; }
+.ss-fantasy-books img:nth-child(6){ transform:translate(110%,-10%) rotate(14deg) scale(.85); opacity:.5; }
+
+.ss-fantasy-cta{
+  width:100%;
+  background:#ff2f7d;
+  border:none;
+  padding:16px;
+  border-radius:14px;
+  font-size:16px;
+  font-weight:bold;
+  color:#fff;
+  cursor:pointer;
+  position:relative;
+  z-index:10;
+}
+
+.ss-mbg{
+  background:#6a1226;
+  border-radius:18px;
+  padding:18px;
+}
+
+.ss-mbg-row{
+  display:flex;
+  gap:14px;
+  align-items:flex-start;
+}
+
+.ss-mbg-icon img{
+  width:54px;
+  height:54px;
+  object-fit:contain;
+}
+
+.ss-mbg-content{ flex:1; }
+
+.ss-mbg-title{
+  font-size:20px;
+  margin-bottom:8px;
+}
+
+.ss-mbg-text{
+  font-size:14px;
+  line-height:1.5;
+  opacity:.85;
+}
+
+.ss-pricing-shell{
+  background:#5b001c;
+  padding:20px 14px 22px;
+  border-radius:20px;
+}
+
+.ss-offer{
+  background:#000;
+  text-align:center;
+  margin-bottom:22px;
+  padding:14px;
+  border-radius:14px;
+  font-size:16px;
+}
+
+.ss-offer span{
+  background:#ffd76a;
+  color:#000;
+  padding:6px 10px;
+  border-radius:6px;
+  font-weight:bold;
+}
+
+.ss-plan{
+  border:1px solid rgba(255,255,255,0.25);
+  border-radius:18px;
+  padding:18px;
+  margin-bottom:14px;
+  position:relative;
+  cursor:pointer;
+  background:transparent;
+  transition:all .2s ease;
+}
+
+.ss-plan.active{
+  background:#c03b6b;
+  border:2px solid #ffd76a;
+}
+
+.ss-plan.popular{
+  margin-top:24px;
+  border:1px solid rgba(255,255,255,0.25);
+}
+
+.ss-popular{
+  position:absolute;
+  top:-16px;
+  left:-2px;
+  width:calc(100% + 4px);
+  text-align:center;
+  background:#ffd76a;
+  color:#000;
+  padding:8px 0;
+  font-weight:bold;
+  font-size:12px;
+  border-radius:14px 14px 0 0;
+}
+
+.ss-plan-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:16px;
+}
+
+.ss-plan-left{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+
+.ss-plan-title{ font-size:22px; }
+
+.ss-save{
+  background:#3b0b15;
+  padding:4px 8px;
+  border-radius:6px;
+  font-size:12px;
+  display:inline-block;
+  margin-top:4px;
+}
+
+.ss-price-wrap{
+  text-align:right;
+  flex-shrink:0;
+}
+
+.ss-price{
+  font-size:30px;
+  font-weight:bold;
+}
+
+.ss-per{
+  font-size:14px;
+  opacity:.8;
+}
+
+.ss-old{
+  font-size:14px;
+  opacity:.6;
+  text-decoration:line-through;
+  margin-right:6px;
+}
+
+.ss-new{ font-size:14px; }
+
+.ss-main-cta{
+  width:100%;
+  background:#ff4d7a;
+  border:none;
+  padding:18px;
+  border-radius:16px;
+  font-size:18px;
+  font-weight:bold;
+  color:#fff;
+  margin-top:14px;
+  cursor:pointer;
+}
+
+.ss-cta-sub{
+  text-align:center;
+  font-size:14px;
+  margin-top:10px;
+  opacity:.85;
+}
+
+.ss-legal{
+  margin-top:18px;
+  font-size:12px;
+  line-height:1.5;
+  opacity:.7;
+  text-align:center;
+}
+
+.ss-trust{
+  text-align:center;
+  margin-top:18px;
+  font-size:14px;
+}
+
+.ss-lock{
+  margin-top:6px;
+  font-size:13px;
+  opacity:.8;
+}
+
+.ss-payments{
+  display:flex;
+  justify-content:center;
+  gap:10px;
+  margin-top:10px;
+}
+
+.ss-payments img{
+  width:42px;
+  height:26px;
+  object-fit:contain;
+  background:#fff;
+  border-radius:6px;
+  padding:2px;
+}
+
+@media (max-width:360px){
+  .ss-review-head{ flex-direction:column; gap:2px; }
+}
+
+@keyframes ss-spin{
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function(){
+
+// Ensure viewport exists in fragment-rendered pages (no <head> access)
+(function ensureViewport(){
+  var existing = document.querySelector('meta[name="viewport"]');
+  if (!existing) {
+    var meta = document.createElement("meta");
+    meta.name = "viewport";
+    meta.content = "width=device-width, initial-scale=1, viewport-fit=cover";
+    document.head.appendChild(meta);
+  } else if (!/width=device-width/.test(existing.content)) {
+    existing.content = "width=device-width, initial-scale=1, viewport-fit=cover";
+  }
+})();
+
+(function ensureCharset(){
+  if (document.querySelector("meta[charset]")) return;
+  var meta = document.createElement("meta");
+  meta.setAttribute("charset", "UTF-8");
+  if (document.head.firstChild) document.head.insertBefore(meta, document.head.firstChild);
+  else document.head.appendChild(meta);
+})();
+
+if (window.__MHS_QUIZ_INIT__) return;
+window.__MHS_QUIZ_INIT__ = true;
+
+const app = document.getElementById("app");
+if (!app) return;
+
+// Supabase config — anon key is safe to ship in client code (RLS protects the DB).
+const SUPABASE_URL = "https://gmhbcxylqubhxozomhlt.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdtaGJjeHlscXViaHhvem9taGx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxNTk5OTksImV4cCI6MjA5MjczNTk5OX0.GAM73P5X7fT1BIziTfvqUpFT2W_W5EtFb5Gze5cIFfY";
+const SUBMIT_QUIZ_URL = `${SUPABASE_URL}/functions/v1/submit-quiz`;
+
+let session_id = localStorage.getItem("ss_session");
+if(!session_id){
+  session_id = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+  localStorage.setItem("ss_session", session_id);
+}
+
+let step = 0;
+let state = {};
+
+state.landing_page = window.location.href;
+state.user_agent = navigator.userAgent;
+state.device_type = /Mobi|Android/i.test(navigator.userAgent) ? "mobile" : "desktop";
+state.funnel_version = "v1";
+
+function getParam(name){
+  return new URLSearchParams(window.location.search).get(name);
+}
+
+state.fbclid = getParam("fbclid") || "";
+
+if(state.fbclid){
+  const ts = Math.floor(Date.now()/1000);
+  state.fbc = `fb.1.${ts}.${state.fbclid}`;
+}
+
+let checkoutTimerInterval = null;
+let checkoutBooksInterval = null;
+let progressiveTestimonialInterval = null;
+
+// Preloading: each step type lists the media files it needs. We trigger
+// preload one step ahead inside render() so by the time the user advances,
+// the next page's images are already in the browser cache.
+const STEP_ASSETS = {
+  intro2:     ["/media/logos_1.webp"],
+  interrupt1: ["/media/woman_read.webp"],
+  email:      ["/media/awards_email.webp"],
+  checkout: [
+    "/media/before_reading.webp", "/media/after_reading2.webp",
+    "/media/book_A2.webp", "/media/book_b.webp", "/media/book_c.webp",
+    "/media/book_d.webp", "/media/book_e.webp", "/media/book_f.webp",
+    "/media/book_eg.webp", "/media/money-back.png",
+    "/media/maestro.png", "/media/mastercard.png", "/media/visa.png"
+  ]
+};
+const _preloaded = new Set();
+function preloadFor(stepType){
+  const list = STEP_ASSETS[stepType];
+  if (!list) return;
+  list.forEach(url => {
+    if (_preloaded.has(url)) return;
+    _preloaded.add(url);
+    const img = new Image();
+    img.src = url;
+  });
+}
+
+function upgradeInsecureMedia(root){
+  const scope = root || document;
+  scope.querySelectorAll('img[src^="http://"], video[src^="http://"], source[src^="http://"]').forEach((el)=>{
+    const src = el.getAttribute("src");
+    if(src && src.indexOf("http://") === 0){
+      el.setAttribute("src", "https://" + src.slice(7));
+    }
+  });
+}
+
+const steps = [
+  {type:"intro1"},
+  {type:"intro2"},
+  {type:"single", key:"character"},
+  {type:"single", key:"feeling"},
+  {type:"single", key:"fantasy"},
+  {type:"single", key:"power"},
+  {type:"interrupt1"},
+  {type:"single", key:"emotion"},
+  {type:"single", key:"start"},
+  {type:"single", key:"missing"},
+  {type:"single", key:"romance_type"},
+  {type:"single", key:"experience"},
+  {type:"single", key:"reason"},
+  {type:"interrupt2"},
+  {type:"multi", key:"spicy_trigger"},
+  {type:"progressive"},
+  {type:"email"},
+  {type:"checkout"}
+];
+
+function cleanupIntervals(){
+  if(checkoutTimerInterval){ clearInterval(checkoutTimerInterval); checkoutTimerInterval = null; }
+  if(checkoutBooksInterval){ clearInterval(checkoutBooksInterval); checkoutBooksInterval = null; }
+  if(progressiveTestimonialInterval){ clearInterval(progressiveTestimonialInterval); progressiveTestimonialInterval = null; }
+}
+
+// POST to the submit-quiz edge function. Body shape:
+//   { session_id, event, payload }
+// Console-logged on top so the browser console still shows what was sent.
+function postQuizEvent(event, payload){
+  try { console.log("[MHS quiz] -> submit-quiz", event, payload); } catch (_) {}
+
+  return fetch(SUBMIT_QUIZ_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "apikey": SUPABASE_ANON_KEY,
+      "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+    },
+    body: JSON.stringify({
+      session_id: session_id,
+      event: event,
+      payload: payload || {},
+    }),
+    keepalive: true,
+  }).catch((err) => {
+    try { console.warn("[MHS quiz] submit-quiz failed:", err); } catch (_) {}
+  });
+}
+
+function sendEmailCapture(){
+  if(!state.email) return;
+  postQuizEvent("email_capture", {
+    email: state.email,
+    plan: state.plan,
+    fbclid: state.fbclid,
+    fbc: state.fbc,
+    funnel_version: state.funnel_version,
+    landing_page: state.landing_page,
+    user_agent: state.user_agent,
+    device_type: state.device_type,
+    character: state.character,
+    feeling: state.feeling,
+    fantasy: state.fantasy,
+    power: state.power,
+    emotion: state.emotion,
+    start: state.start,
+    missing: state.missing,
+    romance_type: state.romance_type,
+    experience: state.experience,
+    reason: state.reason,
+    spicy_trigger: state.spicy_trigger,
+    intense: state.intense,
+    explicit: state.explicit,
+    explore: state.explore,
+    relationship: state.relationship
+  });
+}
+
+function sendPlanSelection(){
+  if(!state.email || !state.plan) return;
+  postQuizEvent("plan_selected", {
+    email: state.email,
+    plan: state.plan,
+  });
+}
+
+function sendPaymentSuccess(){
+  if(!state.email) return;
+  postQuizEvent("payment_successful", {
+    email: state.email,
+    plan: state.plan || "",
+  });
+}
+
+function sendFinal(){
+  // No-op in the new flow — submit-quiz is event-driven now, no "final" payload needed.
+}
+
+function sendEvent(event, data){
+  postQuizEvent(event, data || {});
+}
+
+function sendPageLoadEventOnce(){
+  // Disabled by design. We only post on 3 milestones:
+  // 1) email captured, 2) plan selected/card_page_shown, 3) payment success.
+  return;
+}
+
+function next(){
+  if(step >= steps.length - 1) return;
+  app.style.opacity = 0;
+  setTimeout(() => {
+    step++;
+    render();
+    requestAnimationFrame(() => { app.style.opacity = 1; });
+  }, 250);
+}
+
+function getProgress(){
+  return Math.round((step / (steps.length - 1)) * 100);
+}
+
+function render(){
+  cleanupIntervals();
+  const s = steps[step];
+  if(!s) return;
+
+  // Kick off preloading for the next step's images so they're cached
+  // by the time the user advances. Cheap fire-and-forget.
+  const nextStep = steps[step + 1];
+  if (nextStep) preloadFor(nextStep.type);
+
+  if(s.type==="intro1") return renderIntro1();
+  if(s.type==="intro2") return renderIntro2();
+  if(s.type==="single") return renderSingle(s);
+  if(s.type==="multi") return renderMulti(s);
+  if(s.type==="interrupt1") return renderInterrupt1();
+  if(s.type==="interrupt2") return renderInterrupt2();
+  if(s.type==="progressive") return renderProgressive();
+  if(s.type==="email") return renderEmail();
+  if(s.type==="checkout") return renderCheckout();
+}
+
+function renderIntro1(){
+  app.innerHTML = `
+    <div class="ss-container">
+      <div class="ss-logo" style="margin-bottom:30px;font-size:24px;font-weight:bold;">My Hidden Story</div>
+      <div class="ss-title">You know exactly what you want. You just haven't said it out loud yet.</div>
+      <div class="ss-sub">This is where you say it. A few choices, and we turn them into a story only you will ever read.</div>
+      <div style="text-align:center;font-family:Arial;font-size:14px;margin-bottom:30px;"><span style="color:#ffd76a;">&#9733;&#9733;&#9733;&#9733;&#9733;</span> &nbsp; 4.8 out of 5 | 19k reviews</div>
+      <div class="ss-intro1-cta">
+        <button class="ss-btn" id="nextBtn">CREATE MY STORY</button>
+      </div>
+    </div>
+  `;
+  document.getElementById("nextBtn").onclick = next;
+}
+
+function renderIntro2(){
+  app.innerHTML = `
+    <div class="ss-container">
+      <div class="ss-logo" style="margin-bottom:20px;font-size:24px;font-weight:bold;">My Hidden Story</div>
+      <div style="background:rgba(255,255,255,0.06);border-radius:18px;padding:20px;text-align:center;">
+        <div style="font-size:34px;margin-bottom:10px;">247,000+ people</div>
+        <div class="ss-sub">Have discovered what they really want and stopped apologizing for it.</div>
+        <div style="background:#7a0d2b;border-radius:14px;padding:16px;margin-top:20px;">"My Hidden Story gives readers a private space to explore their fantasies through personalized, interactive romance fiction."</div>
+        <div style="margin-top:20px;"><img src="/media/logos_1.webp" style="width:100%;border-radius:14px;"></div>
+      </div>
+      <button class="ss-btn" id="nextBtn" style="margin-top:30px;">CONTINUE</button>
+    </div>
+  `;
+  document.getElementById("nextBtn").onclick = next;
+}
+
+function renderSingle(s){
+  const questionMap = {
+    character: { title:"Who do you picture?", options:["&#128293; Him","&#127769; Her","&#128158; Both","&#10024; Either","&#128302; Something else"] },
+    feeling: { title:"How do you want tonight to feel?", options:["&#127761; Locked eyes across a dark room","&#128367; Candlelight and whispered promises","&#128520; Her voice telling you what to do","&#129303; Her hands taking their time","&#129760; Laughter that turns into a kiss"] },
+    fantasy: { title:"What fantasy keeps you up at night?", options:["&#127747; A stranger in a hotel room. No names","&#129316; She's on her knees worshipping you","&#128065; Someone watching. And you like it","&#128013; A creature that isn't human","&#128101; More than one","&#129323; A forbidden affair","&#128068; Pinned down","&#127917; Roleplay","&#127922; Surprise me"] },
+    power: { title:"In the heat of it, who has the power?", options:["&#128081; You. Always you","&#128165; Both of you. Fighting for it","&#129309; Neither leads. You just move together","&#129760; You give it up willingly","&#9939; She takes it. You don't resist","&#127744; Depends on the night","&#129419; I don't know yet. That's the thrill"] },
+    emotion: { title:"Does your heart need to be in it?", options:["&#129656; Every time. I need to feel it first","&#127749; A slow start, then let it burn","&#9889; No buildup. Just intensity","&#128214; Depends on the story","&#129517; I'm still figuring that out"] },
+    start: { title:"How does it start between you two?", options:["&#128155; Best friends who finally cross the line","&#129522; Total strangers. Instant chemistry","&#9203; Slow burn. Every glance counts","&#128481; A world with different rules","&#128420; She takes charge. You let her"] },
+    missing: { title:"Is something missing? Or do you just want more?", options:["&#129397; I have it. I want more of it","&#128371; Something's been missing for a while","&#128272; I just want something that's mine","&#127793; I'm rediscovering what I like","&#129763; I want things I can't ask for in real life","&#128566; I'd rather not say"] },
+    romance_type: { title:"What type of romance draws you in?", options:["&#127919; Wanted. Like I'm the only one in the room","&#128142; Powerful. Like nothing can touch me","&#129727; Free. No rules, no overthinking","&#129730; Close to someone. Even if they're fictional","&#128275; Seen. Like someone finally gets me"] },
+    experience: { title:"What would you live through in a story?", options:["&#128152; A connection that cuts deep","&#129397; A night that leaves you breathless","&#128720; Someone who worships every inch of you","&#128683; Something you'd never do in real life","&#127756; A world nothing like this one"] },
+    reason: { title:"Why does this feel like exactly what you need right now?", options:["&#128558;&#8205;&#128168; I need to decompress","&#128148; My love life needs... something","&#9200; I never get time for just me","&#129702; I want to feel something in my body again","&#128527; I just like good stories. No deep reason","&#129335;&#8205;&#9792;&#65039; Honestly? Not sure. I just ended up here"] }
+  };
+
+  const q = questionMap[s.key];
+  app.innerHTML = `
+    <div class="ss-container">
+      <div style="text-align:center;margin-bottom:16px;font-size:24px;font-weight:bold;">My Hidden Story</div>
+      <div class="ss-progress"><div class="ss-fill" style="width:${getProgress()}%"></div></div>
+      <div class="ss-title">${q.title}</div>
+      <div class="ss-options" id="opts"></div>
+    </div>
+  `;
+
+  const wrap = document.getElementById("opts");
+  q.options.forEach(opt=>{
+    const el = document.createElement("div");
+    el.className = "ss-option";
+    el.innerHTML = `<div style="font-size:20px">${opt.split(" ")[0]}</div><div>${opt.substring(opt.indexOf(" ")+1)}</div>`;
+    el.onclick = ()=>{ state[s.key] = opt; next(); };
+    wrap.appendChild(el);
+  });
+}
+
+function renderMulti(s){
+  const multiMap = {
+    spicy_trigger: { title:"When you read something spicy, what pulls you in?", options:["&#129504; Every thought, every sensation. Like it's happening to me","&#9889; Get to the good part. Fast","&#128172; What she says. The words do it for me","&#128293; Scenes so vivid I feel them in my body","&#127747; Disappearing into a world that isn't mine","&#129323; The thrill of reading something I probably shouldn't","&#129419; Just curious. I want to see what this is"] }
+  };
+
+  const q = multiMap[s.key];
+  const selected = {};
+
+  app.innerHTML = `
+    <div class="ss-container">
+      <div style="text-align:center;margin-bottom:16px;font-size:24px;font-weight:bold;">My Hidden Story</div>
+      <div class="ss-progress"><div class="ss-fill" style="width:${getProgress()}%"></div></div>
+      <div class="ss-title">${q.title}</div>
+      <div class="ss-options" id="opts"></div>
+    </div>
+    <div class="ss-footer"><button class="ss-btn" id="cta" disabled>CONTINUE</button></div>
+  `;
+
+  const wrap = document.getElementById("opts");
+  const cta = document.getElementById("cta");
+
+  q.options.forEach(opt=>{
+    const el = document.createElement("div");
+    el.className = "ss-option";
+    el.innerHTML = `<div style="display:flex;gap:10px;align-items:center;width:100%;"><div style="font-size:20px">${opt.split(" ")[0]}</div><div style="flex:1">${opt.substring(opt.indexOf(" ")+1)}</div><div class="check" style="width:20px;height:20px;border:2px solid rgba(255,255,255,0.4);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;color:#e04b57;font-weight:bold;"></div></div>`;
+    el.onclick = ()=>{
+      selected[opt] = !selected[opt];
+      el.classList.toggle("active");
+      el.querySelector(".check").innerHTML = selected[opt] ? "&#10003;" : "";
+      cta.disabled = Object.values(selected).filter(Boolean).length === 0;
+    };
+    wrap.appendChild(el);
+  });
+
+  cta.onclick = ()=>{
+    state[s.key] = Object.keys(selected).filter(k=>selected[k]).join("||");
+    next();
+  };
+}
+
+function renderInterrupt1(){
+  app.innerHTML = `
+    <div class="ss-container">
+      <div style="text-align:center;margin-bottom:16px;font-size:24px;font-weight:bold;">My Hidden Story</div>
+      <div class="ss-progress"><div class="ss-fill" style="width:${getProgress()}%"></div></div>
+      <div class="ss-title">You don't just read this story.<br>You decide what happens.</div>
+      <div class="ss-sub">Every scene has a choice. The heat rises or slows based on what you want. No two stories are ever the same.</div>
+      <div style="margin-bottom:20px;text-align:center;">
+        <img src="/media/woman_read.webp" style="width:80%;border-radius:16px;display:block;margin:0 auto;">
+      </div>
+      <div style="background:rgba(255,255,255,0.08);padding:20px;border-radius:14px;font-size:14px;margin-bottom:20px;">
+        <div style="color:#4caf50;margin-bottom:6px;">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+        <div style="opacity:.8;font-size:12px;text-align:right;margin-bottom:6px;">@ashley</div>
+        Best romance app I've tried, and I've tried a lot. My choices actually change what happens, so it feels like MY story. Some scenes had me putting my phone down just to breathe.
+      </div>
+    </div>
+    <div class="ss-footer"><button class="ss-btn" id="nextBtn">CONTINUE</button></div>
+  `;
+  document.getElementById("nextBtn").onclick = next;
+}
+
+function renderInterrupt2(){
+  app.innerHTML = `
+    <div class="ss-container">
+      <div style="text-align:center;margin-bottom:16px;font-size:24px;font-weight:bold;">My Hidden Story</div>
+      <div class="ss-progress"><div class="ss-fill" style="width:${getProgress()}%"></div></div>
+      <div class="ss-title">You're in good company!</div>
+      <div class="ss-sub">78,247 readers shared how Sweet Secrets changed their lives.</div>
+      <div style="text-align:center;margin:20px 0;"><div style="font-size:42px;color:#ff4d5e;">87%</div><div>felt confident asking for what they want</div></div>
+      <div style="text-align:center;margin:20px 0;"><div style="font-size:42px;color:#ff4d5e;">93%</div><div>stopped feeling guilty about their fantasies</div></div>
+      <div style="text-align:center;margin:20px 0;"><div style="font-size:42px;color:#ff4d5e;">81%</div><div>brought the spark back</div></div>
+      <button class="ss-btn" id="nextBtn" style="margin-top:80px;">CONTINUE</button>
+    </div>
+  `;
+  document.getElementById("nextBtn").onclick = next;
+}
+
+function renderProgressive(){
+  app.innerHTML = `
+    <div class="ss-page">
+      <div class="ss-container">
+        <div class="ss-logo" style="font-size:24px;font-weight:bold;margin-bottom:20px;">My Hidden Story</div>
+        <div class="ss-percent" id="percent">0%</div>
+        <div class="ss-bar2" style="height:16px;margin:10px 0 20px;">
+          <div class="ss-bar2-fill" id="bar" style="width:0%;background:#ff4d5e;"></div>
+        </div>
+        <div id="subtitles" style="min-height:160px;display:flex;flex-direction:column;justify-content:flex-start;"></div>
+        <div class="ss-testimonials-wrap" style="position:relative;top:auto;transform:none;margin-top:30px;margin-bottom:40px;">
+          <div class="ss-testimonials">
+            <div class="ss-test-title">Loved by 247,000+ people</div>
+            <div class="ss-card">
+              <div class="ss-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+              <div class="ss-text-wrap"><div class="ss-text" id="testimonial"></div></div>
+              <div class="ss-author" id="author"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="modal-root"></div>
+  `;
+
+  const progressiveSteps = [
+    { key:"intense", text:"Weaving in your desires", question:"Do you want your story to include unexpected, emotionally intense moments?" },
+    { key:"explicit", text:"Building the tension between you two", question:"Would you like fully explicit content if the story calls for it?" },
+    { key:"explore", text:"Setting heat exactly as you want", question:"Are you open to exploring different fantasies and storylines over time?" },
+    { key:"relationship", text:"Finishing your first chapter", question:"Are you currently in a relationship?" }
+  ];
+
+  const finalStep = { title:"Only 9% of readers have picked this combination.", text:"We love when someone knows exactly what they want." };
+
+  const testimonials = [
+    { text:"I've honestly never found a story that felt so personal - it's like the author was literally living inside my head. Every choice I made, every twist that hit, felt like it was written just for me. I stayed up until 2am and I have zero regrets. This is unlike anything I've ever read.", author:"Sarah" },
+    { text:"After binge-reading three completely different paths back to back, I have to admit - I am NOT okay and I mean that in the best way possible. Every route hit differently, every ending wrecked me in a new way. This is the kind of story you think about for days. Absolutely obsessed.", author:"Monica" },
+    { text:"I cranked the intensity all the way to the max and oh my god, I had to put my phone down and just stare at the ceiling for a minute. My heart was racing, my hands were shaking - I was NOT prepared. This story does NOT play around. Easily one of the most gripping things I've ever experienced.", author:"Chloe" }
+  ];
+
+  let currentStep = 0;
+  let percent = 0;
+  let t = 0;
+
+  const bar = document.getElementById("bar");
+  const percentEl = document.getElementById("percent");
+  const subtitleWrap = document.getElementById("subtitles");
+  const testimonialEl = document.getElementById("testimonial");
+  const authorEl = document.getElementById("author");
+  const modalRoot = document.getElementById("modal-root");
+
+  function updateTestimonial(){
+    testimonialEl.classList.add("fade");
+    setTimeout(()=>{
+      const item = testimonials[t % testimonials.length];
+      testimonialEl.innerText = item.text;
+      authorEl.innerText = item.author;
+      testimonialEl.classList.remove("fade");
+      t++;
+    }, 300);
+  }
+
+  progressiveTestimonialInterval = setInterval(updateTestimonial, 2500);
+  updateTestimonial();
+
+  function runLoader(onDone, subtitleEl){
+    percent = 0;
+    bar.style.transition = "none";
+    bar.style.width = "0%";
+    percentEl.innerText = "0%";
+    bar.offsetHeight;
+    bar.style.transition = "width 0.2s linear";
+    const interval = setInterval(()=>{
+      percent += 2;
+      percentEl.innerText = percent + "%";
+      bar.style.width = percent + "%";
+      if(percent >= 100){
+        clearInterval(interval);
+        subtitleEl.innerHTML = `<span class="ss-check">&#10003;</span> ` + subtitleEl.dataset.text;
+        setTimeout(onDone, 300);
+      }
+    }, 50);
+  }
+
+  function showYesNo(question, key, onDone){
+    modalRoot.innerHTML = `
+      <div class="ss-modal">
+        <div class="ss-modal-box">
+          <div class="ss-modal-title">${question}</div>
+          <div class="ss-row">
+            <button class="ss-btn" id="yesBtn">YES</button>
+            <button class="ss-btn" id="noBtn">NO</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.getElementById("yesBtn").onclick = ()=>{ state[key]="yes"; modalRoot.innerHTML=""; onDone(); };
+    document.getElementById("noBtn").onclick = ()=>{ state[key]="no"; modalRoot.innerHTML=""; onDone(); };
+  }
+
+  function showFinal(){
+    modalRoot.innerHTML = `
+      <div class="ss-modal">
+        <div class="ss-modal-box">
+          <div class="ss-modal-title">${finalStep.title}</div>
+          <div style="margin-bottom:20px">${finalStep.text}</div>
+          <button class="ss-btn" id="continueBtn">CONTINUE</button>
+        </div>
+      </div>
+    `;
+    document.getElementById("continueBtn").onclick = ()=>{ next(); };
+  }
+
+  function nextStep(){
+    const stepData = progressiveSteps[currentStep];
+    const el = document.createElement("div");
+    el.className = "ss-subtitle";
+    el.dataset.text = stepData.text;
+    el.innerText = stepData.text;
+    subtitleWrap.appendChild(el);
+    runLoader(()=>{
+      if(currentStep === progressiveSteps.length - 1){ showFinal(); return; }
+      showYesNo(stepData.question, stepData.key, ()=>{ currentStep++; nextStep(); });
+    }, el);
+  }
+
+  nextStep();
+}
+
+function renderEmail(){
+  app.innerHTML = `
+    <div class="email-root" id="emailRoot">
+      <div class="email-page">
+        <div class="email-container">
+          <div class="email-logo" style="font-size:24px;font-weight:bold;margin-bottom:24px;">My Hidden Story</div>
+          <div class="email-title">Your personalized story is ready</div>
+          <div class="email-sub">Enter your email to unlock it</div>
+          <input type="email" id="emailInput" class="email-input" placeholder="Enter your email">
+          <div class="email-privacy">
+            <div class="email-check">&#10003;</div>
+            <div>We respect your privacy and are committed to protecting your personal data</div>
+          </div>
+          <div class="email-awards-block" style="text-align:center;padding-top:10px;">
+            <img class="email-awards-img" src="/media/awards_email.webp" style="width:50%;border-radius:14px;height:auto;object-fit:contain;">
+          </div>
+          <div class="email-inline-cta" id="emailInlineCta">
+            <div id="emailAlert" style="opacity:0;transition:opacity .2s;color:#ff4d5e;font-size:14px;margin-bottom:10px;text-align:center;">Please, enter your email to continue</div>
+            <button id="emailCta" class="ss-btn email-btn" style="max-width:320px;">CONTINUE</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const input = document.getElementById("emailInput");
+  const cta = document.getElementById("emailCta");
+  const root = document.getElementById("emailRoot");
+
+  setTimeout(()=>{ const t = document.querySelector(".email-title"); if(t) cta.style.maxWidth = t.offsetWidth + "px"; }, 10);
+
+  function isValidEmail(email){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
+
+  input.addEventListener("input", ()=>{
+    cta.classList.toggle("active", isValidEmail(input.value.trim()));
+  });
+
+  // Mobile-only UX: when keyboard is open (input focused), hide awards image
+  // and let the inline CTA sit directly under the input — no scrolling needed.
+  // We DO NOT remove this class on blur, because tapping the CTA itself fires
+  // a blur first; if we removed the class then, the layout would shift before
+  // the tap registered as a click and the user would have to tap twice.
+  // The class persists for the lifetime of this step (next() rerenders).
+  input.addEventListener("focus", ()=>{ root.classList.add("email-focused"); });
+
+  // Belt-and-braces: prevent the input from losing focus when the user
+  // interacts with the CTA, so the page never reshuffles mid-tap.
+  cta.addEventListener("mousedown", (e)=>{ e.preventDefault(); });
+  cta.addEventListener("touchstart", (e)=>{ /* allow native tap, just don't blur */ }, { passive: true });
+
+  cta.onclick = ()=>{
+    const val = input.value.trim();
+    if(!isValidEmail(val)){
+      const alertEl = document.getElementById("emailAlert");
+      if(alertEl){ alertEl.style.opacity = 1; setTimeout(()=>alertEl.style.opacity=0, 3000); }
+      return;
+    }
+    state.email = val;
+
+    sendEmailCapture();
+    next();
+  };
+}
+
+function pricingShellHTML(withId){
+  return `
+    <div class="ss-block ss-pricing-shell"${withId ? ` id="${withId}"` : ""}>
+      <div class="ss-title">Unleash your innermost desires</div>
+      <div class="ss-offer">Offer expires in: <span class="js-countdown">12:00</span></div>
+
+      <div class="ss-plan" data-plan="4">
+        <div class="ss-plan-row">
+          <div class="ss-plan-left">
+            <div class="ss-plan-title">4-week plan</div>
+            <div class="ss-save">SAVE 57%</div>
+            <div><span class="ss-old">$45.99</span><span class="ss-new">$19.99</span></div>
+          </div>
+          <div class="ss-price-wrap"><div class="ss-price">$0.71</div><div class="ss-per">per day</div></div>
+        </div>
+      </div>
+
+      <div class="ss-plan popular active" data-plan="8">
+        <div class="ss-popular">MOST POPULAR</div>
+        <div class="ss-plan-row">
+          <div class="ss-plan-left">
+            <div class="ss-plan-title">8-week plan</div>
+            <div class="ss-save">SAVE 64%</div>
+            <div><span class="ss-old">$83.99</span><span class="ss-new">$29.99</span></div>
+          </div>
+          <div class="ss-price-wrap"><div class="ss-price">$0.54</div><div class="ss-per">per day</div></div>
+        </div>
+      </div>
+
+      <div class="ss-plan" data-plan="1">
+        <div class="ss-plan-row">
+          <div class="ss-plan-left">
+            <div class="ss-plan-title">1-week plan</div>
+            <div>$29.99</div>
+          </div>
+          <div class="ss-price-wrap"><div class="ss-price">$4.28</div><div class="ss-per">per day</div></div>
+        </div>
+      </div>
+
+      <button class="ss-main-cta js-buy-btn">Get my plan</button>
+      <div class="ss-cta-sub">Instant access. Cancel anytime.</div>
+      <div class="ss-legal">By clicking Get my plan, I confirm that I have read and agree to our Terms of Service, Privacy Policy, Subscription & Refund Policy, and Acceptable Use Policy, and I undertake to comply with these terms. I understand that by enrolling, I am purchasing a subscription at the discounted introductory price. Unless I cancel in accordance with the Terms of Service, my subscription will automatically renew at the regular (non-discounted) price for successive periods, and you authorize us to charge me accordingly.</div>
+      <div class="ss-trust">
+        &#10003; Guaranteed safe checkout
+        <div class="ss-payments">
+          <img src="/media/maestro.png" alt="Maestro">
+          <img src="/media/mastercard.png" alt="Mastercard">
+          <img src="/media/visa.png" alt="Visa">
+          <img src="/media/paypal.png" alt="PayPal">
+        </div>
+        <div class="ss-lock">&#128274; All transactions are secure and encrypted</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderCheckout(){
+  app.innerHTML = `
+    <div class="ss-sticky">
+      <div class="ss-sticky-inner">
+        <div class="ss-timer" id="timer">12:00</div>
+        <button class="ss-cta-top" id="ctaTop">Claim my 64% off</button>
+      </div>
+    </div>
+    <div class="ss-page">
+      <div class="ss-container" style="padding:80px 16px 40px;">
+        <div class="ss-block">
+          <div class="ss-logo" style="font-size:24px;font-weight:bold;margin-bottom:20px;">My Hidden Story</div>
+          <div class="ss-title">Indulge in Something Made Entirely for You</div>
+          <div class="ss-sub">You built this story. Now finish it.</div>
+          <div class="ss-compare-grid">
+            <div class="ss-col">
+              <div class="ss-col-title">Now</div>
+              <img class="ss-img" src="/media/before_reading.webp">
+              <div class="ss-card">
+                <div class="ss-label">Sensation</div><div class="ss-value-red">Numb</div>
+                <div class="ss-label">Arousal</div><div>Barely there</div>
+                <div class="ss-bar2"><div class="ss-bar2-fill" style="width:20%;background:#ff5c6d;"></div></div>
+                <div class="ss-label">Self-Worth</div><div>Last on the list</div>
+                <div class="ss-bar2"><div class="ss-bar2-fill" style="width:15%;background:#ff5c6d;"></div></div>
+              </div>
+            </div>
+            <div class="ss-col">
+              <div class="ss-col-title">After Reading</div>
+              <img class="ss-img" src="/media/after_reading2.webp">
+              <div class="ss-card">
+                <div class="ss-label">Sensation</div><div class="ss-value-green">On fire</div>
+                <div class="ss-label">Arousal</div><div>Constant</div>
+                <div class="ss-bar2"><div class="ss-bar2-fill" style="width:90%;background:#8eff6d;"></div></div>
+                <div class="ss-label">Self-Worth</div><div>I come first now</div>
+                <div class="ss-bar2"><div class="ss-bar2-fill" style="width:85%;background:#8eff6d;"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ss-block">
+          <div class="ss-books-wrap">
+            <div class="ss-books-title">4,000+ stories that won't let you put your phone down</div>
+            <div class="ss-books-stage">
+              <img src="/media/book_A2.webp" class="ss-book">
+              <img src="/media/book_b.webp" class="ss-book">
+              <img src="/media/book_c.webp" class="ss-book">
+              <img src="/media/book_d.webp" class="ss-book">
+              <img src="/media/book_e.webp" class="ss-book">
+              <img src="/media/book_f.webp" class="ss-book">
+            </div>
+            <div class="ss-books-sub">Join <span>248,550+</span> members already living their fantasies</div>
+          </div>
+        </div>
+
+        <div class="ss-block">
+          <div class="ss-story-card">
+            <img src="/media/book_eg.webp" class="ss-story-bg">
+            <div class="ss-story-overlay">
+              <div class="ss-story-title">WICKED VOWS</div>
+              <div class="ss-story-tags">Instant Attraction | Intense | Possessive | Paranormal</div>
+              <div class="ss-story-text">A lonely Friday night, a bottle of wine, and an antique Latin book from an estate sale - that's all it takes to accidentally summon Malachar, an ancient demon lord into your IKEA-furnished apartment. He's crimson-skinned, gold-horned, and terrifyingly beautiful.. and he's not here for your soul.</div>
+            </div>
+          </div>
+        </div>
+
+        ${pricingShellHTML("pricing")}
+
+        <div class="ss-block">
+          <div class="ss-benefits">
+            <div class="ss-benefits-title">What You Get</div>
+            <div class="ss-benefits-list">
+              <div class="ss-item">&#10024; <b>Unlimited stories.</b> No rationing. Binge without guilt.</div>
+              <div class="ss-item">&#10024; <b>You decide what happens next.</b> Every choice changes everything.</div>
+              <div class="ss-item">&#10024; <b>4,000+ stories.</b> Or build one from your deepest fantasy.</div>
+              <div class="ss-item">&#10024; <b>Set the heat yourself.</b> Slow burn to full surrender. Your call.</div>
+              <div class="ss-item">&#10024; <b>It learns what you like.</b> The more you read, the closer it gets.</div>
+              <div class="ss-item">&#10024; <b>No ads. No interruptions.</b> Nothing between you and that scene.</div>
+              <div class="ss-item">&#10024; <b>Every genre you crave.</b> Mafia, paranormal, workplace, royal. And worse.</div>
+              <div class="ss-item">&#10024; <b>Replay with different choices.</b> Same story. Completely different night.</div>
+              <div class="ss-item">&#10024; <b>Nothing held back.</b> Uncensored. Unfiltered. Finally.</div>
+              <div class="ss-item">&#10024; <b>No one will ever know.</b> Fully encrypted. Completely private. Yours.</div>
+            </div>
+            <div class="ss-rating">
+              <div>Excellent</div>
+              <div class="ss-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+              <div class="ss-rating-sub">4.8 out of 5 | 19k users</div>
+            </div>
+            <button class="ss-benefits-cta js-scroll-pricing">Chapter ready for you</button>
+          </div>
+        </div>
+
+        <div class="ss-block">
+          <div class="ss-reviews">
+            <div class="ss-reviews-title">Why people love My Hidden Story</div>
+            <div class="ss-reviews-grid">
+              <div class="ss-review"><div class="ss-review-text">I read 50+ books a year and was NOT expecting app-based stories to be actually good...</div><div class="ss-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div><div class="ss-review-head"><div>Harper Wilson</div></div></div>
+              <div class="ss-review"><div class="ss-review-text">Personalization actually works as advertised. Already recommended it.</div><div class="ss-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div><div class="ss-review-head"><div>Linda Hoffman</div></div></div>
+              <div class="ss-review"><div class="ss-review-text">Strong tension, addictive pacing. Didn't expect this level.</div><div class="ss-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div><div class="ss-review-head"><div>Catherine W.</div></div></div>
+              <div class="ss-review"><div class="ss-review-text">Way better than expected. Honestly hard to stop reading.</div><div class="ss-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div><div class="ss-review-head"><div>James K.</div></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ss-block">
+          <div class="ss-fantasy-card">
+            <div class="ss-fantasy-title">What other user fantasies look like</div>
+            <div class="ss-fantasy-books">
+              <img src="/media/book_01.webp">
+              <img src="/media/book_02.webp">
+              <img src="/media/book_03.webp">
+              <img src="/media/book_04.webp">
+              <img src="/media/book_05.webp">
+              <img src="/media/book_06.webp">
+            </div>
+            <button class="ss-fantasy-cta js-scroll-pricing">Read Your Story</button>
+          </div>
+        </div>
+
+        ${pricingShellHTML("")}
+
+        <div class="ss-block">
+          <div class="ss-mbg">
+            <div class="ss-mbg-row">
+              <div class="ss-mbg-icon"><img src="/media/money-back.png"></div>
+              <div class="ss-mbg-content">
+                <div class="ss-mbg-title">14-Day Money-Back Guarantee</div>
+                <div class="ss-mbg-text">We believe SweetSecrets will change how you experience romance stories. But we also believe you should have time to decide for yourself. Subscribe today and you have 14 days to explore everything. If it's not what you hoped for, a full refund is available within that window.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  `;
+
+  initCheckoutLogic();
+}
+
+function initCheckoutLogic(){
+  let selected = "8";
+  let buyClicked = false;
+
+  document.querySelectorAll(".ss-plan").forEach(el=>{
+    if(el.classList.contains("active")) selected = el.dataset.plan || "8";
+    el.onclick = ()=>{
+      selected = el.dataset.plan;
+      document.querySelectorAll(".ss-plan").forEach(x=>x.classList.remove("active"));
+      document.querySelectorAll(`.ss-plan[data-plan="${selected}"]`).forEach(x=>x.classList.add("active"));
+    };
+  });
+
+  document.querySelectorAll(".js-buy-btn").forEach(btn=>{
+    btn.onclick = ()=>{
+      if(buyClicked) return;
+      buyClicked = true;
+
+      state.plan = selected;
+
+      sendPlanSelection();
+      renderPayment();
+    };
+  });
+
+  const scrollHandler = ()=>{
+    const target = document.getElementById("pricing");
+    if(target) target.scrollIntoView({behavior:"smooth"});
+  };
+
+  const ctaTop = document.getElementById("ctaTop");
+  if (ctaTop) ctaTop.onclick = scrollHandler;
+  document.querySelectorAll(".js-scroll-pricing").forEach(btn=>{ btn.onclick = scrollHandler; });
+
+  let seconds = 720;
+  function tick(){
+    const m = Math.floor(seconds/60);
+    const s = seconds%60;
+    const val = (m<10?"0"+m:m)+":"+(s<10?"0"+s:s);
+    const timerEl = document.getElementById("timer");
+    if(timerEl) timerEl.innerText = val;
+    document.querySelectorAll(".js-countdown").forEach(el=>{ el.innerText = val; });
+    if(seconds > 0){ seconds--; } else { seconds = 720; }
+  }
+  checkoutTimerInterval = setInterval(tick, 1000);
+  tick();
+
+  const books = document.querySelectorAll(".ss-books-stage .ss-book");
+  let order = Array.from(books);
+
+  function renderBooks(){
+    order.forEach(el=>{ el.classList.remove("ss-pos-left","ss-pos-center","ss-pos-right","ss-pos-hidden"); });
+    if(order[0]) order[0].classList.add("ss-pos-left");
+    if(order[1]) order[1].classList.add("ss-pos-center");
+    if(order[2]) order[2].classList.add("ss-pos-right");
+    for(let i=3;i<order.length;i++) order[i].classList.add("ss-pos-hidden");
+  }
+
+  function stepBooks(){
+    if(!order.length) return;
+    order.push(order.shift());
+    renderBooks();
+  }
+
+  renderBooks();
+  checkoutBooksInterval = setInterval(stepBooks, 2000);
+}
+
+function renderPayment(){
+  const planData = {
+    "1": { label:"1-week plan", original:null,     price:"$29.99", discount:null,  discountAmt:null },
+    "4": { label:"4-week plan", original:"$45.99", price:"$19.99", discount:"57%", discountAmt:"-$26.00" },
+    "8": { label:"8-week plan", original:"$83.99", price:"$29.99", discount:"64%", discountAmt:"-$54.00" }
+  };
+  const plan = planData[state.plan] || planData["8"];
+
+  // card_page_shown is now posted together with plan selection event
+  // in sendPlanSelection() to keep a clean 3-post model.
+
+  if(typeof fbq === "function"){
+    fbq("track", "AddToCart", {
+      value: state.plan === "4" ? 19.99 : state.plan === "1" ? 29.99 : 29.99,
+      currency: "USD"
+    });
+  }
+
+  app.innerHTML = `
+    <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 0;background:linear-gradient(180deg,#4b0018,#1a0008);">
+
+      <div style="font-size:24px;font-weight:bold;color:#fff;margin-bottom:20px;text-align:center;">My Hidden Story</div>
+
+      <div style="max-width:418px;width:calc(100% - 32px);padding:24px 20px 20px;border-radius:24px;background:#f6eddc;box-shadow:0 18px 40px rgba(0,0,0,0.28);color:#2a1b22;font-family:system-ui,-apple-system,sans-serif;">
+
+        <button id="payBackBtn" style="border:none;background:transparent;color:#6b123b;font-size:13px;margin:4px 0 10px;padding:0;cursor:pointer;">&larr; Back</button>
+
+        <div style="text-align:center;margin-bottom:16px;">
+          <div style="font-size:18px;color:#2a1b22;font-weight:500;">Card Payment</div>
+        </div>
+
+        <div style="margin-bottom:12px;">
+          <div style="font-size:12px;color:#7b6c80;margin-bottom:4px;">Card number</div>
+          <input id="cardNum" type="tel" inputmode="numeric" placeholder="1234 1234 1234 1234" maxlength="19" style="width:100%;box-sizing:border-box;border-radius:12px;border:1px solid #e4d5c5;padding:10px 12px;font-size:14px;outline:none;background:#fff;color:#2a1b22;font-family:system-ui,sans-serif;">
+          <div id="cardNumErr" style="color:#c93a29;font-size:12px;min-height:16px;margin-top:3px;"></div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-bottom:16px;">
+          <div style="flex:1;">
+            <div style="font-size:12px;color:#7b6c80;margin-bottom:4px;">Expiry</div>
+            <input id="expiry" type="tel" inputmode="numeric" placeholder="MM/YY" maxlength="5" style="width:100%;box-sizing:border-box;border-radius:12px;border:1px solid #e4d5c5;padding:10px 12px;font-size:14px;outline:none;background:#fff;color:#2a1b22;font-family:system-ui,sans-serif;">
+            <div id="expiryErr" style="color:#c93a29;font-size:12px;min-height:16px;margin-top:3px;"></div>
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:12px;color:#7b6c80;margin-bottom:4px;">CVV / CVC</div>
+            <input id="cvv" type="tel" inputmode="numeric" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-form-type="other" placeholder="***" maxlength="3" style="width:100%;box-sizing:border-box;border-radius:12px;border:1px solid #e4d5c5;padding:10px 12px;font-size:14px;outline:none;background:#fff;color:#2a1b22;font-family:system-ui,sans-serif;-webkit-text-security:disc;text-security:disc;">
+            <div id="cvvErr" style="color:#c93a29;font-size:12px;min-height:16px;margin-top:3px;"></div>
+          </div>
+        </div>
+
+        <button id="payBtn" type="button" style="width:100%;border:none;border-radius:16px;padding:13px 16px;background:#111;color:#fff;font-size:15px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;box-sizing:border-box;">
+          &#128274; Submit secure payment
+        </button>
+
+        <div style="margin:12px 0 8px;display:flex;align-items:center;gap:6px;font-size:13px;color:#6c6468;">&#128737; Guaranteed safe checkout</div>
+
+        <div style="display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;margin:8px 0 4px;">
+          <div style="background:#1a1f71;border-radius:5px;padding:4px 9px;font-size:11px;font-weight:800;color:#fff;letter-spacing:1px;">VISA</div>
+          <div style="background:#fff;border:1px solid #ccc;border-radius:5px;padding:4px 7px;display:flex;align-items:center;">
+            <span style="width:16px;height:16px;border-radius:50%;background:#eb001b;display:inline-block;"></span>
+            <span style="width:16px;height:16px;border-radius:50%;background:#f79e1b;display:inline-block;margin-left:-7px;"></span>
+          </div>
+          <div style="background:#016fd0;border-radius:5px;padding:4px 9px;font-size:11px;font-weight:800;color:#fff;letter-spacing:.5px;">AMEX</div>
+          <div style="background:#fff;border:1px solid #ccc;border-radius:5px;padding:4px 9px;font-size:10px;font-weight:700;color:#004b87;">MAESTRO</div>
+          <div style="background:#fff;border:1px solid #ccc;border-radius:5px;padding:4px 9px;font-size:11px;font-weight:700;color:#003087;">Pay<span style="color:#009cde;">Pal</span></div>
+        </div>
+
+        <div style="text-align:center;font-size:12px;color:#7b6c80;margin-bottom:14px;">&#128274; All transactions are secure and encrypted</div>
+
+        <div style="background:#fff;border-radius:14px;padding:12px 14px 10px;font-size:13px;color:#2a1b22;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+          <div style="font-weight:600;margin-bottom:8px;">Order Summary</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;">
+            <div>${plan.label}</div>
+            <div>
+              ${plan.original ? `<span style="text-decoration:line-through;color:#b5a6a0;margin-right:6px;font-size:12px;">${plan.original}</span>` : ""}
+              <span style="font-weight:500;">${plan.price}</span>
+            </div>
+          </div>
+          ${plan.discount ? `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-top:1px solid #f0e2d6;">
+            <div style="color:#c93a29;font-weight:500;">Discount (${plan.discount})</div>
+            <div style="color:#c93a29;font-weight:600;">${plan.discountAmt}</div>
+          </div>` : ""}
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0 2px;border-top:1px solid #f0e2d6;">
+            <div style="font-weight:600;">Total</div>
+            <div style="font-weight:600;">${plan.price}</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  `;
+
+  document.getElementById("payBackBtn").onclick = function(){
+    state.card_page_sent = false;
+    const idx = steps.findIndex(s => s.type === "checkout");
+    if(idx !== -1) step = idx;
+    render();
+  };
+
+  document.getElementById("cardNum").addEventListener("input", function(){
+    let v = this.value.replace(/\D/g,"").substring(0,16);
+    this.value = v.replace(/(.{4})/g,"$1 ").trim();
+    document.getElementById("cardNumErr").innerText = "";
+  });
+
+  document.getElementById("expiry").addEventListener("input", function(){
+    let v = this.value.replace(/\D/g,"").substring(0,4);
+    if(v.length >= 3) v = v.substring(0,2) + "/" + v.substring(2);
+    this.value = v;
+    document.getElementById("expiryErr").innerText = "";
+  });
+
+  document.getElementById("cvv").addEventListener("input", function(){
+    this.value = this.value.replace(/\D/g,"").substring(0,3);
+    document.getElementById("cvvErr").innerText = "";
+  });
+
+  document.getElementById("payBtn").onclick = function(){
+    const cardVal = document.getElementById("cardNum").value.replace(/\s/g,"");
+    const expVal  = document.getElementById("expiry").value.replace("/","");
+    const cvvVal  = document.getElementById("cvv").value;
+    let ok = true;
+
+    if(cardVal.length < 16){ document.getElementById("cardNumErr").innerText = "Please enter a 16-digit card number"; ok = false; }
+    if(expVal.length < 4){ document.getElementById("expiryErr").innerText = "Please enter a valid expiry date"; ok = false; }
+    if(cvvVal.length < 3){ document.getElementById("cvvErr").innerText = "Please enter a 3-digit CVV"; ok = false; }
+
+    if(!ok) return;
+    renderProcessing();
+  };
+}
+
+function renderProcessing(){
+  app.innerHTML = `
+    <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:linear-gradient(180deg,#4b0018,#1a0008);">
+      <div style="width:56px;height:56px;border:4px solid rgba(255,255,255,0.25);border-top-color:#ffd76a;border-radius:50%;margin-bottom:20px;animation:ss-spin 1s linear infinite;"></div>
+      <div style="font-size:22px;font-weight:bold;margin-bottom:10px;">Processing your order...</div>
+      <div style="opacity:.7;font-size:15px;">Please wait a moment</div>
+    </div>
+  `;
+  setTimeout(function(){ renderSuccess(); }, 2200);
+}
+
+function renderSuccess(){
+  const planData = {
+    "1": { label:"1-week access", price:"$29.99" },
+    "4": { label:"4-week access", price:"$19.99" },
+    "8": { label:"8-week access", price:"$29.99" }
+  };
+  const plan = planData[state.plan] || planData["8"];
+
+  state.payment_successful = "yes";
+
+  sendPaymentSuccess();
+
+  if(typeof fbq === "function"){
+    fbq("track", "Purchase", {
+      value: state.plan === "4" ? 19.99 : state.plan === "1" ? 29.99 : 29.99,
+      currency: "USD"
+    });
+  }
+
+  app.innerHTML = `
+    <div class="ss-container" style="display:flex;flex-direction:column;align-items:center;padding-top:60px;text-align:center;">
+
+      <div style="font-size:24px;font-weight:bold;margin-bottom:28px;">My Hidden Story</div>
+
+      <div style="width:80px;height:80px;border-radius:50%;background:#1a6e38;display:flex;align-items:center;justify-content:center;font-size:40px;margin-bottom:24px;">&#10003;</div>
+
+      <div style="font-size:28px;font-weight:bold;margin-bottom:12px;">You're in!</div>
+
+      <div style="font-size:17px;opacity:.85;margin-bottom:24px;line-height:1.6;">
+        We will soon send You the first Chapter of a custom and interactive story to your email:<br><br>
+        <span style="color:#ffd76a;font-weight:bold;">${state.email || "your email"}</span>
+      </div>
+
+      <video src="/media/success_video.mp4" autoplay muted loop playsinline style="width:100%;border-radius:16px;margin-bottom:24px;display:block;"></video>
+
+      <div style="background:rgba(255,255,255,0.07);border-radius:18px;padding:20px;width:100%;margin-bottom:30px;">
+        <div style="font-size:15px;opacity:.7;margin-bottom:14px;">Your plan summary</div>
+        <div style="display:flex;justify-content:space-between;font-size:15px;margin-bottom:8px;">
+          <span>Plan</span><span>${plan.label}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:15px;margin-bottom:8px;">
+          <span>Billed</span><span>${plan.price}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:15px;">
+          <span>Access</span><span style="color:#8eff6d;">Active now</span>
+        </div>
+      </div>
+
+    </div>
+  `;
+
+  localStorage.removeItem("ss_session");
+}
+
+const mediaObserver = new MutationObserver((mutations)=>{
+  mutations.forEach((m)=>{
+    m.addedNodes.forEach((node)=>{
+      if(node && node.nodeType === 1){
+        upgradeInsecureMedia(node);
+      }
+    });
+  });
+});
+mediaObserver.observe(app, { childList: true, subtree: true });
+
+render();
+upgradeInsecureMedia(document);
+sendPageLoadEventOnce();
+
+});
+</script></body>
+</html>

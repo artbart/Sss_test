@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Hidden Story — Story Update</title>
+
+<style>
+body{
+  margin:0;
+  font-family:Georgia, serif;
+  background:linear-gradient(180deg,#4b0018,#1a0008);
+  color:#fff;
+}
+
+.wrapper{
+  max-width:450px;
+  margin:0 auto;
+  min-height:100vh;
+  padding:24px 16px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  text-align:center;
+}
+
+.logo{
+  font-size:24px;
+  font-weight:bold;
+  margin-bottom:20px;
+}
+
+.card{
+  background:rgba(255,255,255,0.06);
+  border-radius:18px;
+  padding:20px;
+}
+
+.title{
+  font-size:24px;
+  margin-bottom:12px;
+}
+
+.sub{
+  opacity:.85;
+  margin-bottom:16px;
+}
+
+.img{
+  width:100%;
+  border-radius:14px;
+  margin:16px 0;
+}
+
+.loader{
+  height:6px;
+  background:#2a0a11;
+  border-radius:6px;
+  overflow:hidden;
+  margin-top:16px;
+}
+
+.loader-fill{
+  height:100%;
+  width:0%;
+  background:#ff4d5e;
+  animation:load 2s infinite;
+}
+
+@keyframes load{
+  0%{width:0%}
+  50%{width:80%}
+  100%{width:0%}
+}
+</style>
+</head>
+
+<body>
+
+<div class="wrapper" id="app">
+  <div class="logo">My Hidden Story</div>
+
+  <div class="card">
+    <div class="title">Processing Your Choice...</div>
+    <div class="sub">Please, wait</div>
+
+    <div class="loader">
+      <div class="loader-fill"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Supabase config — anon key is safe to ship in client code (RLS protects the DB).
+const SUPABASE_URL = "https://gmhbcxylqubhxozomhlt.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdtaGJjeHlscXViaHhvem9taGx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxNTk5OTksImV4cCI6MjA5MjczNTk5OX0.GAM73P5X7fT1BIziTfvqUpFT2W_W5EtFb5Gze5cIFfY";
+const SUBMIT_CHOICE_URL = `${SUPABASE_URL}/functions/v1/submit-choice`;
+const app = document.getElementById("app");
+
+function sanitize(value) {
+  return String(value || "").trim();
+}
+
+function renderStatus(title, sub, mediaUrl) {
+  var mediaHtml = "";
+  if (mediaUrl) {
+    if (/\.mp4($|\?)/i.test(mediaUrl)) {
+      mediaHtml = `<video class="img" src="${mediaUrl}" autoplay muted loop playsinline></video>`;
+    } else {
+      mediaHtml = `<img class="img" src="${mediaUrl}" alt="${title}">`;
+    }
+  }
+
+  app.innerHTML = `
+    <div class="logo">My Hidden Story</div>
+    <div class="card">
+      <div class="title">${title}</div>
+      <div class="sub">${sub}</div>
+      ${mediaHtml}
+    </div>
+  `;
+}
+
+async function postChoice(payload) {
+  try { console.log("[MHS chapter] -> submit-choice", payload); } catch (_) {}
+
+  const res = await fetch(SUBMIT_CHOICE_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "apikey": SUPABASE_ANON_KEY,
+      "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const raw = await res.text();
+  if (!raw) throw new Error("Empty response from server");
+  try { return JSON.parse(raw); }
+  catch (_) { throw new Error("Invalid JSON response: " + raw.slice(0, 80)); }
+}
+
+const params = new URLSearchParams(window.location.search);
+const payload = {
+  story_id: sanitize(params.get("story_id")),
+  chapter_number: Number(sanitize(params.get("chapter"))),
+  option: Number(sanitize(params.get("option"))),
+};
+
+if (!payload.story_id || !Number.isInteger(payload.chapter_number) || ![1,2,3].includes(payload.option)) {
+  app.innerHTML = `
+    <div class="wrapper">
+      <div class="logo">My Hidden Story</div>
+      <div class="card">
+        <div class="title">Invalid link</div>
+        <div class="sub">Something went wrong — please open the link from your email again.</div>
+      </div>
+    </div>
+  `;
+} else {
+  postChoice(payload)
+    .then(res => {
+      if (res.status === "duplicate") {
+        renderStatus(
+          "Already chosen",
+          "What an unexpected interruption... it seems your fate is already sealed. We have already received your first choice and are penning your next chapter.",
+          "/media/noup.mp4"
+        );
+        return;
+      }
+
+      if (res.status === "ok" || res.status === "success") {
+        renderStatus(
+          "Accepted!",
+          "Your story will soon continue... Anticipation is half the fun, isn't it?",
+          "/media/accept.mp4"
+        );
+        return;
+      }
+
+      throw new Error(res.message || "Unexpected response status");
+    })
+    .catch(() => {
+      renderStatus(
+        "Something went wrong",
+        "Please try clicking your option link from the email again.",
+        ""
+      );
+    });
+}
+</script>
+
+</body>
+</html>
