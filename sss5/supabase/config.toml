@@ -1,0 +1,10 @@
+project_id = "gmhbcxylqubhxozomhlt"
+
+[functions.submit-quiz]
+verify_jwt = false   # called from the public quiz page with the anon key
+
+[functions.submit-choice]
+verify_jwt = false   # called from chapter.html with the anon key
+
+[functions.generate-chapter]
+verify_jwt = true    # internal only — called by the other two with the service role key

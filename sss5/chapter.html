@@ -91,10 +91,10 @@ body{
 </div>
 
 <script>
-// DEV STUB: in dev we don't post to a real backend. We pretend the request
-// succeeded after a short delay so the UI flow is reviewable. The original
-// Apps Script endpoint is intentionally left blank — wire to Supabase later.
-const endpoint = "";
+// Supabase config — anon key is safe to ship in client code (RLS protects the DB).
+const SUPABASE_URL = "https://gmhbcxylqubhxozomhlt.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdtaGJjeHlscXViaHhvem9taGx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxNTk5OTksImV4cCI6MjA5MjczNTk5OX0.GAM73P5X7fT1BIziTfvqUpFT2W_W5EtFb5Gze5cIFfY";
+const SUBMIT_CHOICE_URL = `${SUPABASE_URL}/functions/v1/submit-choice`;
 const app = document.getElementById("app");
 
 function sanitize(value) {
@@ -122,23 +122,32 @@ function renderStatus(title, sub, mediaUrl) {
 }
 
 async function postChoice(payload) {
-  // DEV STUB: log the payload, simulate a 600ms server round-trip,
-  // and return a fake { status: "ok" } response. Replace with real fetch later.
-  try {
-    console.log("[MHS chapter] postChoice payload:", payload);
-  } catch (_) {}
-  await new Promise(r => setTimeout(r, 600));
-  return { status: "ok" };
+  try { console.log("[MHS chapter] -> submit-choice", payload); } catch (_) {}
+
+  const res = await fetch(SUBMIT_CHOICE_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "apikey": SUPABASE_ANON_KEY,
+      "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const raw = await res.text();
+  if (!raw) throw new Error("Empty response from server");
+  try { return JSON.parse(raw); }
+  catch (_) { throw new Error("Invalid JSON response: " + raw.slice(0, 80)); }
 }
 
 const params = new URLSearchParams(window.location.search);
 const payload = {
   story_id: sanitize(params.get("story_id")),
-  chapter: sanitize(params.get("chapter")),
-  option: sanitize(params.get("option"))
+  chapter_number: Number(sanitize(params.get("chapter"))),
+  option: Number(sanitize(params.get("option"))),
 };
 
-if (!payload.story_id || !payload.chapter || !payload.option) {
+if (!payload.story_id || !Number.isInteger(payload.chapter_number) || ![1,2,3].includes(payload.option)) {
   app.innerHTML = `
     <div class="wrapper">
       <div class="logo">My Hidden Story</div>

@@ -1085,8 +1085,10 @@ window.__MHS_QUIZ_INIT__ = true;
 const app = document.getElementById("app");
 if (!app) return;
 
-// DEV STUB: posts are logged to the browser console only. Wire to Supabase later.
-const API_URL = "";
+// Supabase config — anon key is safe to ship in client code (RLS protects the DB).
+const SUPABASE_URL = "https://gmhbcxylqubhxozomhlt.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdtaGJjeHlscXViaHhvem9taGx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxNTk5OTksImV4cCI6MjA5MjczNTk5OX0.GAM73P5X7fT1BIziTfvqUpFT2W_W5EtFb5Gze5cIFfY";
+const SUBMIT_QUIZ_URL = `${SUPABASE_URL}/functions/v1/submit-quiz`;
 
 let session_id = localStorage.getItem("ss_session");
 if(!session_id){
@@ -1184,86 +1186,81 @@ function cleanupIntervals(){
   if(progressiveTestimonialInterval){ clearInterval(progressiveTestimonialInterval); progressiveTestimonialInterval = null; }
 }
 
-function postToSheet(payload){
-  // DEV STUB: log payload to console instead of POSTing. Will be wired to Supabase later.
-  try {
-    console.log("[MHS quiz] postToSheet payload:", payload);
-  } catch (_) {}
-  return Promise.resolve();
+// POST to the submit-quiz edge function. Body shape:
+//   { session_id, event, payload }
+// Console-logged on top so the browser console still shows what was sent.
+function postQuizEvent(event, payload){
+  try { console.log("[MHS quiz] -> submit-quiz", event, payload); } catch (_) {}
+
+  return fetch(SUBMIT_QUIZ_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "apikey": SUPABASE_ANON_KEY,
+      "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+    },
+    body: JSON.stringify({
+      session_id: session_id,
+      event: event,
+      payload: payload || {},
+    }),
+    keepalive: true,
+  }).catch((err) => {
+    try { console.warn("[MHS quiz] submit-quiz failed:", err); } catch (_) {}
+  });
 }
 
 function sendEmailCapture(){
   if(!state.email) return;
-
-  postToSheet({
-    type:"partial",
-    session_id: session_id,
-    data:{
-      email: state.email,
-      plan: state.plan,
-      payment_successful: state.payment_successful,
-      fbclid: state.fbclid,
-      fbc: state.fbc,
-      funnel_version: state.funnel_version,
-      landing_page: state.landing_page,
-      user_agent: state.user_agent,
-      device_type: state.device_type,
-      character: state.character,
-      feeling: state.feeling,
-      fantasy: state.fantasy,
-      power: state.power,
-      emotion: state.emotion,
-      start: state.start,
-      missing: state.missing,
-      romance_type: state.romance_type,
-      experience: state.experience,
-      reason: state.reason,
-      spicy_trigger: state.spicy_trigger,
-      intense: state.intense,
-      explicit: state.explicit,
-      explore: state.explore,
-      relationship: state.relationship
-    }
+  postQuizEvent("email_capture", {
+    email: state.email,
+    plan: state.plan,
+    fbclid: state.fbclid,
+    fbc: state.fbc,
+    funnel_version: state.funnel_version,
+    landing_page: state.landing_page,
+    user_agent: state.user_agent,
+    device_type: state.device_type,
+    character: state.character,
+    feeling: state.feeling,
+    fantasy: state.fantasy,
+    power: state.power,
+    emotion: state.emotion,
+    start: state.start,
+    missing: state.missing,
+    romance_type: state.romance_type,
+    experience: state.experience,
+    reason: state.reason,
+    spicy_trigger: state.spicy_trigger,
+    intense: state.intense,
+    explicit: state.explicit,
+    explore: state.explore,
+    relationship: state.relationship
   });
 }
 
 function sendPlanSelection(){
   if(!state.email || !state.plan) return;
-
-  postToSheet({
-    type:"event",
-    session_id: session_id,
-    event:"plan_selected",
-    data:{
-      email: state.email,
-      plan: state.plan,
-      card_page_shown: "yes"
-    }
+  postQuizEvent("plan_selected", {
+    email: state.email,
+    plan: state.plan,
   });
 }
 
 function sendPaymentSuccess(){
   if(!state.email) return;
-
-  postToSheet({
-    type:"event",
-    session_id: session_id,
-    event:"payment_successful",
-    data:{
-      email: state.email,
-      plan: state.plan || "",
-      payment_successful: "yes",
-      status: "Converted"
-    }
+  postQuizEvent("payment_successful", {
+    email: state.email,
+    plan: state.plan || "",
   });
 }
 
 function sendFinal(){
-  postToSheet({ type:"final", session_id: session_id, data: state });
+  // No-op in the new flow — submit-quiz is event-driven now, no "final" payload needed.
 }
 
 function sendEvent(event, data){
-  postToSheet({ type:"event", session_id: session_id, event: event, data: data });
+  postQuizEvent(event, data || {});
 }
 
 function sendPageLoadEventOnce(){
