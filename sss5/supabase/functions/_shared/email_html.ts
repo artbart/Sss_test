@@ -1,6 +1,6 @@
 // Builds the HTML body of a chapter email.
 //
-// chapterUrlBase: e.g. "https://savageshopper.com/sss5/chapter.html"
+// chapterUrlBase: e.g. "https://stuffsosweet.com/chapter_update.html"
 // We append `?story_id=...&chapter=N&option=1|2|3` for each link.
 
 export interface ChapterEmailArgs {

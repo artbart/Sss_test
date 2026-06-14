@@ -30,9 +30,9 @@ below). Add:
 |---|---|
 | `ANTHROPIC_API_KEY` | your `sk-ant-...` key |
 | `RESEND_API_KEY` | your `re_...` key |
-| `MAIL_FROM` | `stories@stuffsosweet.com` *(target: `stories@stuffsosweet.com` once Resend verifies the new domain)* |
+| `MAIL_FROM` | `stories@stuffsosweet.com` |
 | `MAIL_FROM_NAME` | *(no longer required — display name is hardcoded to "Stuff So Sweet" in `_shared/resend.ts`)* |
-| `MAIL_REPLY_TO` | `service.myhiddenstory@gmail.com` *(target: `stories.stuffsosweet@gmail.com` once that gmail exists)* |
+| `MAIL_REPLY_TO` | `stories.stuffsosweet@gmail.com` |
 | `CHAPTER_URL_BASE` | `https://stuffsosweet.com/chapter_update.html` |
 
 (`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are auto-provided by Supabase
@@ -65,7 +65,7 @@ supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
 supabase secrets set RESEND_API_KEY=re_...
 supabase secrets set MAIL_FROM=stories@stuffsosweet.com
 supabase secrets set MAIL_FROM_NAME="Stuff So Sweet"
-supabase secrets set MAIL_REPLY_TO=service.myhiddenstory@gmail.com
+supabase secrets set MAIL_REPLY_TO=stories.stuffsosweet@gmail.com
 supabase secrets set CHAPTER_URL_BASE=https://stuffsosweet.com/chapter_update.html
 ```
 

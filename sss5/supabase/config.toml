@@ -1,13 +1,20 @@
 project_id = "gmhbcxylqubhxozomhlt"
 
+# Per-function JWT settings.
+# IMPORTANT: these match the CURRENT deployed state. The values were toggled OFF
+# via dashboard earlier so internal service-role calls (submit-quiz/submit-choice
+# -> generate-chapter) and the recovery flow work. NOTES.md flags re-enabling
+# generate-chapter and resend-chapter-email as a future security TODO; when you
+# do, also flip these here so `supabase functions deploy` doesn't drift them back.
+
 [functions.submit-quiz]
-verify_jwt = false   # called from the public quiz page with the anon key
+verify_jwt = false   # public POST from the quiz page using the anon key
 
 [functions.submit-choice]
-verify_jwt = false   # called from chapter.html with the anon key
+verify_jwt = false   # public POST from chapter_update.html using the anon key
 
 [functions.generate-chapter]
-verify_jwt = true    # internal only — called by the other two with the service role key
+verify_jwt = false   # currently off; SHOULD be true (internal/service-role only) once auth path is reliable
 
 [functions.resend-chapter-email]
-verify_jwt = true    # admin recovery tool — called manually via the Supabase Test panel
+verify_jwt = false   # currently off; SHOULD be true (admin recovery tool) once auth path is reliable
