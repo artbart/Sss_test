@@ -73,7 +73,7 @@ export function buildChapterEmail(args: ChapterEmailArgs): { subject: string; ht
     <tr><td align="center" style="padding:32px 16px;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
         <tr><td style="text-align:center;font-size:22px;font-weight:bold;padding-bottom:10px;letter-spacing:0.5px;">
-          My Hidden Story
+          Stuff So Sweet
         </td></tr>
         <tr><td style="text-align:center;font-size:14px;opacity:.75;padding-bottom:24px;">
           Chapter ${chapterNumber} of ${totalChapters}
@@ -86,7 +86,7 @@ export function buildChapterEmail(args: ChapterEmailArgs): { subject: string; ht
           ${optionsBlock}
         </td></tr>
         <tr><td style="text-align:center;font-size:11px;opacity:.55;padding-top:24px;line-height:1.5;">
-          You're receiving this because you started a personalized story at My Hidden Story.<br>
+          You're receiving this because you started a personalized story at Stuff So Sweet.<br>
           This is an automated message — please don't reply directly.
         </td></tr>
       </table>

@@ -14,7 +14,7 @@ export interface SendEmailArgs {
 export async function sendEmail(args: SendEmailArgs): Promise<void> {
   const apiKey = Deno.env.get("RESEND_API_KEY");
   const from = Deno.env.get("MAIL_FROM") ?? "stories@myhiddenstory.com";
-  const fromName = Deno.env.get("MAIL_FROM_NAME") ?? "My Hidden Story";
+  const fromName = Deno.env.get("MAIL_FROM_NAME") ?? "Stuff So Sweet";
   const replyTo = Deno.env.get("MAIL_REPLY_TO");
 
   if (!apiKey) throw new Error("Missing RESEND_API_KEY env var");

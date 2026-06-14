@@ -1,4 +1,4 @@
-# Supabase deploy — My Hidden Story
+# Supabase deploy — Stuff So Sweet
 
 This folder contains everything Supabase needs:
 
@@ -31,7 +31,7 @@ below). Add:
 | `ANTHROPIC_API_KEY` | your `sk-ant-...` key |
 | `RESEND_API_KEY` | your `re_...` key |
 | `MAIL_FROM` | `stories@myhiddenstory.com` |
-| `MAIL_FROM_NAME` | `My Hidden Story` |
+| `MAIL_FROM_NAME` | `Stuff So Sweet` |
 | `MAIL_REPLY_TO` | `service.myhiddenstory@gmail.com` (optional) |
 | `CHAPTER_URL_BASE` | `https://savageshopper.com/sss5/chapter.html` |
 
@@ -64,7 +64,7 @@ supabase functions deploy generate-chapter
 supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
 supabase secrets set RESEND_API_KEY=re_...
 supabase secrets set MAIL_FROM=stories@myhiddenstory.com
-supabase secrets set MAIL_FROM_NAME="My Hidden Story"
+supabase secrets set MAIL_FROM_NAME="Stuff So Sweet"
 supabase secrets set MAIL_REPLY_TO=service.myhiddenstory@gmail.com
 supabase secrets set CHAPTER_URL_BASE=https://savageshopper.com/sss5/chapter.html
 ```

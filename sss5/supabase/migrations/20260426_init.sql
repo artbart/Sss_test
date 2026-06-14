@@ -1,5 +1,5 @@
 -- =====================================================================
--- My Hidden Story — initial schema
+-- Stuff So Sweet — initial schema (originally launched as "My Hidden Story")
 -- 2026-04-26
 --
 -- Three tables:

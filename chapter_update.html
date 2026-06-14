@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>My Hidden Story — Story Update</title>
+<title>Stuff So Sweet — Story Update</title>
 
 <style>
 body{
@@ -78,7 +78,7 @@ body{
 <body>
 
 <div class="wrapper" id="app">
-  <div class="logo">My Hidden Story</div>
+  <div class="logo">Stuff So Sweet</div>
 
   <div class="card">
     <div class="title">Processing Your Choice...</div>
@@ -112,7 +112,7 @@ function renderStatus(title, sub, mediaUrl) {
   }
 
   app.innerHTML = `
-    <div class="logo">My Hidden Story</div>
+    <div class="logo">Stuff So Sweet</div>
     <div class="card">
       <div class="title">${title}</div>
       <div class="sub">${sub}</div>
@@ -169,7 +169,7 @@ const payload = {
 if (!payload.story_id || !Number.isInteger(payload.chapter_number) || ![1,2,3].includes(payload.option)) {
   app.innerHTML = `
     <div class="wrapper">
-      <div class="logo">My Hidden Story</div>
+      <div class="logo">Stuff So Sweet</div>
       <div class="card">
         <div class="title">Invalid link</div>
         <div class="sub">Something went wrong — please open the link from your email again.</div>
