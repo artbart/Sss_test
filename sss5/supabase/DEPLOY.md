@@ -30,9 +30,9 @@ below). Add:
 |---|---|
 | `ANTHROPIC_API_KEY` | your `sk-ant-...` key |
 | `RESEND_API_KEY` | your `re_...` key |
-| `MAIL_FROM` | `stories@myhiddenstory.com` |
-| `MAIL_FROM_NAME` | `Stuff So Sweet` |
-| `MAIL_REPLY_TO` | `service.myhiddenstory@gmail.com` (optional) |
+| `MAIL_FROM` | `stories@myhiddenstory.com` *(target: `stories@stuffsosweet.com` once Resend verifies the new domain)* |
+| `MAIL_FROM_NAME` | *(no longer required — display name is hardcoded to "Stuff So Sweet" in `_shared/resend.ts`)* |
+| `MAIL_REPLY_TO` | `service.myhiddenstory@gmail.com` *(target: `stories.stuffsosweet@gmail.com` once that gmail exists)* |
 | `CHAPTER_URL_BASE` | `https://savageshopper.com/sss5/chapter.html` |
 
 (`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are auto-provided by Supabase

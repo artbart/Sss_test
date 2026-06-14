@@ -1,8 +1,13 @@
-// Resend email helper. Domain `myhiddenstory.com` must be verified in Resend
-// before this works for arbitrary recipients. Until verified, Resend only
-// allows sends to your account email (abobinas@gmail.com).
+// Resend email helper. The sender domain (currently myhiddenstory.com, future
+// stuffsosweet.com) must be verified in Resend before this works for arbitrary
+// recipients. Until verified, Resend only sends to the account email.
 
 const API = "https://api.resend.com/emails";
+
+// Brand display name shown as the "From" name in users' inboxes. Hardcoded
+// because it's a product decision, not a config one — same value in every
+// environment. Update here, redeploy, done.
+const FROM_NAME = "Stuff So Sweet";
 
 export interface SendEmailArgs {
   to: string;
@@ -14,7 +19,7 @@ export interface SendEmailArgs {
 export async function sendEmail(args: SendEmailArgs): Promise<void> {
   const apiKey = Deno.env.get("RESEND_API_KEY");
   const from = Deno.env.get("MAIL_FROM") ?? "stories@myhiddenstory.com";
-  const fromName = Deno.env.get("MAIL_FROM_NAME") ?? "Stuff So Sweet";
+  const fromName = FROM_NAME;
   const replyTo = Deno.env.get("MAIL_REPLY_TO");
 
   if (!apiKey) throw new Error("Missing RESEND_API_KEY env var");
