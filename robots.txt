@@ -1,0 +1,10 @@
+# Stuff So Sweet — robots policy
+# Most search engines welcome.
+# Dev-mirror folder /sss5/ is blocked so it doesn't compete with the
+# canonical production URLs.
+
+User-agent: *
+Disallow: /sss5/
+Allow: /
+
+Sitemap: https://stuffsosweet.com/sitemap.xml

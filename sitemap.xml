@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://stuffsosweet.com/</loc><changefreq>monthly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://stuffsosweet.com/quiz/a.html</loc><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://stuffsosweet.com/privacy-policy.html</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://stuffsosweet.com/terms-of-services.html</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://stuffsosweet.com/acceptable-use-policy.html</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://stuffsosweet.com/refund-policy.html</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+</urlset>
