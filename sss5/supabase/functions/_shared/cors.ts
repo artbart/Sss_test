@@ -1,4 +1,4 @@
-// Shared CORS headers. The frontend lives at savageshopper.com; in dev we keep this
+// Shared CORS headers. The frontend lives at stuffsosweet.com; in dev we keep this
 // permissive. Tighten to a specific origin once we're past initial testing.
 export const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

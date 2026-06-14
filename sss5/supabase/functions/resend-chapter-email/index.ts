@@ -27,7 +27,7 @@ import { sendEmail } from "../_shared/resend.ts";
 import { buildChapterEmail } from "../_shared/email_html.ts";
 
 const CHAPTER_URL_BASE =
-  Deno.env.get("CHAPTER_URL_BASE") ?? "https://myhiddenstory.com/chapter_update.html";
+  Deno.env.get("CHAPTER_URL_BASE") ?? "https://stuffsosweet.com/chapter_update.html";
 
 Deno.serve(async (req: Request) => {
   const pre = handlePreflight(req);

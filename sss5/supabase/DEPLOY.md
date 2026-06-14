@@ -30,10 +30,10 @@ below). Add:
 |---|---|
 | `ANTHROPIC_API_KEY` | your `sk-ant-...` key |
 | `RESEND_API_KEY` | your `re_...` key |
-| `MAIL_FROM` | `stories@myhiddenstory.com` *(target: `stories@stuffsosweet.com` once Resend verifies the new domain)* |
+| `MAIL_FROM` | `stories@stuffsosweet.com` *(target: `stories@stuffsosweet.com` once Resend verifies the new domain)* |
 | `MAIL_FROM_NAME` | *(no longer required — display name is hardcoded to "Stuff So Sweet" in `_shared/resend.ts`)* |
 | `MAIL_REPLY_TO` | `service.myhiddenstory@gmail.com` *(target: `stories.stuffsosweet@gmail.com` once that gmail exists)* |
-| `CHAPTER_URL_BASE` | `https://savageshopper.com/sss5/chapter.html` |
+| `CHAPTER_URL_BASE` | `https://stuffsosweet.com/chapter_update.html` |
 
 (`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are auto-provided by Supabase
 and don't need to be set.)
@@ -63,10 +63,10 @@ supabase functions deploy generate-chapter
 # 5. Set the env vars (run once each):
 supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
 supabase secrets set RESEND_API_KEY=re_...
-supabase secrets set MAIL_FROM=stories@myhiddenstory.com
+supabase secrets set MAIL_FROM=stories@stuffsosweet.com
 supabase secrets set MAIL_FROM_NAME="Stuff So Sweet"
 supabase secrets set MAIL_REPLY_TO=service.myhiddenstory@gmail.com
-supabase secrets set CHAPTER_URL_BASE=https://savageshopper.com/sss5/chapter.html
+supabase secrets set CHAPTER_URL_BASE=https://stuffsosweet.com/chapter_update.html
 ```
 
 ### Path B — Dashboard paste (no CLI)
@@ -91,7 +91,7 @@ Then set the env vars in **Project Settings → Edge Functions → Secrets**
 
 ## 3. Test the chain
 
-1. Open https://savageshopper.com/sss5/quiz.html
+1. Open https://stuffsosweet.com/quiz/a.html
 2. Run through the funnel using **abobinas@gmail.com** (or your verified
    Resend account email — this is the only address Resend will deliver to
    until your domain is verified).
@@ -117,8 +117,8 @@ Then set the env vars in **Project Settings → Edge Functions → Secrets**
 
 Until you do this, only your account email gets emails.
 
-1. https://resend.com/domains → **Add Domain** → `myhiddenstory.com`
+1. https://resend.com/domains → **Add Domain** → `stuffsosweet.com`
 2. Resend gives you 3 DNS records (TXT for SPF + DKIM + optional DMARC).
-3. Add them in your DNS provider for myhiddenstory.com.
+3. Add them in your DNS provider for stuffsosweet.com.
 4. Wait for Resend to verify (usually a few minutes).
-5. From then on, `stories@myhiddenstory.com` can send to anyone.
+5. From then on, `stories@stuffsosweet.com` can send to anyone.

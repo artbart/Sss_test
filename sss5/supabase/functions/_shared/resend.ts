@@ -1,4 +1,4 @@
-// Resend email helper. The sender domain (currently myhiddenstory.com, future
+// Resend email helper. The sender domain (currently stuffsosweet.com, future
 // stuffsosweet.com) must be verified in Resend before this works for arbitrary
 // recipients. Until verified, Resend only sends to the account email.
 
@@ -18,7 +18,7 @@ export interface SendEmailArgs {
 
 export async function sendEmail(args: SendEmailArgs): Promise<void> {
   const apiKey = Deno.env.get("RESEND_API_KEY");
-  const from = Deno.env.get("MAIL_FROM") ?? "stories@myhiddenstory.com";
+  const from = Deno.env.get("MAIL_FROM") ?? "stories@stuffsosweet.com";
   const fromName = FROM_NAME;
   const replyTo = Deno.env.get("MAIL_REPLY_TO");
 
