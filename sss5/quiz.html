@@ -1062,7 +1062,7 @@ body{
   gap: 12px;
   background: #e04b57;
   color: #fff;
-  border: 2px solid transparent;
+  border: 1px solid transparent;
   border-radius: 14px;
   padding: 14px 16px;
   cursor: pointer;
@@ -1078,7 +1078,7 @@ body{
   box-shadow: 0 0 0 2px rgba(255,255,255,0.25), 0 8px 24px rgba(224,75,87,0.20);
 }
 .ss-radio {
-  width: 22px; height: 22px;
+  width: 17px; height: 17px;
   border-radius: 50%;
   border: 2px solid #fff;
   display: inline-block;
@@ -1088,14 +1088,14 @@ body{
 .ss-delivery-opt.selected .ss-radio::after {
   content: "";
   position: absolute;
-  inset: 4px;
+  inset: 3px;
   background: #fff;
   border-radius: 50%;
 }
 .ss-radio-label { flex: 1; }
 .ss-btn-primary {
   width: 100%;
-  background: #e04b57;
+  background: #0f9127;
   color: #fff;
   border: none;
   border-radius: 14px;
@@ -1108,7 +1108,7 @@ body{
 .ss-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 .ss-btn-login {
   width: 100%;
-  background: #000;
+  background: #32121c;
   color: #fff;
   border: none;
   border-radius: 14px;
@@ -1120,6 +1120,7 @@ body{
   align-items: center;
 }
 .ss-btn-login:disabled { opacity: 0.6; cursor: not-allowed; }
+.ss-btn-login > div:first-child { text-decoration: underline; }
 .ss-status {
   margin-top: 10px;
   text-align: center;
