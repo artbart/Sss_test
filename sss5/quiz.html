@@ -1053,6 +1053,83 @@ body{
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
+.ss-delivery-group { display: flex; flex-direction: column; gap: 10px; }
+.ss-delivery-opt {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #e04b57;
+  color: #fff;
+  border: 2px solid transparent;
+  border-radius: 14px;
+  padding: 14px 16px;
+  cursor: pointer;
+  text-align: left;
+  font-family: Georgia, serif;
+  font-size: 15px;
+  line-height: 1.35;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.ss-delivery-opt:hover { border-color: rgba(255,255,255,0.4); }
+.ss-delivery-opt.selected {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.25), 0 8px 24px rgba(224,75,87,0.20);
+}
+.ss-radio {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  display: inline-block;
+  flex-shrink: 0;
+  position: relative;
+}
+.ss-delivery-opt.selected .ss-radio::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  background: #fff;
+  border-radius: 50%;
+}
+.ss-radio-label { flex: 1; }
+.ss-btn-primary {
+  width: 100%;
+  background: #e04b57;
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  padding: 16px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  font-family: inherit;
+}
+.ss-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+.ss-btn-login {
+  width: 100%;
+  background: #000;
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  padding: 14px;
+  cursor: pointer;
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.ss-btn-login:disabled { opacity: 0.6; cursor: not-allowed; }
+.ss-status {
+  margin-top: 10px;
+  text-align: center;
+  font-family: Arial, sans-serif;
+  font-size: 13px;
+  min-height: 18px;
+}
+.ss-status.ok { color: #8eff6d; }
+.ss-status.err { color: #ff6b7c; }
+
 </style>
 
 <script>
@@ -2080,7 +2157,6 @@ function renderSuccess(){
   const plan = planData[state.plan] || planData["8"];
 
   state.payment_successful = "yes";
-
   sendPaymentSuccess();
 
   if(typeof fbq === "function"){
@@ -2090,33 +2166,62 @@ function renderSuccess(){
     });
   }
 
+  // Auto-save the default delivery preference to quiz_sessions immediately.
+  // User can update + save again via the "Save delivery option" button below.
+  state.notification_preference_choice = "email_link_only";
+  postQuizEvent("set_notification_preference", { notification_preference_choice: "email_link_only" });
+
   app.innerHTML = `
-    <div class="ss-container" style="display:flex;flex-direction:column;align-items:center;padding-top:60px;text-align:center;">
+    <div class="ss-container" style="padding-top:32px;">
 
-      <div style="font-size:24px;font-weight:bold;margin-bottom:28px;">Stuff So Sweet</div>
+      <div style="font-size:22px;font-weight:bold;text-align:center;margin-bottom:24px;">Stuff So Sweet</div>
 
-      <div style="width:80px;height:80px;border-radius:50%;background:#1a6e38;display:flex;align-items:center;justify-content:center;font-size:40px;margin-bottom:24px;">&#10003;</div>
-
-      <div style="font-size:28px;font-weight:bold;margin-bottom:12px;">You're in!</div>
-
-      <div style="font-size:17px;opacity:.85;margin-bottom:24px;line-height:1.6;">
-        We will soon send You the first Chapter of a custom and interactive story to your email:<br><br>
-        <span style="color:#ffd76a;font-weight:bold;">${state.email || "your email"}</span>
+      <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:14px;">
+        <div style="width:42px;height:42px;border-radius:50%;background:#1a6e38;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">&#10003;</div>
+        <div style="font-size:24px;font-weight:bold;">You're in!</div>
       </div>
 
-      <a href="https://app.stuffsosweet.com/?email=${encodeURIComponent(state.email || '')}" style="display:block;width:100%;padding:16px;background:#e04b57;color:#fff;text-decoration:none;border-radius:14px;font-size:16px;font-weight:bold;text-align:center;margin-bottom:18px;box-shadow:0 8px 24px rgba(224,75,87,0.30);">Read all your stories online &rarr;</a>
-      <div style="font-family:Arial,sans-serif;font-size:13px;opacity:0.65;margin-bottom:24px;">We\'ll send you a sign-in link.</div>
-      <video src="media/success_video.mp4" autoplay muted loop playsinline style="width:100%;border-radius:16px;margin-bottom:24px;display:block;"></video>
+      <div style="font-size:15px;opacity:.85;text-align:center;line-height:1.5;margin-bottom:26px;">
+        We will soon send You the first Chapter of a custom and interactive story.
+      </div>
 
-      <div style="background:rgba(255,255,255,0.07);border-radius:18px;padding:20px;width:100%;margin-bottom:30px;">
-        <div style="font-size:15px;opacity:.7;margin-bottom:14px;">Your plan summary</div>
-        <div style="display:flex;justify-content:space-between;font-size:15px;margin-bottom:8px;">
+      <div style="font-size:15px;font-weight:600;margin-bottom:12px;">One last step: choose where you wanna read it (can be changed later):</div>
+
+      <div class="ss-delivery-group">
+        <button type="button" class="ss-delivery-opt" data-value="email_full_story">
+          <span class="ss-radio"></span>
+          <span class="ss-radio-label">Send Full Chapter via Email</span>
+        </button>
+        <button type="button" class="ss-delivery-opt selected" data-value="email_link_only">
+          <span class="ss-radio"></span>
+          <span class="ss-radio-label">Only inform me via email. I will read it on the app</span>
+        </button>
+        <button type="button" class="ss-delivery-opt" data-value="in_app_only">
+          <span class="ss-radio"></span>
+          <span class="ss-radio-label">No emails &mdash; I'll check the app myself</span>
+        </button>
+      </div>
+
+      <button type="button" id="saveDeliveryBtn" class="ss-btn-primary" style="margin-top:14px;">Save delivery option</button>
+      <div id="saveDeliveryStatus" class="ss-status"></div>
+
+      <button type="button" id="loginBtn" class="ss-btn-login" style="margin-top:20px;">
+        <div style="font-size:16px;font-weight:bold;">Login to Your Account</div>
+        <div style="font-size:12px;opacity:0.8;margin-top:2px;">We'll send You the access link</div>
+      </button>
+      <div id="loginStatus" class="ss-status"></div>
+
+      <video src="media/success_video.mp4" autoplay muted loop playsinline style="width:100%;max-width:280px;display:block;margin:22px auto;border-radius:14px;"></video>
+
+      <div style="background:rgba(255,255,255,0.07);border-radius:18px;padding:18px;width:100%;margin-bottom:26px;">
+        <div style="font-size:14px;opacity:.7;margin-bottom:12px;text-align:center;">Your plan summary</div>
+        <div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px;">
           <span>Plan</span><span>${plan.label}</span>
         </div>
-        <div style="display:flex;justify-content:space-between;font-size:15px;margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px;">
           <span>Billed</span><span>${plan.price}</span>
         </div>
-        <div style="display:flex;justify-content:space-between;font-size:15px;">
+        <div style="display:flex;justify-content:space-between;font-size:14px;">
           <span>Access</span><span style="color:#8eff6d;">Active now</span>
         </div>
       </div>
@@ -2124,7 +2229,88 @@ function renderSuccess(){
     </div>
   `;
 
+  setupSuccessHandlers(state.email || "");
   localStorage.removeItem("ss_session");
+}
+
+function setupSuccessHandlers(userEmail){
+  // Radio-button-style delivery option selection
+  const opts = document.querySelectorAll(".ss-delivery-opt");
+  opts.forEach(btn => {
+    btn.addEventListener("click", () => {
+      opts.forEach(r => r.classList.remove("selected"));
+      btn.classList.add("selected");
+      state.notification_preference_choice = btn.dataset.value;
+    });
+  });
+
+  // Save delivery option
+  document.getElementById("saveDeliveryBtn")?.addEventListener("click", async () => {
+    const btn = document.getElementById("saveDeliveryBtn");
+    const status = document.getElementById("saveDeliveryStatus");
+    btn.disabled = true;
+    const originalText = "Save delivery option";
+    btn.textContent = "Saving…";
+    status.textContent = "";
+    try {
+      await postQuizEvent("set_notification_preference", {
+        notification_preference_choice: state.notification_preference_choice || "email_link_only"
+      });
+      status.textContent = "Saved ✓";
+      status.className = "ss-status ok";
+      btn.textContent = "Saved ✓";
+      setTimeout(() => {
+        btn.textContent = originalText;
+        btn.disabled = false;
+        status.textContent = "";
+        status.className = "ss-status";
+      }, 2500);
+    } catch (e) {
+      status.textContent = "Couldn't save. Try again.";
+      status.className = "ss-status err";
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  });
+
+  // Login to Your Account — trigger Supabase magic link
+  document.getElementById("loginBtn")?.addEventListener("click", async () => {
+    const btn = document.getElementById("loginBtn");
+    const status = document.getElementById("loginStatus");
+    if (!userEmail) {
+      status.textContent = "Couldn't find your email — please refresh and try again.";
+      status.className = "ss-status err";
+      return;
+    }
+    btn.disabled = true;
+    btn.innerHTML = '<div style="font-size:16px;font-weight:bold;">Sending link…</div>';
+    status.textContent = "";
+    try {
+      const mod = await import("https://esm.sh/@supabase/supabase-js@2.45.4");
+      const sb = mod.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      const { error } = await sb.auth.signInWithOtp({
+        email: userEmail.trim().toLowerCase(),
+        options: {
+          emailRedirectTo: "https://app.stuffsosweet.com/auth/callback",
+          shouldCreateUser: true,
+        },
+      });
+      if (error) throw error;
+      status.innerHTML = 'Check your inbox — we sent a sign-in link to <strong>' + userEmail + '</strong>. The link works for 24 hours.';
+      status.className = "ss-status ok";
+      btn.innerHTML = '<div style="font-size:16px;font-weight:bold;">Sign-in link sent ✓</div>';
+      setTimeout(() => {
+        btn.innerHTML = '<div style="font-size:16px;font-weight:bold;">Send another link</div><div style="font-size:12px;opacity:0.8;margin-top:2px;">We\'ll send You the access link</div>';
+        btn.disabled = false;
+      }, 30000);
+    } catch (e) {
+      console.error("magic link send failed:", e);
+      status.textContent = "Couldn't send the link. " + (e?.message || "Try again in a moment.");
+      status.className = "ss-status err";
+      btn.disabled = false;
+      btn.innerHTML = '<div style="font-size:16px;font-weight:bold;">Login to Your Account</div><div style="font-size:12px;opacity:0.8;margin-top:2px;">We\'ll send You the access link</div>';
+    }
+  });
 }
 
 const mediaObserver = new MutationObserver((mutations)=>{
