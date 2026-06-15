@@ -25,6 +25,10 @@ import {
   chapter1Prompt, chapterNPrompt,
   type QuizContext, type ChapterNContext,
 } from "../_shared/prompts.ts";
+import {
+  pickRandomBucket, pickRandomSeed,
+  type VarietyContext, type PriorStorySnapshot,
+} from "../_shared/variety.ts";
 
 const CHAPTER_URL_BASE =
   Deno.env.get("CHAPTER_URL_BASE") ?? "https://stuffsosweet.com/chapter_update.html";
@@ -120,7 +124,11 @@ async function generateChapterOne(db: ReturnType<typeof adminClient>, story: any
     relationship_status:   session.q_relationship,
   };
 
-  const prompt = chapter1Prompt(quiz, story.target_chapter_count ?? 10);
+  // Build per-user variety context: prior stories (anti-context) + random bucket + random seed.
+  // This is what breaks Claude's tendency to collapse to the same title/name/setting patterns.
+  const variety = await buildVarietyContext(db, story);
+
+  const prompt = chapter1Prompt(quiz, story.target_chapter_count ?? 10, variety);
   const raw = await callClaude({ user: prompt });
   const parsed = parseLabeled(raw);
 
@@ -293,6 +301,58 @@ async function generateChapterN(db: ReturnType<typeof adminClient>, story: any, 
 
   await sendChapterEmail(db, story.id, n, story.lead_email, story.title ?? "Your story",
     f.CHAPTER_TEXT, [f.NEXT_OPTIONS_1, f.NEXT_OPTIONS_2, f.NEXT_OPTIONS_3]);
+}
+
+
+// ===================================================================
+// Variety context — anti-context against prior user stories
+// ===================================================================
+//
+// Looks up this user's recent stories (matched by user_id if set, else by
+// lead_email) and assembles a snapshot Claude uses to steer away from
+// repeating its own patterns for this user. Combined with a random title
+// style bucket and a random creative seed, this is the core anti-monotony
+// layer.
+
+async function buildVarietyContext(
+  db: ReturnType<typeof adminClient>,
+  story: any,
+): Promise<VarietyContext> {
+  // Try user_id first; fall back to lead_email for guest stories.
+  let priorQuery = db
+    .from("stories")
+    .select("id, title, character_archetype, setting_type, chapters(text, chapter_number)")
+    .neq("id", story.id)
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  if (story.user_id) {
+    priorQuery = priorQuery.eq("user_id", story.user_id);
+  } else if (story.lead_email) {
+    priorQuery = priorQuery.eq("lead_email", story.lead_email);
+  } else {
+    // No way to identify prior stories — empty anti-context, only bucket+seed
+    return { bucket: pickRandomBucket(), seed: pickRandomSeed(), priorStories: [] };
+  }
+
+  const { data: priors } = await priorQuery;
+
+  const priorStories: PriorStorySnapshot[] = (priors ?? []).map((s: any) => {
+    // Find chapter 1 in the joined chapters array
+    const ch1 = (s.chapters ?? []).find((c: any) => c.chapter_number === 1);
+    return {
+      title: s.title,
+      character_archetype: s.character_archetype,
+      setting_type: s.setting_type,
+      opening_excerpt: ch1?.text ? String(ch1.text).slice(0, 120) : null,
+    };
+  });
+
+  return {
+    bucket: pickRandomBucket(),
+    seed: pickRandomSeed(),
+    priorStories,
+  };
 }
 
 

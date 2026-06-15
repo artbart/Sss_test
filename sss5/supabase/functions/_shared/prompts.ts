@@ -2,6 +2,8 @@
 // Two flavors: chapter 1 (full setup, ~2000 words) and chapter 2+ (~2000 words
 // continuation honoring the user's selected option).
 
+import type { VarietyContext } from "./variety.ts";
+
 export interface QuizContext {
   partner_preference?: string;
   scene_mood?: string;
@@ -42,10 +44,50 @@ Never explain the error.
 
 Never include any additional fields in the error response.`;
 
-export function chapter1Prompt(quiz: QuizContext, targetChapterCount = 10): string {
-  const v = (x: string | undefined) => (x ?? "").trim() || "(unspecified)";
+function buildVarietyBlock(variety?: VarietyContext): string {
+  if (!variety) return "";
+  const bucketExamples = variety.bucket.examples.map((e) => `"${e}"`).join(", ");
+  const priorBlock = variety.priorStories.length === 0
+    ? "This user has no prior stories. Use your full creative range — no anti-context constraints."
+    : `This user previously generated the stories below. Read them critically. Identify the patterns (title structure, character-name habits, recurring settings, opening-line approach) and ensure THIS new story feels categorically different in all four dimensions. Do not reuse names, do not echo the title syntax, do not return to similar settings, do not start the chapter the same way.
 
-  return `You are writing chapter 1 of a personalized, premium interactive romance story based on a reader quiz. This is a pure content-generation task.
+Prior stories (most recent first):
+${variety.priorStories.map((s, i) => {
+  const lines = [`${i + 1}.`, `   Title: ${s.title ?? "(none)"}`];
+  if (s.character_archetype) lines.push(`   Characters/archetype: ${s.character_archetype}`);
+  if (s.setting_type)        lines.push(`   Setting: ${s.setting_type}`);
+  if (s.opening_excerpt)     lines.push(`   Opening (first ~120 chars): "${s.opening_excerpt.replace(/\n/g, " ").slice(0, 120)}..."`);
+  return lines.join("\n");
+}).join("\n\n")}`;
+
+  return `
+
+=== VARIETY CONSTRAINTS — read carefully ===
+
+CREATIVE SEED FOR THIS STORY:
+"${variety.seed}"
+
+Weave this seed into the story as a textural detail, mood anchor, or sensory atmosphere — NOT as a plot driver. It should color the chapter, not dictate it. The seed may quietly inform the title, the setting, the opening line, or a sensory layer in the scene. Surface it lightly. The reader shouldn't feel it as an inserted prompt; it should feel native.
+
+TITLE STYLE BUCKET FOR THIS STORY:
+Bucket: ${variety.bucket.name}
+Reference titles in this style: ${bucketExamples}
+
+Write STORY_TITLE that fits the structural feel of these references. The title should be 2–6 words and feel like it could be the spine of its own book. Match the bucket's syntactic rhythm, not necessarily its specific words.
+
+USER'S PRIOR STORY PATTERNS — DO NOT REPEAT:
+${priorBlock}
+
+=== END VARIETY CONSTRAINTS ===
+
+`;
+}
+
+export function chapter1Prompt(quiz: QuizContext, targetChapterCount = 10, variety?: VarietyContext): string {
+  const v = (x: string | undefined) => (x ?? "").trim() || "(unspecified)";
+  const varietyBlock = buildVarietyBlock(variety);
+
+  return `You are writing chapter 1 of a personalized, premium interactive romance story based on a reader quiz. This is a pure content-generation task.${varietyBlock}
 
 Your job is to produce:
 1. A high-quality chapter 1 story in second person
