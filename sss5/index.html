@@ -208,6 +208,28 @@
 
     .footer a { color: var(--faint); text-decoration: underline; }
 
+
+    .signin-corner {
+      position: absolute;
+      top: 24px;
+      right: 32px;
+      z-index: 5;
+      font-family: Arial, sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      color: rgba(255,255,255,0.78);
+      text-decoration: none;
+      padding: 8px 14px;
+      border-radius: 8px;
+      background: rgba(0,0,0,0.22);
+      border: 1px solid rgba(255,255,255,0.14);
+      transition: background 0.15s, color 0.15s;
+    }
+    .signin-corner:hover {
+      background: rgba(0,0,0,0.36);
+      color: #fff;
+    }
+
     @media (max-width: 900px) {
       .hero { align-items: flex-start; }
       .hero::before {
@@ -223,12 +245,14 @@
       .subtext { font-size: 15px; }
       .cta { width: 100%; max-width: 100%; }
       .features li { font-size: 16px; }
+      .signin-corner { top: 18px; right: 18px; font-size: 12px; padding: 6px 12px; }
       .footer { margin-top: 34px; }
     }
   </style>
 </head>
 <body>
   <section class="hero">
+    <a class="signin-corner" href="https://app.stuffsosweet.com/">Sign in &rarr;</a>
     <div class="wrap">
       <div class="brand">Stuff So Sweet</div>
       <div class="content">

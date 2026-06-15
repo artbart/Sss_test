@@ -2104,6 +2104,8 @@ function renderSuccess(){
         <span style="color:#ffd76a;font-weight:bold;">${state.email || "your email"}</span>
       </div>
 
+      <a href="https://app.stuffsosweet.com/?email=${encodeURIComponent(state.email || '')}" style="display:block;width:100%;padding:16px;background:#e04b57;color:#fff;text-decoration:none;border-radius:14px;font-size:16px;font-weight:bold;text-align:center;margin-bottom:18px;box-shadow:0 8px 24px rgba(224,75,87,0.30);">Read all your stories online &rarr;</a>
+      <div style="font-family:Arial,sans-serif;font-size:13px;opacity:0.65;margin-bottom:24px;">We\'ll send you a sign-in link.</div>
       <video src="media/success_video.mp4" autoplay muted loop playsinline style="width:100%;border-radius:16px;margin-bottom:24px;display:block;"></video>
 
       <div style="background:rgba(255,255,255,0.07);border-radius:18px;padding:20px;width:100%;margin-bottom:30px;">
