@@ -20,7 +20,7 @@ import { handlePreflight, jsonResponse } from "../_shared/cors.ts";
 import { callClaude } from "../_shared/anthropic.ts";
 import { sendEmail } from "../_shared/resend.ts";
 import { parseLabeled } from "../_shared/parse.ts";
-import { buildChapterEmail } from "../_shared/email_html.ts";
+import { buildChapterEmail, buildShortNotificationEmail } from "../_shared/email_html.ts";
 import {
   chapter1Prompt, chapterNPrompt,
   type QuizContext, type ChapterNContext,
@@ -308,16 +308,49 @@ async function sendChapterEmail(
   chapterText: string,
   options: [string, string, string],
 ) {
-  // Look up target_chapter_count to know if this is the final chapter.
+  // Look up target_chapter_count + the story's owner so we can honor
+  // the user's notification_preference. For guest stories (user_id NULL)
+  // we default to the original full-story email behavior.
   const { data: s } = await db
-    .from("stories").select("target_chapter_count").eq("id", storyId).maybeSingle();
+    .from("stories")
+    .select("target_chapter_count, user_id")
+    .eq("id", storyId)
+    .maybeSingle();
   const total = s?.target_chapter_count ?? 10;
   const isFinal = chapterNumber >= total;
 
-  const { subject, html, text } = buildChapterEmail({
-    storyTitle, chapterNumber, totalChapters: total, chapterText,
-    options, storyId, chapterUrlBase: CHAPTER_URL_BASE, isFinalChapter: isFinal,
-  });
+  let pref = "email_full_story";
+  if (s?.user_id) {
+    const { data: u } = await db
+      .from("users")
+      .select("notification_preference")
+      .eq("id", s.user_id)
+      .maybeSingle();
+    if (u?.notification_preference) pref = u.notification_preference;
+  }
+
+  // ----- 'in_app_only' — skip email entirely, just mark notified -----
+  if (pref === "in_app_only") {
+    await db.from("chapters")
+      .update({ email_sent_at: new Date().toISOString() })
+      .eq("story_id", storyId).eq("chapter_number", chapterNumber);
+    return;
+  }
+
+  // ----- Build the right email payload based on preference -----
+  let subject: string, html: string, text: string;
+  if (pref === "email_link_only") {
+    ({ subject, html, text } = buildShortNotificationEmail({
+      storyTitle, chapterNumber, totalChapters: total,
+      storyId, isFinalChapter: isFinal,
+    }));
+  } else {
+    // 'email_full_story' (default + guest stories)
+    ({ subject, html, text } = buildChapterEmail({
+      storyTitle, chapterNumber, totalChapters: total, chapterText,
+      options, storyId, chapterUrlBase: CHAPTER_URL_BASE, isFinalChapter: isFinal,
+    }));
+  }
 
   await sendEmail({ to, subject, html, text });
 

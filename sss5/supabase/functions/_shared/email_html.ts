@@ -104,3 +104,71 @@ export function buildChapterEmail(args: ChapterEmailArgs): { subject: string; ht
 
   return { subject, html, text };
 }
+
+// ---------------------------------------------------------------------------
+// Short notification email — sent when user prefers 'email_link_only'.
+// No prose body, no option buttons. Just a teaser and a "Read it →" button
+// that opens the chapter directly in app.stuffsosweet.com.
+// ---------------------------------------------------------------------------
+
+export interface ShortNotificationEmailArgs {
+  storyTitle: string;
+  chapterNumber: number;
+  totalChapters: number;
+  storyId: string;
+  isFinalChapter: boolean;
+}
+
+const APP_CHAPTER_URL = "https://app.stuffsosweet.com/chapter.html";
+const APP_SETTINGS_URL = "https://app.stuffsosweet.com/settings.html";
+
+export function buildShortNotificationEmail(args: ShortNotificationEmailArgs):
+  { subject: string; html: string; text: string }
+{
+  const { storyTitle, chapterNumber, totalChapters, storyId, isFinalChapter } = args;
+
+  const url = `${APP_CHAPTER_URL}?story=${encodeURIComponent(storyId)}&n=${chapterNumber}`;
+  const subject = isFinalChapter
+    ? `${storyTitle} — Your final chapter is ready`
+    : `${storyTitle} — Chapter ${chapterNumber} of ${totalChapters} is ready`;
+  const cta = isFinalChapter ? "Read the ending →" : `Read Chapter ${chapterNumber} →`;
+  const lede = isFinalChapter
+    ? "Your final chapter is ready."
+    : `Chapter ${chapterNumber} of ${totalChapters} is ready.`;
+
+  const html = `<!DOCTYPE html>
+<html><body style="margin:0;background:#1a0008;color:#ffffff;font-family:Georgia,serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(180deg,#4b0018,#1a0008);">
+    <tr><td align="center" style="padding:48px 16px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+        <tr><td style="text-align:center;font-size:22px;font-weight:bold;padding-bottom:18px;letter-spacing:0.5px;">
+          Stuff So Sweet
+        </td></tr>
+        <tr><td style="background:rgba(255,255,255,0.06);border-radius:18px;padding:40px 28px;text-align:center;">
+          <h1 style="margin:0 0 10px;font-size:24px;font-weight:normal;color:#f0d48c;line-height:1.2;">
+            ${escapeHtml(storyTitle)}
+          </h1>
+          <p style="margin:0 0 28px;font-size:15px;opacity:.78;">${lede}</p>
+          <a href="${url}"
+             style="display:inline-block;background:#e04b57;color:#ffffff;text-decoration:none;
+                    padding:14px 32px;border-radius:12px;font-family:Georgia,serif;font-size:16px;
+                    font-weight:bold;">
+            ${cta}
+          </a>
+        </td></tr>
+        <tr><td style="text-align:center;font-size:11px;opacity:.55;padding-top:24px;line-height:1.6;">
+          You're getting this short notification because you chose link-only delivery in your settings.<br>
+          <a href="${APP_SETTINGS_URL}" style="color:rgba(255,255,255,0.75);">Change preferences</a>
+          &nbsp;·&nbsp;
+          <a href="https://stuffsosweet.com/privacy-policy.html" style="color:rgba(255,255,255,0.75);">Privacy</a>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+
+  const text = `${storyTitle}\n\n${lede}\n\n${cta}\n${url}\n\n` +
+               `Change preferences: ${APP_SETTINGS_URL}`;
+
+  return { subject, html, text };
+}
