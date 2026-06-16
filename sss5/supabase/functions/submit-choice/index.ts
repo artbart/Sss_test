@@ -16,6 +16,7 @@
 
 import { adminClient } from "../_shared/db.ts";
 import { handlePreflight, jsonResponse } from "../_shared/cors.ts";
+import { resolveAccess } from "../_shared/access.ts";
 
 Deno.serve(async (req: Request) => {
   const pre = handlePreflight(req);
@@ -64,6 +65,24 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ status: "duplicate" });
   }
 
+  // Load the story once: needed for both the entitlement gate and the target.
+  const { data: story } = await db
+    .from("stories")
+    .select("target_chapter_count, user_id, lead_email")
+    .eq("id", storyId)
+    .maybeSingle();
+
+  // --- Entitlement gate: generating new content requires paid-through access.
+  // Reading existing chapters is unaffected (client reads via RLS). We check
+  // BEFORE recording the choice so a lapsed user can retry after reactivating.
+  const { periodEnd, subStatus } = await resolveAccess(db, story?.user_id, story?.lead_email);
+  if (!periodEnd || new Date(periodEnd) < new Date()) {
+    return jsonResponse(
+      { status: "error", message: "Subscription required to continue", subscription_status: subStatus ?? "none" },
+      402,
+    );
+  }
+
   // Record the choice.
   const { error: upErr } = await db
     .from("chapters")
@@ -78,12 +97,6 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ status: "error", message: "DB update failed" }, 500);
   }
 
-  // Check whether we've reached the target chapter count.
-  const { data: story } = await db
-    .from("stories")
-    .select("target_chapter_count")
-    .eq("id", storyId)
-    .maybeSingle();
   const target = story?.target_chapter_count ?? 10;
 
   if (chapterNumber >= target) {

@@ -27,6 +27,9 @@
   <meta name="twitter:description" content="Interactive adult romance stories crafted just for You. Interactive romance crafted just for you. Based on Your desires with option to steer your story. It's sweet, wet, slightly dark but very tempting and seducing">
   <meta name="twitter:image" content="https://stuffsosweet.com/media/og-card.jpg">
 
+<!-- Stripe.js MUST load live from js.stripe.com (no SRI/integrity — Stripe updates
+     this file and a pinned hash would break checkout; it also keeps PCI SAQ-A scope). -->
+<script src="https://js.stripe.com/v3/"></script>
 </head>
 <body>
 <!-- ================= ROOT ================= -->
@@ -1190,6 +1193,12 @@ if (!app) return;
 const SUPABASE_URL = "https://gmhbcxylqubhxozomhlt.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdtaGJjeHlscXViaHhvem9taGx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxNTk5OTksImV4cCI6MjA5MjczNTk5OX0.GAM73P5X7fT1BIziTfvqUpFT2W_W5EtFb5Gze5cIFfY";
 const SUBMIT_QUIZ_URL = `${SUPABASE_URL}/functions/v1/submit-quiz`;
+const CREATE_SUBSCRIPTION_URL = `${SUPABASE_URL}/functions/v1/create-subscription`;
+
+// Stripe publishable key (TEST). Safe to ship. Swap to the live pk_live_ key at go-live.
+const STRIPE_PUBLISHABLE_KEY = "pk_live_51TRcmOKD4axecwd4ACFmdInTT88jkMg9c7Sr7Fy5RgGdBGUbSoMfqFYOZcp9wg1V3YW2qHk6K7upgNqkQWaBQqxz00agSU8gvc";
+const stripeClient = (typeof Stripe === "function") ? Stripe(STRIPE_PUBLISHABLE_KEY) : null;
+let stripeElements = null;   // set when the Payment Element mounts
 
 let session_id = localStorage.getItem("ss_session");
 if(!session_id){
@@ -2060,25 +2069,11 @@ function renderPayment(){
         </div>
 
         <div style="margin-bottom:12px;">
-          <div style="font-size:12px;color:#7b6c80;margin-bottom:4px;">Card number</div>
-          <input id="cardNum" type="tel" inputmode="numeric" placeholder="1234 1234 1234 1234" maxlength="19" style="width:100%;box-sizing:border-box;border-radius:12px;border:1px solid #e4d5c5;padding:10px 12px;font-size:14px;outline:none;background:#fff;color:#2a1b22;font-family:system-ui,sans-serif;">
-          <div id="cardNumErr" style="color:#c93a29;font-size:12px;min-height:16px;margin-top:3px;"></div>
+          <div id="payment-element"><div style="color:#7b6c80;font-size:13px;padding:8px 0;">Loading secure payment…</div></div>
+          <div id="cardNumErr" style="color:#c93a29;font-size:12px;min-height:16px;margin-top:8px;"></div>
         </div>
 
-        <div style="display:flex;gap:8px;margin-bottom:16px;">
-          <div style="flex:1;">
-            <div style="font-size:12px;color:#7b6c80;margin-bottom:4px;">Expiry</div>
-            <input id="expiry" type="tel" inputmode="numeric" placeholder="MM/YY" maxlength="5" style="width:100%;box-sizing:border-box;border-radius:12px;border:1px solid #e4d5c5;padding:10px 12px;font-size:14px;outline:none;background:#fff;color:#2a1b22;font-family:system-ui,sans-serif;">
-            <div id="expiryErr" style="color:#c93a29;font-size:12px;min-height:16px;margin-top:3px;"></div>
-          </div>
-          <div style="flex:1;">
-            <div style="font-size:12px;color:#7b6c80;margin-bottom:4px;">CVV / CVC</div>
-            <input id="cvv" type="tel" inputmode="numeric" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-form-type="other" placeholder="***" maxlength="3" style="width:100%;box-sizing:border-box;border-radius:12px;border:1px solid #e4d5c5;padding:10px 12px;font-size:14px;outline:none;background:#fff;color:#2a1b22;font-family:system-ui,sans-serif;-webkit-text-security:disc;text-security:disc;">
-            <div id="cvvErr" style="color:#c93a29;font-size:12px;min-height:16px;margin-top:3px;"></div>
-          </div>
-        </div>
-
-        <button id="payBtn" type="button" style="width:100%;border:none;border-radius:16px;padding:13px 16px;background:#111;color:#fff;font-size:15px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;box-sizing:border-box;">
+        <button id="payBtn" type="button" disabled style="width:100%;border:none;border-radius:16px;padding:13px 16px;background:#111;color:#fff;font-size:15px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;box-sizing:border-box;opacity:.6;">
           &#128274; Submit secure payment
         </button>
 
@@ -2123,42 +2118,78 @@ function renderPayment(){
 
   document.getElementById("payBackBtn").onclick = function(){
     state.card_page_sent = false;
+    stripeElements = null;
     const idx = steps.findIndex(s => s.type === "checkout");
     if(idx !== -1) step = idx;
     render();
   };
 
-  document.getElementById("cardNum").addEventListener("input", function(){
-    let v = this.value.replace(/\D/g,"").substring(0,16);
-    this.value = v.replace(/(.{4})/g,"$1 ").trim();
-    document.getElementById("cardNumErr").innerText = "";
+  // Mount the Stripe Payment Element from a freshly-created subscription, then
+  // wire the pay button to confirm it. Access + chapter 1 are granted by the
+  // Stripe webhook (invoice.paid), never by this screen.
+  initStripePayment();
+  document.getElementById("payBtn").onclick = submitPayment;
+}
+
+async function initStripePayment(){
+  const errEl = document.getElementById("cardNumErr");
+  const payBtn = document.getElementById("payBtn");
+  if(!stripeClient){ errEl.innerText = "Payment failed to load. Please refresh."; return; }
+  try {
+    const res = await fetch(CREATE_SUBSCRIPTION_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({ session_id: session_id, email: state.email, plan: state.plan }),
+    });
+    const data = await res.json();
+    if(!res.ok || !data.client_secret) throw new Error(data.error || "Could not start payment");
+
+    stripeElements = stripeClient.elements({
+      clientSecret: data.client_secret,
+      appearance: { theme: "flat", variables: { colorPrimary: "#6b123b", borderRadius: "12px" } },
+    });
+    const paymentEl = stripeElements.create("payment", { layout: "tabs" });
+    paymentEl.mount("#payment-element");
+    paymentEl.on("ready", function(){
+      payBtn.disabled = false;
+      payBtn.style.opacity = "1";
+    });
+  } catch (e) {
+    errEl.innerText = e.message || "Could not start payment. Please try again.";
+  }
+}
+
+async function submitPayment(){
+  const errEl = document.getElementById("cardNumErr");
+  const payBtn = document.getElementById("payBtn");
+  if(!stripeElements){ errEl.innerText = "Payment isn't ready yet — one moment."; return; }
+  payBtn.disabled = true;
+  payBtn.style.opacity = ".6";
+  errEl.innerText = "";
+
+  // Persist for the redirect-return path (?paid=1), where in-memory state is lost.
+  try { localStorage.setItem("ss_plan", state.plan || ""); localStorage.setItem("ss_email", state.email || ""); } catch(_) {}
+
+  const { error } = await stripeClient.confirmPayment({
+    elements: stripeElements,
+    confirmParams: { return_url: window.location.origin + window.location.pathname + "?paid=1" },
+    redirect: "if_required",
   });
 
-  document.getElementById("expiry").addEventListener("input", function(){
-    let v = this.value.replace(/\D/g,"").substring(0,4);
-    if(v.length >= 3) v = v.substring(0,2) + "/" + v.substring(2);
-    this.value = v;
-    document.getElementById("expiryErr").innerText = "";
-  });
+  if(error){
+    errEl.innerText = error.message || "Payment failed. Please check your card and try again.";
+    payBtn.disabled = false;
+    payBtn.style.opacity = "1";
+    return;
+  }
 
-  document.getElementById("cvv").addEventListener("input", function(){
-    this.value = this.value.replace(/\D/g,"").substring(0,3);
-    document.getElementById("cvvErr").innerText = "";
-  });
-
-  document.getElementById("payBtn").onclick = function(){
-    const cardVal = document.getElementById("cardNum").value.replace(/\s/g,"");
-    const expVal  = document.getElementById("expiry").value.replace("/","");
-    const cvvVal  = document.getElementById("cvv").value;
-    let ok = true;
-
-    if(cardVal.length < 16){ document.getElementById("cardNumErr").innerText = "Please enter a 16-digit card number"; ok = false; }
-    if(expVal.length < 4){ document.getElementById("expiryErr").innerText = "Please enter a valid expiry date"; ok = false; }
-    if(cvvVal.length < 3){ document.getElementById("cvvErr").innerText = "Please enter a 3-digit CVV"; ok = false; }
-
-    if(!ok) return;
-    renderProcessing();
-  };
+  // Payment confirmed. Fulfillment (story + chapter 1 + access) is handled by
+  // the Stripe webhook; show the success screen optimistically.
+  renderProcessing();
 }
 
 function renderProcessing(){
@@ -2348,7 +2379,18 @@ const mediaObserver = new MutationObserver((mutations)=>{
 });
 mediaObserver.observe(app, { childList: true, subtree: true });
 
-render();
+// If Stripe sent the user through a redirect-based authentication, they return
+// to ?paid=1. Recover the success screen instead of restarting the funnel.
+// (Most card payments confirm inline via redirect:"if_required" and never hit this.)
+if(getParam("paid") === "1"){
+  try {
+    state.plan = state.plan || localStorage.getItem("ss_plan") || "8";
+    state.email = state.email || localStorage.getItem("ss_email") || "";
+  } catch(_) {}
+  renderSuccess();
+} else {
+  render();
+}
 upgradeInsecureMedia(document);
 sendPageLoadEventOnce();
 

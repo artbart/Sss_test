@@ -14,7 +14,7 @@
 //   }
 
 import { adminClient } from "../_shared/db.ts";
-import { corsHeaders, handlePreflight, jsonResponse } from "../_shared/cors.ts";
+import { handlePreflight, jsonResponse } from "../_shared/cors.ts";
 
 interface QuizPayload {
   // identity / contact
@@ -109,11 +109,10 @@ Deno.serve(async (req: Request) => {
     row.email_captured_at = new Date().toISOString();
   } else if (event === "plan_selected") {
     // status stays at email_captured; plan field is set above
-  } else if (event === "payment_successful") {
-    row.paid = true;
-    row.payment_at = new Date().toISOString();
-    row.status = "paid";
   }
+  // NOTE: "payment_successful" is now only an analytics breadcrumb. Real paid
+  // state (paid/payment_at/status) and chapter-1 fulfillment are owned by the
+  // Stripe webhook (invoice.paid) — never trust the browser for money.
 
   const { error: upsertErr } = await db
     .from("quiz_sessions")
@@ -122,62 +121,6 @@ Deno.serve(async (req: Request) => {
   if (upsertErr) {
     console.error("upsert failed:", upsertErr);
     return jsonResponse({ error: "DB upsert failed", detail: upsertErr.message }, 500);
-  }
-
-  // --- On payment, queue chapter 1 generation (fire-and-forget) -------
-  if (event === "payment_successful") {
-    // 1) Create the story row up front so we have an id to pass.
-    const { data: session, error: sErr } = await db
-      .from("quiz_sessions")
-      .select("email")
-      .eq("id", sessionId)
-      .single();
-
-    if (sErr || !session?.email) {
-      console.error("payment_successful but no session email:", sErr);
-      return jsonResponse({ ok: true, warning: "no email on session, chapter not queued" });
-    }
-
-    const { data: story, error: stErr } = await db
-      .from("stories")
-      .insert({
-        session_id: sessionId,
-        lead_email: session.email,
-        status: "pending",
-      })
-      .select("id")
-      .single();
-
-    if (stErr || !story) {
-      console.error("story insert failed:", stErr);
-      return jsonResponse({ error: "story insert failed", detail: stErr?.message }, 500);
-    }
-
-    // 2) Trigger generate-chapter in the background. EdgeRuntime.waitUntil
-    //    keeps the worker alive until the fetch settles, but we don't block
-    //    the user's response on it.
-    const generateUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/generate-chapter`;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-    const trigger = fetch(generateUrl, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${serviceKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        story_id: story.id,
-        target_chapter_number: 1,
-      }),
-    }).catch((e) => console.error("background generate-chapter failed:", e));
-
-    // @ts-ignore - EdgeRuntime is a Supabase global
-    if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
-      // @ts-ignore
-      EdgeRuntime.waitUntil(trigger);
-    }
-
-    return jsonResponse({ ok: true, story_id: story.id });
   }
 
   return jsonResponse({ ok: true });
