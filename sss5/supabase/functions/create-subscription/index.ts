@@ -20,7 +20,7 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405);
 
   let body: {
-    session_id?: string; email?: string; plan?: string;
+    session_id?: string; email?: string; plan?: string; promo?: string;
     event_id?: string; fbc?: string; fbp?: string; event_source_url?: string; user_agent?: string;
   };
   try {
@@ -51,6 +51,17 @@ Deno.serve(async (req: Request) => {
 
   const cfg = planConfig(plan);
   if (!cfg) return jsonResponse({ error: "Unknown plan" }, 400);
+
+  // Internal testing: a secret promo (passed as ?promo=) charges $0.50 via a
+  // dedicated test price, for ANY plan. Validated server-side against an env
+  // secret, so the code never appears in client JS. Inert unless both
+  // STRIPE_TEST_PROMO and STRIPE_PRICE_TEST are set.
+  const promo = (body.promo ?? "").toString().trim();
+  const testPromo = Deno.env.get("STRIPE_TEST_PROMO") ?? "";
+  const testPriceId = Deno.env.get("STRIPE_PRICE_TEST") ?? "";
+  const useTestPrice = !!testPromo && !!testPriceId && promo === testPromo;
+  const effectivePriceId = useTestPrice ? testPriceId : cfg.priceId;
+  const effectiveCouponId = useTestPrice ? undefined : cfg.couponId;
 
   const db = adminClient();
 
@@ -94,8 +105,8 @@ Deno.serve(async (req: Request) => {
   try {
     sub = await stripe.subscriptions.create({
       customer: customerId,
-      items: [{ price: cfg.priceId }],
-      ...(cfg.couponId ? { discounts: [{ coupon: cfg.couponId }] } : {}),
+      items: [{ price: effectivePriceId }],
+      ...(effectiveCouponId ? { discounts: [{ coupon: effectiveCouponId }] } : {}),
       payment_behavior: "default_incomplete",
       payment_settings: { save_default_payment_method: "on_subscription" },
       expand: ["latest_invoice.confirmation_secret"],

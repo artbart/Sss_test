@@ -1222,6 +1222,7 @@ function getParam(name){
 }
 
 state.fbclid = getParam("fbclid") || "";
+state.promo = getParam("promo") || "";   // internal testing: ?promo=<secret> → $0.50
 
 if(state.fbclid){
   const ts = Math.floor(Date.now()/1000);
@@ -2152,7 +2153,7 @@ async function initStripePayment(){
         "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
       },
       body: JSON.stringify({
-        session_id: session_id, email: state.email, plan: state.plan,
+        session_id: session_id, email: state.email, plan: state.plan, promo: state.promo,
         event_id: eventId, fbc: fbc, fbp: fbp,
         event_source_url: window.location.href, user_agent: state.user_agent,
       }),
