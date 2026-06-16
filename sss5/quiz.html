@@ -2021,7 +2021,11 @@ function renderPayment(){
     "4": { label:"4-week plan", original:"$45.99", price:"$19.99", discount:"57%", discountAmt:"-$26.00" },
     "8": { label:"8-week plan", original:"$83.99", price:"$29.99", discount:"64%", discountAmt:"-$54.00" }
   };
-  const plan = planData[state.plan] || planData["8"];
+  let plan = planData[state.plan] || planData["8"];
+  // Testing promo: reflect the real $0.50 charge in the cosmetic summary.
+  if (state.promo) {
+    plan = { label: plan.label + " (test)", original: plan.price, price: "$0.50", discount: null, discountAmt: null };
+  }
 
   // card_page_shown is now posted together with plan selection event
   // in sendPlanSelection() to keep a clean 3-post model.
@@ -2200,7 +2204,8 @@ function renderSuccess(){
     "4": { label:"4-week access", price:"$19.99" },
     "8": { label:"8-week access", price:"$29.99" }
   };
-  const plan = planData[state.plan] || planData["8"];
+  let plan = planData[state.plan] || planData["8"];
+  if (state.promo) { plan = { label: plan.label + " (test)", price: "$0.50" }; }
 
   state.payment_successful = "yes";
   sendPaymentSuccess();
