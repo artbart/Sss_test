@@ -22,6 +22,9 @@ verify_jwt = false   # currently off; SHOULD be true (admin recovery tool) once 
 [functions.start-authenticated-story]
 verify_jwt = false   # validates the user JWT manually inside the function
 
+[functions.cancel-subscription]
+verify_jwt = false   # validates the user JWT manually inside the function
+
 [functions.create-subscription]
 verify_jwt = false   # public POST from the funnel using the anon key
 
