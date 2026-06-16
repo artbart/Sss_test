@@ -15,6 +15,7 @@
 
 import { adminClient } from "../_shared/db.ts";
 import { stripe, cryptoProvider } from "../_shared/stripe.ts";
+import { sendCapiPurchase } from "../_shared/meta.ts";
 import type Stripe from "npm:stripe@17";
 
 const WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET")!;
@@ -138,6 +139,22 @@ Deno.serve(async (req: Request) => {
             }
           }
         }
+      }
+
+      // Meta CAPI: mirror the browser Pixel Purchase on the first invoice,
+      // deduped by the shared meta_event_id. No-ops until META_CAPI_TOKEN is set.
+      if (inv.billing_reason === "subscription_create") {
+        const capi = sendCapiPurchase({
+          eventId: meta.meta_event_id ?? "",
+          email,
+          value: (inv.amount_paid ?? 0) / 100,
+          currency: inv.currency ?? "usd",
+          fbc: meta.meta_fbc, fbp: meta.meta_fbp,
+          clientIp: meta.meta_ip, userAgent: meta.meta_ua, sourceUrl: meta.meta_src,
+        });
+        // @ts-ignore EdgeRuntime is a Supabase global
+        if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) EdgeRuntime.waitUntil(capi);
+        else await capi;
       }
     } else if (event.type === "invoice.payment_failed") {
       await db.from("users").update({ subscription_status: "past_due" }).eq("stripe_customer_id", sub.customer as string);

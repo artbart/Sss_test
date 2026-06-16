@@ -2108,10 +2108,18 @@ function renderPayment(){
   document.getElementById("payBtn").onclick = submitPayment;
 }
 
+function readCookie(n){ const m = document.cookie.match(new RegExp('(?:^|; )' + n + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : ""; }
+
 async function initStripePayment(){
   const errEl = document.getElementById("cardNumErr");
   const payBtn = document.getElementById("payBtn");
   if(!stripeClient){ errEl.innerText = "Payment failed to load. Please refresh."; return; }
+  // Meta CAPI: one shared event_id (client Pixel + server) for dedup, plus the
+  // _fbc/_fbp cookies for ad attribution. Carried into the subscription metadata.
+  const eventId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (String(Date.now()) + Math.random());
+  state.meta_event_id = eventId;
+  const fbp = readCookie("_fbp");
+  const fbc = readCookie("_fbc") || state.fbc || "";
   try {
     const res = await fetch(CREATE_SUBSCRIPTION_URL, {
       method: "POST",
@@ -2120,10 +2128,15 @@ async function initStripePayment(){
         "apikey": SUPABASE_ANON_KEY,
         "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
       },
-      body: JSON.stringify({ session_id: session_id, email: state.email, plan: state.plan }),
+      body: JSON.stringify({
+        session_id: session_id, email: state.email, plan: state.plan,
+        event_id: eventId, fbc: fbc, fbp: fbp,
+        event_source_url: window.location.href, user_agent: state.user_agent,
+      }),
     });
     const data = await res.json();
     if(!res.ok || !data.client_secret) throw new Error(data.error || "Could not start payment");
+    if(data.meta_event_id) state.meta_event_id = data.meta_event_id; // server's effective id (survives retries)
 
     stripeElements = stripeClient.elements({
       clientSecret: data.client_secret,
@@ -2195,7 +2208,7 @@ function renderSuccess(){
     fbq("track", "Purchase", {
       value: state.plan === "4" ? 19.99 : state.plan === "1" ? 29.99 : 29.99,
       currency: "USD"
-    });
+    }, state.meta_event_id ? { eventID: state.meta_event_id } : undefined);
   }
 
   // Auto-save the default delivery preference to quiz_sessions immediately.

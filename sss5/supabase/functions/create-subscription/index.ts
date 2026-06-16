@@ -19,7 +19,10 @@ Deno.serve(async (req: Request) => {
   if (pre) return pre;
   if (req.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405);
 
-  let body: { session_id?: string; email?: string; plan?: string };
+  let body: {
+    session_id?: string; email?: string; plan?: string;
+    event_id?: string; fbc?: string; fbp?: string; event_source_url?: string; user_agent?: string;
+  };
   try {
     body = await req.json();
   } catch {
@@ -32,6 +35,19 @@ Deno.serve(async (req: Request) => {
   if (!sessionId || !email || !plan) {
     return jsonResponse({ error: "Missing session_id, email or plan" }, 400);
   }
+
+  // Meta CAPI signals — captured here (a direct browser call) so the IP/UA are
+  // the real client's, then carried via subscription metadata to the webhook.
+  const metaEventId = (body.event_id ?? "").toString().slice(0, 64);
+  const clientIp = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim();
+  const userAgent = (req.headers.get("user-agent") ?? body.user_agent ?? "").toString().slice(0, 350);
+  const metaMeta: Record<string, string> = {};
+  if (metaEventId) metaMeta.meta_event_id = metaEventId;
+  if (body.fbc) metaMeta.meta_fbc = String(body.fbc).slice(0, 255);
+  if (body.fbp) metaMeta.meta_fbp = String(body.fbp).slice(0, 255);
+  if (clientIp) metaMeta.meta_ip = clientIp;
+  if (userAgent) metaMeta.meta_ua = userAgent;
+  if (body.event_source_url) metaMeta.meta_src = String(body.event_source_url).slice(0, 300);
 
   const cfg = planConfig(plan);
   if (!cfg) return jsonResponse({ error: "Unknown plan" }, 400);
@@ -59,6 +75,7 @@ Deno.serve(async (req: Request) => {
           client_secret: cs,
           customer_id: sub.customer,
           subscription_id: sub.id,
+          meta_event_id: sub.metadata?.meta_event_id ?? metaEventId,
         });
       }
     } catch (_) {
@@ -82,7 +99,7 @@ Deno.serve(async (req: Request) => {
       payment_behavior: "default_incomplete",
       payment_settings: { save_default_payment_method: "on_subscription" },
       expand: ["latest_invoice.confirmation_secret"],
-      metadata: { session_id: sessionId, email, plan },
+      metadata: { session_id: sessionId, email, plan, ...metaMeta },
     });
   } catch (e) {
     console.error("subscription create failed:", e);
@@ -109,6 +126,7 @@ Deno.serve(async (req: Request) => {
     client_secret: clientSecret,
     customer_id: customerId,
     subscription_id: sub.id,
+    meta_event_id: metaEventId,
   });
 });
 
