@@ -1080,61 +1080,9 @@ body{
   to { transform: rotate(360deg); }
 }
 
-.ss-delivery-group { display: flex; flex-direction: column; gap: 10px; }
-.ss-delivery-opt {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: #e04b57;
-  color: #fff;
-  border: 1px solid transparent;
-  border-radius: 14px;
-  padding: 14px 16px;
-  cursor: pointer;
-  text-align: left;
-  font-family: Georgia, serif;
-  font-size: 15px;
-  line-height: 1.35;
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-.ss-delivery-opt:hover { border-color: rgba(255,255,255,0.4); }
-.ss-delivery-opt.selected {
-  border-color: #fff;
-  box-shadow: 0 0 0 2px rgba(255,255,255,0.25), 0 8px 24px rgba(224,75,87,0.20);
-}
-.ss-radio {
-  width: 17px; height: 17px;
-  border-radius: 50%;
-  border: 2px solid #fff;
-  display: inline-block;
-  flex-shrink: 0;
-  position: relative;
-}
-.ss-delivery-opt.selected .ss-radio::after {
-  content: "";
-  position: absolute;
-  inset: 3px;
-  background: #fff;
-  border-radius: 50%;
-}
-.ss-radio-label { flex: 1; }
-.ss-btn-primary {
-  width: 100%;
-  background: #0f9127;
-  color: #fff;
-  border: none;
-  border-radius: 14px;
-  padding: 16px;
-  font-size: 16px;
-  font-weight: bold;
-  cursor: pointer;
-  font-family: inherit;
-}
-.ss-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 .ss-btn-login {
   width: 100%;
-  background: #32121c;
+  background: #0f9127;
   color: #fff;
   border: none;
   border-radius: 14px;
@@ -1154,8 +1102,16 @@ body{
   font-size: 13px;
   min-height: 18px;
 }
-.ss-status.ok { color: #8eff6d; }
+.ss-status.ok  { color: #8eff6d; }
 .ss-status.err { color: #ff6b7c; }
+.ss-success-video {
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: 14px;
+  display: block;
+  margin: 22px auto;
+}
 
 </style>
 
@@ -2252,40 +2208,20 @@ function renderSuccess(){
 
       <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:14px;">
         <div style="width:42px;height:42px;border-radius:50%;background:#1a6e38;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">&#10003;</div>
-        <div style="font-size:24px;font-weight:bold;">You're in!</div>
+        <div style="font-size:24px;font-weight:bold;">Payment Successful</div>
       </div>
 
       <div style="font-size:15px;opacity:.85;text-align:center;line-height:1.5;margin-bottom:26px;">
         We will soon send You the first Chapter of a custom and interactive story.
       </div>
 
-      <div style="font-size:15px;font-weight:600;margin-bottom:12px;">One last step: choose where you wanna read it (can be changed later):</div>
+      <video src="/media/success_video.mp4" autoplay muted loop playsinline class="ss-success-video"></video>
 
-      <div class="ss-delivery-group">
-        <button type="button" class="ss-delivery-opt" data-value="email_full_story">
-          <span class="ss-radio"></span>
-          <span class="ss-radio-label">Send Full Chapter via Email</span>
-        </button>
-        <button type="button" class="ss-delivery-opt selected" data-value="email_link_only">
-          <span class="ss-radio"></span>
-          <span class="ss-radio-label">Only inform me via email. I will read it on the app</span>
-        </button>
-        <button type="button" class="ss-delivery-opt" data-value="in_app_only">
-          <span class="ss-radio"></span>
-          <span class="ss-radio-label">No emails &mdash; I'll check the app myself</span>
-        </button>
-      </div>
-
-      <button type="button" id="saveDeliveryBtn" class="ss-btn-primary" style="margin-top:14px;">Save delivery option</button>
-      <div id="saveDeliveryStatus" class="ss-status"></div>
-
-      <button type="button" id="loginBtn" class="ss-btn-login" style="margin-top:20px;">
+      <button type="button" id="loginBtn" class="ss-btn-login" style="margin-top:14px;">
         <div style="font-size:16px;font-weight:bold;">Login to Your Account</div>
         <div style="font-size:12px;opacity:0.8;margin-top:2px;">We'll send You the access link</div>
       </button>
       <div id="loginStatus" class="ss-status"></div>
-
-      <video src="/media/success_video.mp4" autoplay muted loop playsinline style="width:100%;max-width:280px;display:block;margin:22px auto;border-radius:14px;"></video>
 
       <div style="background:rgba(255,255,255,0.07);border-radius:18px;padding:18px;width:100%;margin-bottom:26px;">
         <div style="font-size:14px;opacity:.7;margin-bottom:12px;text-align:center;">Your plan summary</div>
@@ -2308,46 +2244,13 @@ function renderSuccess(){
 }
 
 function setupSuccessHandlers(userEmail){
-  // Radio-button-style delivery option selection
-  const opts = document.querySelectorAll(".ss-delivery-opt");
-  opts.forEach(btn => {
-    btn.addEventListener("click", () => {
-      opts.forEach(r => r.classList.remove("selected"));
-      btn.classList.add("selected");
-      state.notification_preference_choice = btn.dataset.value;
-    });
-  });
+  // The notification-preference radio panel is gone — the default 'email_link_only'
+  // is auto-saved on renderSuccess so the user receives a chapter-1 notification
+  // email without configuring anything. They can change it later in the app's
+  // Settings page.
+  //
+  // Only handler left here: the "Login to Your Account" magic-link button.
 
-  // Save delivery option
-  document.getElementById("saveDeliveryBtn")?.addEventListener("click", async () => {
-    const btn = document.getElementById("saveDeliveryBtn");
-    const status = document.getElementById("saveDeliveryStatus");
-    btn.disabled = true;
-    const originalText = "Save delivery option";
-    btn.textContent = "Saving…";
-    status.textContent = "";
-    try {
-      await postQuizEvent("set_notification_preference", {
-        notification_preference_choice: state.notification_preference_choice || "email_link_only"
-      });
-      status.textContent = "Saved ✓";
-      status.className = "ss-status ok";
-      btn.textContent = "Saved ✓";
-      setTimeout(() => {
-        btn.textContent = originalText;
-        btn.disabled = false;
-        status.textContent = "";
-        status.className = "ss-status";
-      }, 2500);
-    } catch (e) {
-      status.textContent = "Couldn't save. Try again.";
-      status.className = "ss-status err";
-      btn.disabled = false;
-      btn.textContent = originalText;
-    }
-  });
-
-  // Login to Your Account — trigger Supabase magic link
   document.getElementById("loginBtn")?.addEventListener("click", async () => {
     const btn = document.getElementById("loginBtn");
     const status = document.getElementById("loginStatus");
