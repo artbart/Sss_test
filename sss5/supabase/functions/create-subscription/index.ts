@@ -108,7 +108,9 @@ Deno.serve(async (req: Request) => {
       items: [{ price: effectivePriceId }],
       ...(effectiveCouponId ? { discounts: [{ coupon: effectiveCouponId }] } : {}),
       payment_behavior: "default_incomplete",
-      payment_settings: { save_default_payment_method: "on_subscription" },
+      // card-only: removes the Stripe Link "save my info" signup (and other
+      // alt methods). Scoped to this subscription; PhaseMap is unaffected.
+      payment_settings: { save_default_payment_method: "on_subscription", payment_method_types: ["card"] },
       expand: ["latest_invoice.confirmation_secret"],
       metadata: { session_id: sessionId, email, plan, ...metaMeta },
     });
