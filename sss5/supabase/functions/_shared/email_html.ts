@@ -117,6 +117,10 @@ export interface ShortNotificationEmailArgs {
   totalChapters: number;
   storyId: string;
   isFinalChapter: boolean;
+  // Optional: a pre-generated magic-link URL that auto-signs the user in and
+  // lands them at the chapter. When provided, this is used as the button href
+  // instead of the plain chapter URL. Falls back to the plain URL if omitted.
+  ctaUrl?: string;
 }
 
 const APP_CHAPTER_URL = "https://app.stuffsosweet.com/chapter.html";
@@ -125,9 +129,12 @@ const APP_SETTINGS_URL = "https://app.stuffsosweet.com/settings.html";
 export function buildShortNotificationEmail(args: ShortNotificationEmailArgs):
   { subject: string; html: string; text: string }
 {
-  const { storyTitle, chapterNumber, totalChapters, storyId, isFinalChapter } = args;
+  const { storyTitle, chapterNumber, totalChapters, storyId, isFinalChapter, ctaUrl } = args;
 
-  const url = `${APP_CHAPTER_URL}?story=${encodeURIComponent(storyId)}&n=${chapterNumber}`;
+  // Prefer the magic-link URL (one-click auto-signin), fall back to the plain
+  // chapter URL (which routes through the signin page) if the caller didn't
+  // provide one.
+  const url = ctaUrl ?? `${APP_CHAPTER_URL}?story=${encodeURIComponent(storyId)}&n=${chapterNumber}`;
   const subject = isFinalChapter
     ? `${storyTitle} — Your final chapter is ready`
     : `${storyTitle} — Chapter ${chapterNumber} of ${totalChapters} is ready`;

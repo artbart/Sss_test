@@ -2196,7 +2196,7 @@ function renderSuccess(){
 
       <button type="button" id="loginBtn" class="ss-btn-login" style="margin-top:14px;">
         <div style="font-size:16px;font-weight:bold;">Login to Your Account</div>
-        <div style="font-size:12px;opacity:0.8;margin-top:2px;">We'll send You the access link</div>
+        <div style="font-size:12px;opacity:0.8;margin-top:2px;">One click — no password needed</div>
       </button>
       <div id="loginStatus" class="ss-status"></div>
 
@@ -2236,33 +2236,46 @@ function setupSuccessHandlers(userEmail){
       status.className = "ss-status err";
       return;
     }
+    if (!state.session_id) {
+      status.textContent = "Couldn't find your session — please refresh and try again.";
+      status.className = "ss-status err";
+      return;
+    }
     btn.disabled = true;
-    btn.innerHTML = '<div style="font-size:16px;font-weight:bold;">Sending link…</div>';
+    btn.innerHTML = '<div style="font-size:16px;font-weight:bold;">Signing you in…</div>';
     status.textContent = "";
     try {
-      const mod = await import("https://esm.sh/@supabase/supabase-js@2.45.4");
-      const sb = mod.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      const { error } = await sb.auth.signInWithOtp({
-        email: userEmail.trim().toLowerCase(),
-        options: {
-          emailRedirectTo: "https://app.stuffsosweet.com/auth/callback",
-          shouldCreateUser: true,
+      // Use the auth-create-magic-link edge function to get a one-click
+      // signin URL (no email round-trip). Since the user JUST paid using
+      // this email (verified server-side via paid quiz_session), we can
+      // hand them a signed magic link directly. Browser redirects to it,
+      // Supabase /verify validates, sets the session, lands them at /stories.
+      const res = await fetch(SUPABASE_URL + "/functions/v1/auth-create-magic-link", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": SUPABASE_ANON_KEY,
+          "Authorization": "Bearer " + SUPABASE_ANON_KEY,
         },
+        body: JSON.stringify({
+          session_id: state.session_id,
+          email: userEmail.trim().toLowerCase(),
+          redirect_to: "https://app.stuffsosweet.com/auth/callback?next=%2Fstories.html",
+        }),
       });
-      if (error) throw error;
-      status.innerHTML = 'Check your inbox — we sent a sign-in link to <strong>' + userEmail + '</strong>. The link works for 24 hours.';
-      status.className = "ss-status ok";
-      btn.innerHTML = '<div style="font-size:16px;font-weight:bold;">Sign-in link sent ✓</div>';
-      setTimeout(() => {
-        btn.innerHTML = '<div style="font-size:16px;font-weight:bold;">Send another link</div><div style="font-size:12px;opacity:0.8;margin-top:2px;">We\'ll send You the access link</div>';
-        btn.disabled = false;
-      }, 30000);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.magic_link_url) {
+        throw new Error(data.error || ("HTTP " + res.status));
+      }
+      // Mark optimistic success — page is about to navigate anyway
+      btn.innerHTML = '<div style="font-size:16px;font-weight:bold;">Taking you to your account…</div>';
+      window.location.href = data.magic_link_url;
     } catch (e) {
-      console.error("magic link send failed:", e);
-      status.textContent = "Couldn't send the link. " + (e?.message || "Try again in a moment.");
+      console.error("auto-signin failed:", e);
+      status.textContent = "Couldn't sign you in. " + (e?.message || "Try again in a moment.");
       status.className = "ss-status err";
       btn.disabled = false;
-      btn.innerHTML = '<div style="font-size:16px;font-weight:bold;">Login to Your Account</div><div style="font-size:12px;opacity:0.8;margin-top:2px;">We\'ll send You the access link</div>';
+      btn.innerHTML = '<div style="font-size:16px;font-weight:bold;">Login to Your Account</div><div style="font-size:12px;opacity:0.8;margin-top:2px;">One click — no password needed</div>';
     }
   });
 }

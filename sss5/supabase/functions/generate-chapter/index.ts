@@ -400,9 +400,35 @@ async function sendChapterEmail(
   // ----- Build the right email payload based on preference -----
   let subject: string, html: string, text: string;
   if (pref === "email_link_only") {
+    // Generate a one-click magic-link URL that auto-signs the user in and
+    // lands them directly at the chapter. Replaces the previous flow where
+    // clicking the "Read Chapter N →" button bounced the user through the
+    // signin page asking them to type their email again (terrible UX).
+    //
+    // admin.generateLink returns the action_link WITHOUT sending an email
+    // (the email-sending side of Supabase Auth is only triggered by the
+    // explicit signInWithOtp / signUp flows, which hit our auth-email-hook).
+    let ctaUrl: string | undefined;
+    try {
+      const next = `/chapter.html?story=${encodeURIComponent(storyId)}&n=${chapterNumber}`;
+      const redirectTo = `https://app.stuffsosweet.com/auth/callback?next=${encodeURIComponent(next)}`;
+      const { data, error } = await db.auth.admin.generateLink({
+        type: "magiclink",
+        email: to,
+        options: { redirectTo },
+      });
+      if (error) {
+        console.error(`[chapter-email] generateLink failed for ${to}:`, error);
+      } else if (data?.properties?.action_link) {
+        ctaUrl = data.properties.action_link;
+      }
+    } catch (e) {
+      console.error(`[chapter-email] generateLink threw for ${to}:`, e);
+    }
+
     ({ subject, html, text } = buildShortNotificationEmail({
       storyTitle, chapterNumber, totalChapters: total,
-      storyId, isFinalChapter: isFinal,
+      storyId, isFinalChapter: isFinal, ctaUrl,
     }));
   } else {
     // 'email_full_story' (default + guest stories)
