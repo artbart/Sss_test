@@ -2236,7 +2236,7 @@ function setupSuccessHandlers(userEmail){
       status.className = "ss-status err";
       return;
     }
-    if (!state.session_id) {
+    if (!session_id) {
       status.textContent = "Couldn't find your session — please refresh and try again.";
       status.className = "ss-status err";
       return;
@@ -2258,7 +2258,7 @@ function setupSuccessHandlers(userEmail){
           "Authorization": "Bearer " + SUPABASE_ANON_KEY,
         },
         body: JSON.stringify({
-          session_id: state.session_id,
+          session_id: session_id,
           email: userEmail.trim().toLowerCase(),
           redirect_to: "https://app.stuffsosweet.com/auth/callback?next=%2Fstories.html",
         }),
