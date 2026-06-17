@@ -125,13 +125,61 @@ Deno.serve(async (req: Request) => {
           if (stErr || !story) {
             console.error("story insert failed:", stErr);
           } else {
+            // Audit trail: record that fulfillment fired BEFORE trying to trigger
+            // chapter generation. So if the trigger fails again for any reason, we
+            // can still see in the events table that we got this far.
+            await db.from("events").insert({
+              email,
+              session_id: sessionId,
+              story_id: story.id,
+              event_type: "payment_fulfilled",
+              metadata: {
+                stripe_event_id: event.id,
+                amount_paid_cents: inv.amount_paid ?? null,
+                billing_reason: inv.billing_reason ?? null,
+              },
+            }).then(({ error: evErr }) => {
+              if (evErr) console.error("events payment_fulfilled insert failed:", evErr);
+            });
+
+            // Trigger chapter 1 generation via the edge function HTTP endpoint.
+            //
+            // CRITICAL: Supabase's API gateway requires BOTH the `apikey` header
+            // (for routing) AND the `Authorization` header (for the function's
+            // own JWT verification, even though generate-chapter has
+            // verify_jwt:false — the gateway still inspects it). Earlier this
+            // call only set Authorization; the gateway rejected the request with
+            // 401 BEFORE generate-chapter saw it, and `fetch().catch()` does NOT
+            // fire on non-2xx HTTP responses — only on network errors. The
+            // failure was silent. Every paying user got stuck at status=pending.
+            // Discovered 2026-06-17 via abobinas+prod3.
+            //
+            // Also: generate-chapter takes 60-90s, longer than Stripe's 30s
+            // webhook timeout. We use EdgeRuntime.waitUntil to keep the trigger
+            // alive AFTER we ACK Stripe.
             const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/generate-chapter`;
             const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
             const trigger = fetch(url, {
               method: "POST",
-              headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+              headers: {
+                "Authorization": `Bearer ${key}`,
+                "apikey": key,
+                "Content-Type": "application/json",
+              },
               body: JSON.stringify({ story_id: story.id, target_chapter_number: 1 }),
-            }).catch((e) => console.error("generate-chapter trigger failed:", e));
+            })
+              .then(async (r) => {
+                if (r.ok) {
+                  console.log(`generate-chapter trigger OK for story ${story.id} (HTTP ${r.status})`);
+                } else {
+                  const body = await r.text().catch(() => "");
+                  console.error(
+                    `generate-chapter trigger FAILED for story ${story.id} (HTTP ${r.status}):`,
+                    body.slice(0, 500),
+                  );
+                }
+              })
+              .catch((e) => console.error(`generate-chapter trigger threw for story ${story.id}:`, e));
             // @ts-ignore EdgeRuntime is a Supabase global
             if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
               // @ts-ignore
