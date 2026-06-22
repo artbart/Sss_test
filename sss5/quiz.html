@@ -7,6 +7,8 @@
 <!-- Stripe.js MUST load live from js.stripe.com (no SRI/integrity — Stripe updates
      this file and a pinned hash would break checkout; it also keeps PCI SAQ-A scope). -->
 <script src="https://js.stripe.com/v3/"></script>
+  <!-- PostHog product analytics (shared) -->
+  <script type="module" src="/assets/posthog.js"></script>
 </head>
 <body>
 <!-- ================= ROOT ================= -->
@@ -1237,6 +1239,17 @@ function cleanupIntervals(){
 // that single event is lost, the story never gets created.
 async function postQuizEvent(event, payload){
   try { console.log("[MHS quiz] -> submit-quiz", event, payload); } catch (_) {}
+
+  // Mirror every quiz funnel milestone into PostHog (loaded via /assets/posthog.js).
+  // Identity is keyed on email — the same key the magic-link app account uses —
+  // so a visitor's quiz → signup → reading journey stitches into one person.
+  try {
+    if (window.posthog) {
+      const email = payload && payload.email;
+      if (email) window.posthog.identify(email, { email });
+      window.posthog.capture(event, { ...(payload || {}), session_id, funnel: "sss5_quiz" });
+    }
+  } catch (_) {}
 
   const body = JSON.stringify({
     session_id: session_id,

@@ -17,6 +17,7 @@ import { adminClient } from "../_shared/db.ts";
 import { stripe, cryptoProvider } from "../_shared/stripe.ts";
 import { sendCapiPurchase } from "../_shared/meta.ts";
 import { notifySlack } from "../_shared/slack.ts";
+import { capturePosthog } from "../_shared/posthog.ts";
 import type Stripe from "npm:stripe@17";
 
 const WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET")!;
@@ -222,6 +223,20 @@ Deno.serve(async (req: Request) => {
         customerId: sub.customer as string,
         fields: { Status: sub.status, "Renews/ends": period.end },
       }));
+
+      // PostHog: authoritative revenue conversion, keyed on email.
+      bg(capturePosthog({
+        event: inv.billing_reason === "subscription_create" ? "subscription_started" : "subscription_renewed",
+        distinctId: email || (sub.customer as string),
+        properties: {
+          amount: (inv.amount_paid ?? 0) / 100,
+          currency: (inv.currency ?? "usd").toUpperCase(),
+          billing_reason: inv.billing_reason ?? null,
+          subscription_status: sub.status,
+          session_id: sessionId,
+          stripe_customer_id: sub.customer as string,
+        },
+      }));
     } else if (event.type === "invoice.payment_failed") {
       await db.from("users").update({ subscription_status: "past_due" }).eq("stripe_customer_id", sub.customer as string);
       if (sessionId) await db.from("quiz_sessions").update({ subscription_status: "past_due" }).eq("id", sessionId);
@@ -233,6 +248,17 @@ Deno.serve(async (req: Request) => {
         currency: inv.currency,
         sessionId,
         customerId: sub.customer as string,
+      }));
+
+      bg(capturePosthog({
+        event: "subscription_payment_failed",
+        distinctId: (meta.email ?? inv.customer_email ?? "").toLowerCase() || (sub.customer as string),
+        properties: {
+          amount: (inv.amount_due ?? inv.amount_paid ?? 0) / 100,
+          currency: (inv.currency ?? "usd").toUpperCase(),
+          session_id: sessionId,
+          stripe_customer_id: sub.customer as string,
+        },
       }));
     } else {
       // customer.subscription.updated | deleted
@@ -246,6 +272,16 @@ Deno.serve(async (req: Request) => {
           sessionId,
           customerId: sub.customer as string,
           fields: { "Canceled at period end": sub.cancel_at_period_end ?? false },
+        }));
+
+        bg(capturePosthog({
+          event: "subscription_canceled",
+          distinctId: meta.email || (sub.customer as string),
+          properties: {
+            cancel_at_period_end: sub.cancel_at_period_end ?? false,
+            session_id: sessionId,
+            stripe_customer_id: sub.customer as string,
+          },
         }));
       }
     }
