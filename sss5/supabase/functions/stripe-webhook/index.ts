@@ -16,10 +16,17 @@
 import { adminClient } from "../_shared/db.ts";
 import { stripe, cryptoProvider } from "../_shared/stripe.ts";
 import { sendCapiPurchase } from "../_shared/meta.ts";
+import { notifySlack } from "../_shared/slack.ts";
 import type Stripe from "npm:stripe@17";
 
 const WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET")!;
 const ACK = () => new Response("ok", { status: 200 });
+
+// Run a fire-and-forget side effect without delaying the ACK to Stripe.
+function bg(p: Promise<unknown>): void {
+  // @ts-ignore EdgeRuntime is a Supabase global
+  if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) EdgeRuntime.waitUntil(p);
+}
 
 function isoOrNull(unixSeconds: number | null | undefined): string | null {
   return unixSeconds ? new Date(unixSeconds * 1000).toISOString() : null;
@@ -204,13 +211,43 @@ Deno.serve(async (req: Request) => {
         if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) EdgeRuntime.waitUntil(capi);
         else await capi;
       }
+
+      // Slack: new purchase on the first invoice, otherwise a renewal.
+      bg(notifySlack({
+        kind: inv.billing_reason === "subscription_create" ? "purchase" : "renewal",
+        email,
+        amount: (inv.amount_paid ?? 0) / 100,
+        currency: inv.currency,
+        sessionId,
+        customerId: sub.customer as string,
+        fields: { Status: sub.status, "Renews/ends": period.end },
+      }));
     } else if (event.type === "invoice.payment_failed") {
       await db.from("users").update({ subscription_status: "past_due" }).eq("stripe_customer_id", sub.customer as string);
       if (sessionId) await db.from("quiz_sessions").update({ subscription_status: "past_due" }).eq("id", sessionId);
+
+      bg(notifySlack({
+        kind: "payment_failed",
+        email: (meta.email ?? inv.customer_email ?? "").toLowerCase() || null,
+        amount: (inv.amount_due ?? inv.amount_paid ?? 0) / 100,
+        currency: inv.currency,
+        sessionId,
+        customerId: sub.customer as string,
+      }));
     } else {
       // customer.subscription.updated | deleted
       await db.from("users").update(subFields).eq("stripe_customer_id", sub.customer as string);
       if (sessionId) await db.from("quiz_sessions").update(subFields).eq("id", sessionId);
+
+      if (event.type === "customer.subscription.deleted") {
+        bg(notifySlack({
+          kind: "cancellation",
+          email: meta.email ?? null,
+          sessionId,
+          customerId: sub.customer as string,
+          fields: { "Canceled at period end": sub.cancel_at_period_end ?? false },
+        }));
+      }
     }
   } catch (e) {
     console.error("webhook handler error:", e);

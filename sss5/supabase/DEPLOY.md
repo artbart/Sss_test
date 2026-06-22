@@ -34,9 +34,12 @@ below). Add:
 | `MAIL_FROM_NAME` | *(no longer required — display name is hardcoded to "Stuff So Sweet" in `_shared/resend.ts`)* |
 | `MAIL_REPLY_TO` | `stories.stuffsosweet@gmail.com` |
 | `CHAPTER_URL_BASE` | `https://stuffsosweet.com/chapter_update.html` |
+| `SLACK_BOT_TOKEN` | `xoxb-...` Slack bot token (same bot reused from my-photo-alive) |
+| `SLACK_CHANNEL_PURCHASES` | Channel ID (`C...`) for purchase/renewal/failure/cancel notifications. The bot must be invited to this channel. |
 
 (`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are auto-provided by Supabase
-and don't need to be set.)
+and don't need to be set. `SLACK_*` are optional — the webhook no-ops the
+notification if they're unset.)
 
 ## 2. Deploy the edge functions
 
@@ -67,6 +70,8 @@ supabase secrets set MAIL_FROM=stories@stuffsosweet.com
 supabase secrets set MAIL_FROM_NAME="Stuff So Sweet"
 supabase secrets set MAIL_REPLY_TO=stories.stuffsosweet@gmail.com
 supabase secrets set CHAPTER_URL_BASE=https://stuffsosweet.com/chapter_update.html
+supabase secrets set SLACK_BOT_TOKEN=xoxb-...
+supabase secrets set SLACK_CHANNEL_PURCHASES=C...   # invite the bot to this channel first
 ```
 
 ### Path B — Dashboard paste (no CLI)
