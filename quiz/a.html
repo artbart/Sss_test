@@ -30,18 +30,21 @@
 <!-- Stripe.js MUST load live from js.stripe.com (no SRI/integrity — Stripe updates
      this file and a pinned hash would break checkout; it also keeps PCI SAQ-A scope). -->
 <script src="https://js.stripe.com/v3/"></script>
-  <!-- Google tag (gtag.js) -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=AW-18259925180"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'AW-18259925180');
-  </script>
-  <!-- End Google tag -->
+  <!-- Google Tag Manager -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer','GTM-PKM537QM');</script>
+  <!-- End Google Tag Manager -->
 
 </head>
 <body>
+  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-PKM537QM"
+  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
+
 <!-- ================= ROOT ================= -->
 <div id="app"></div>
 
@@ -2212,38 +2215,40 @@ function renderSuccess(){
     window.history.replaceState(null, "", successUrl);
   } catch (_) { /* ignore */ }
 
-  // 2) Fire Google Ads events — ONCE per session.
+  // 2) Push a 'purchase' event to the GTM dataLayer — ONCE per session.
   //    Guarded by state.gtagPurchaseFired so a refresh / re-render can't
-  //    double-count. transaction_id (the quiz session UUID) is Google's
-  //    canonical dedup mechanism — even if a bug somehow fires this twice
-  //    in the same session, Google Ads counts at most one conversion per
-  //    transaction_id.
-  if (!state.gtagPurchaseFired && typeof gtag === "function") {
+  //    double-count on the client. GTM picks up the event and fires whatever
+  //    tags you've attached to it inside the GTM dashboard. Recommended GTM
+  //    configuration:
+  //      - Custom Event trigger: Event name = 'purchase'
+  //      - Google Ads Conversion Tracking tag with AW-18259925180 + your
+  //        Conversion Label, pulling Value / Order ID / Currency from these
+  //        dataLayer variables (set those up as 'DataLayer variable' type
+  //        in GTM with names 'value', 'transaction_id', 'currency').
+  //    Alternative: a Page View trigger matching URL contains 'status=paid'
+  //    works just as well — the URL is already rewritten above. Use one or
+  //    the other; if you use both, the transaction_id (Order ID) is Google
+  //    Ads' canonical dedup mechanism — same purchase counts at most once.
+  if (!state.gtagPurchaseFired && window.dataLayer) {
     state.gtagPurchaseFired = true;
     try {
       const txId = (typeof session_id !== "undefined" ? session_id : "") || state.session_id || "";
       const planValue = state.plan === "4" ? 19.99 : (state.plan === "1" || state.plan === "8") ? 29.99 : 0;
 
-      // 2a) page_view — for Google Ads URL-pattern conversion actions.
-      //     Belt-and-suspenders in case Google's automatic History-API
-      //     monitoring is off; this guarantees the page-view fires.
-      gtag("event", "page_view", {
-        page_location: window.location.href,
-        page_title: "Stuff So Sweet \u2014 Payment Successful",
-      });
-
-      // 2b) conversion — for Google Ads event-based conversion actions.
-      //     Fires the conversion ID directly. transaction_id dedupes
-      //     against the URL-based action so the same purchase can't
-      //     count twice.
-      gtag("event", "conversion", {
-        send_to: "AW-18259925180",
+      window.dataLayer.push({
+        event: "purchase",
+        transaction_id: txId,
         value: planValue,
         currency: "USD",
-        transaction_id: txId,
+        items: [{
+          item_id: "plan_" + (state.plan || "unknown"),
+          item_name: (state.plan || "unknown") + "-week plan",
+          price: planValue,
+          quantity: 1,
+        }],
       });
     } catch (e) {
-      console.warn("[gtag] purchase fire failed:", e);
+      console.warn("[dataLayer] purchase fire failed:", e);
     }
   }
 
