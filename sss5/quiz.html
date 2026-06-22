@@ -2155,6 +2155,16 @@ function renderProcessing(){
 }
 
 function renderSuccess(){
+  // Update the browser URL so Google Ads (and any other URL-pattern-based
+  // conversion tracking) can fire on the success state. The quiz is a SPA so
+  // the URL would otherwise stay /quiz/a.html through every step. We use
+  // replaceState (not pushState) so the back button skips this state.
+  try {
+    const successUrl = "/quiz/a.html?status=paid" +
+      (state.email ? "&email=" + encodeURIComponent(state.email) : "");
+    window.history.replaceState(null, "", successUrl);
+  } catch (_) { /* ignore */ }
+
   const planData = {
     "1": { label:"1-week access", price:"$29.99" },
     "4": { label:"4-week access", price:"$19.99" },

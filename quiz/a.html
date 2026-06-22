@@ -30,6 +30,16 @@
 <!-- Stripe.js MUST load live from js.stripe.com (no SRI/integrity — Stripe updates
      this file and a pinned hash would break checkout; it also keeps PCI SAQ-A scope). -->
 <script src="https://js.stripe.com/v3/"></script>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=AW-18259925180"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'AW-18259925180');
+  </script>
+  <!-- End Google tag -->
+
 </head>
 <body>
 <!-- ================= ROOT ================= -->
@@ -2178,6 +2188,16 @@ function renderProcessing(){
 }
 
 function renderSuccess(){
+  // Update the browser URL so Google Ads (and any other URL-pattern-based
+  // conversion tracking) can fire on the success state. The quiz is a SPA so
+  // the URL would otherwise stay /quiz/a.html through every step. We use
+  // replaceState (not pushState) so the back button skips this state.
+  try {
+    const successUrl = "/quiz/a.html?status=paid" +
+      (state.email ? "&email=" + encodeURIComponent(state.email) : "");
+    window.history.replaceState(null, "", successUrl);
+  } catch (_) { /* ignore */ }
+
   const planData = {
     "1": { label:"1-week access", price:"$29.99" },
     "4": { label:"4-week access", price:"$19.99" },
