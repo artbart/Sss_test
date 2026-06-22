@@ -2188,15 +2188,64 @@ function renderProcessing(){
 }
 
 function renderSuccess(){
-  // Update the browser URL so Google Ads (and any other URL-pattern-based
-  // conversion tracking) can fire on the success state. The quiz is a SPA so
-  // the URL would otherwise stay /quiz/a.html through every step. We use
-  // replaceState (not pushState) so the back button skips this state.
+  // ============================================================
+  // GOOGLE ADS CONVERSION FIRING — runs ONLY when renderSuccess
+  // is reached, which only happens after a real Stripe payment.
+  // ============================================================
+  //
+  // Important: cold-visiting /quiz/a.html?status=paid does NOT trigger
+  // anything. The URL is just a label. The events below fire only inside
+  // renderSuccess, which is only reached via the Stripe Payment Element
+  // confirmation path. There is no Stripe charge, no story creation, no
+  // submit-quiz event here — those have all happened before this function
+  // runs. Loading the URL cold is pure pageview, nothing else.
+  //
+  // 1) Rewrite browser URL so Google Ads' URL-pattern trigger can match.
+  //    Email is left mostly unencoded so it reads as a plain address —
+  //    only chars that would actually break URL parsing get escaped
+  //    (+ and &; everything else including @ . _ - is URL-safe).
   try {
+    const emailRaw = state.email || "";
+    const emailForUrl = emailRaw.replace(/\+/g, "%2B").replace(/&/g, "%26");
     const successUrl = "/quiz/a.html?status=paid" +
-      (state.email ? "&email=" + encodeURIComponent(state.email) : "");
+      (emailRaw ? "&email=" + emailForUrl : "");
     window.history.replaceState(null, "", successUrl);
   } catch (_) { /* ignore */ }
+
+  // 2) Fire Google Ads events — ONCE per session.
+  //    Guarded by state.gtagPurchaseFired so a refresh / re-render can't
+  //    double-count. transaction_id (the quiz session UUID) is Google's
+  //    canonical dedup mechanism — even if a bug somehow fires this twice
+  //    in the same session, Google Ads counts at most one conversion per
+  //    transaction_id.
+  if (!state.gtagPurchaseFired && typeof gtag === "function") {
+    state.gtagPurchaseFired = true;
+    try {
+      const txId = (typeof session_id !== "undefined" ? session_id : "") || state.session_id || "";
+      const planValue = state.plan === "4" ? 19.99 : (state.plan === "1" || state.plan === "8") ? 29.99 : 0;
+
+      // 2a) page_view — for Google Ads URL-pattern conversion actions.
+      //     Belt-and-suspenders in case Google's automatic History-API
+      //     monitoring is off; this guarantees the page-view fires.
+      gtag("event", "page_view", {
+        page_location: window.location.href,
+        page_title: "Stuff So Sweet \u2014 Payment Successful",
+      });
+
+      // 2b) conversion — for Google Ads event-based conversion actions.
+      //     Fires the conversion ID directly. transaction_id dedupes
+      //     against the URL-based action so the same purchase can't
+      //     count twice.
+      gtag("event", "conversion", {
+        send_to: "AW-18259925180",
+        value: planValue,
+        currency: "USD",
+        transaction_id: txId,
+      });
+    } catch (e) {
+      console.warn("[gtag] purchase fire failed:", e);
+    }
+  }
 
   const planData = {
     "1": { label:"1-week access", price:"$29.99" },
