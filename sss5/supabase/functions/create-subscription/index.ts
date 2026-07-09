@@ -10,6 +10,7 @@
 //
 // Body: { session_id, email, plan }  ->  { client_secret, customer_id, subscription_id }
 
+import type Stripe from "npm:stripe@17";
 import { adminClient } from "../_shared/db.ts";
 import { handlePreflight, jsonResponse } from "../_shared/cors.ts";
 import { stripe, planConfig, normEmail } from "../_shared/stripe.ts";
@@ -99,6 +100,32 @@ Deno.serve(async (req: Request) => {
     const found = await stripe.customers.list({ email, limit: 1 });
     customerId = found.data[0]?.id ??
       (await stripe.customers.create({ email, metadata: { session_id: sessionId } })).id;
+  }
+
+  // Duplicate-charge guard: if this customer already has a LIVE Stuff So Sweet
+  // subscription, do not create (and charge for) another one. Without this, a
+  // returning visitor who re-enters the funnel — or a rapid double-submit — gets
+  // billed again, since the same-session reuse above only covers one session_id.
+  // Shared Stripe account (PhaseMap etc.): only OUR subs carry metadata.session_id.
+  // Fails OPEN (never blocks a legitimate first purchase if the check errors).
+  const LIVE_STATUSES = ["active", "trialing", "past_due", "unpaid"];
+  try {
+    const existingSubs = await stripe.subscriptions.list({ customer: customerId, status: "all", limit: 20 });
+    const live = existingSubs.data.find(
+      (s: Stripe.Subscription) => !!s.metadata?.session_id && LIVE_STATUSES.includes(s.status),
+    );
+    if (live) {
+      console.log(`duplicate-subscription guard: ${email} already has ${live.status} sub ${live.id}; not charging again`);
+      return jsonResponse({
+        error: "already_subscribed",
+        message: "You already have an active subscription. Head to the app to log in — no need to pay again.",
+        subscription_status: live.status,
+        subscription_id: live.id,
+        customer_id: customerId,
+      }, 409);
+    }
+  } catch (e) {
+    console.error("duplicate-subscription guard check failed (continuing, fail-open):", e);
   }
 
   let sub;
