@@ -2134,6 +2134,13 @@ async function initStripePayment(){
       }),
     });
     const data = await res.json();
+    // The customer already has a live subscription — create-subscription
+    // returns 409 instead of charging again. Steer them to log in, don't
+    // show a scary error. Their card was NOT charged.
+    if (res.status === 409 && data.error === "already_subscribed") {
+      renderAlreadySubscribed();
+      return;
+    }
     if(!res.ok || !data.client_secret) throw new Error(data.error || "Could not start payment");
     if(data.meta_event_id) state.meta_event_id = data.meta_event_id; // server's effective id (survives retries)
 
@@ -2179,6 +2186,31 @@ async function submitPayment(){
   // Payment confirmed. Fulfillment (story + chapter 1 + access) is handled by
   // the Stripe webhook; show the success screen optimistically.
   renderProcessing();
+}
+
+// Shown when create-subscription reports the customer already has an active
+// subscription (HTTP 409 already_subscribed). Their card was NOT charged, so
+// steer them to log in rather than pay again.
+function renderAlreadySubscribed(){
+  const loginUrl = "https://app.stuffsosweet.com/";
+  app.innerHTML = `
+    <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:linear-gradient(180deg,#4b0018,#1a0008);color:#fff;padding:24px;">
+      <div style="font-size:44px;margin-bottom:14px;">💕</div>
+      <div style="font-size:24px;font-weight:bold;margin-bottom:12px;max-width:22ch;">You're already subscribed!</div>
+      <div style="opacity:.85;font-size:16px;line-height:1.5;max-width:34ch;margin-bottom:8px;">
+        Good news — there's already an active Stuff So Sweet subscription for this email, so <b>we didn't charge you again</b>.
+      </div>
+      <div style="opacity:.7;font-size:14px;line-height:1.5;max-width:34ch;margin-bottom:26px;">
+        Just log in to pick up where you left off.
+      </div>
+      <a href="${loginUrl}" style="display:inline-block;background:#ffd76a;color:#4b0018;font-weight:bold;font-size:17px;text-decoration:none;padding:15px 30px;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.3);">
+        Log in to your account
+      </a>
+      <div style="opacity:.6;font-size:13px;margin-top:16px;max-width:34ch;">
+        Enter your email at app.stuffsosweet.com and we'll send a one-tap login link.
+      </div>
+    </div>
+  `;
 }
 
 function renderProcessing(){
