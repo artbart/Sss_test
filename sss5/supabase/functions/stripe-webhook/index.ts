@@ -371,6 +371,34 @@ Deno.serve(async (req: Request) => {
         .eq("id", sessionId)
         .eq("stripe_subscription_id", sub.id);
 
+      // Actionable churn: alert the moment cancel_at_period_end flips to true
+      // (user clicked cancel — in-app or Stripe dashboard). previous_attributes
+      // is present on every *.updated event, so no DB read is needed; Stripe
+      // event retries are already deduped by the stripe_events insert above.
+      // Reactivation (true -> false) intentionally sends nothing.
+      if (event.type === "customer.subscription.updated") {
+        const prev = (event.data as { previous_attributes?: { cancel_at_period_end?: boolean } })
+          .previous_attributes;
+        if (sub.cancel_at_period_end === true && prev?.cancel_at_period_end === false) {
+          bg(notifySlack({
+            kind: "cancel_scheduled",
+            email: meta.email ?? null,
+            sessionId,
+            customerId: sub.customer as string,
+            fields: { "Access until": period.end },
+          }));
+          bg(capturePosthog({
+            event: "subscription_cancel_scheduled",
+            distinctId: meta.email || (sub.customer as string),
+            properties: {
+              session_id: sessionId,
+              stripe_customer_id: sub.customer as string,
+              current_period_end: period.end,
+            },
+          }));
+        }
+      }
+
       if (event.type === "customer.subscription.deleted") {
         bg(notifySlack({
           kind: "cancellation",
