@@ -11,13 +11,21 @@
 const TOKEN = Deno.env.get("SLACK_BOT_TOKEN");
 const CHANNEL = Deno.env.get("SLACK_CHANNEL_PURCHASES");
 
-type SlackEventKind = "purchase" | "renewal" | "payment_failed" | "cancellation";
+type SlackEventKind =
+  | "purchase"
+  | "renewal"
+  | "payment_failed"
+  | "cancellation"
+  | "cancel_scheduled"
+  | "account_created";
 
 const META: Record<SlackEventKind, { icon: string; title: string }> = {
   purchase: { icon: "🎉", title: "New purchase" },
   renewal: { icon: "🔁", title: "Subscription renewed" },
   payment_failed: { icon: "❌", title: "Payment failed" },
   cancellation: { icon: "👋", title: "Subscription canceled" },
+  cancel_scheduled: { icon: "🚨", title: "Cancel scheduled" },
+  account_created: { icon: "👤", title: "Account created" },
 };
 
 export interface SlackNotifyInput {
