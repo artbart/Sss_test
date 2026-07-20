@@ -36,6 +36,8 @@ below). Add:
 | `CHAPTER_URL_BASE` | `https://stuffsosweet.com/chapter_update.html` |
 | `SLACK_BOT_TOKEN` | `xoxb-...` Slack bot token (same bot reused from my-photo-alive) |
 | `SLACK_CHANNEL_PURCHASES` | Channel ID (`C...`) for purchase/renewal/failure/cancel notifications. The bot must be invited to this channel. |
+| `SLACK_SIGNING_SECRET` | Signing secret of the dedicated "SSS" Slack app (Basic Information). Unset ⇒ /stats returns 503. |
+| `ACCOUNT_WEBHOOK_SECRET` | Random hex; must match the x-webhook-secret header baked into the users_account_created_webhook trigger. Rotate both together. |
 
 (`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are auto-provided by Supabase
 and don't need to be set. `SLACK_*` are optional — the webhook no-ops the
@@ -127,3 +129,17 @@ Until you do this, only your account email gets emails.
 3. Add them in your DNS provider for stuffsosweet.com.
 4. Wait for Resend to verify (usually a few minutes).
 5. From then on, `stories@stuffsosweet.com` can send to anyone.
+
+## Slack /stats + account-created alerts (one-time setup)
+
+1. api.slack.com → Create App "SSS" → Slash Command `/stats` → request URL
+   `https://gmhbcxylqubhxozomhlt.supabase.co/functions/v1/slack-stats` →
+   Install to workspace. Copy Basic Information → Signing Secret into
+   `SLACK_SIGNING_SECRET`.
+2. `supabase secrets set ACCOUNT_WEBHOOK_SECRET=<openssl rand -hex 32>`, then
+   apply `migrations/20260720_account_created_webhook.sql` via the SQL editor
+   with `__ACCOUNT_WEBHOOK_SECRET__` substituted for the same value (sed shown
+   in the migration header). Never commit the real value.
+3. Deploy `slack-stats` and `notify-account-created` with `--no-verify-jwt`.
+4. Verify with `/stats` in Slack: `operation_timeout` ⇒ the ack/response_url
+   async pattern is broken; `dispatch_failed` ⇒ wrong URL or unset secret.
