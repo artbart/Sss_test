@@ -132,11 +132,77 @@ Deno.serve(async (req: Request) => {
           status: "paid",
         }).eq("id", sessionId);
       }
-      // Match the specific sub, not the customer (shared Stripe account has PhaseMap subs too).
-      // See task #94: a webhook for another product's sub on this customer must not overwrite our row.
-      await db.from("users").update(subFields)
+      // Sync + link the users row. Two steps, because two different failure modes
+      // pull the match predicate in opposite directions and both are real:
+      //
+      //   #94 (Gibson/Quasi, Jul 27) — this Stripe account is shared with PhaseMap,
+      //   so a customer can hold both an SSS sub and a PhaseMap sub. Matching on
+      //   customer id alone lets another product's event overwrite our row.
+      //
+      //   fargofour@gmail.com (Jul 09) — a user who signs up BEFORE paying gets a
+      //   users row with stripe_customer_id AND stripe_subscription_id both NULL
+      //   (handle_new_auth_user finds no paid session; create-subscription mirrors
+      //   the ids onto the quiz table, not onto users). Matching on those ids hits
+      //   zero rows, so the sub is never linked and Settings hides the entire
+      //   Subscription section for a paying customer — permanently.
+      //
+      // These reconcile once you separate "row tracks a DIFFERENT sub" (never touch)
+      // from "row tracks NO sub yet" (safe to claim).
+
+      // Step 1 — the row already tracking this subscription. Narrow match keeps #94 fixed.
+      const { data: synced, error: syncErr } = await db
+        .from("users").update(subFields)
         .eq("stripe_customer_id", sub.customer as string)
-        .eq("stripe_subscription_id", sub.id);
+        .eq("stripe_subscription_id", sub.id)
+        .select("id");
+      if (syncErr) console.error("users sync by customer+sub id failed:", syncErr);
+
+      // Step 2 — nothing tracked this sub yet: claim an UNLINKED row by email.
+      // Identity is email-keyed, so email is the safe join. The .is(null) guard is
+      // what preserves #94: a row already holding another sub id simply doesn't
+      // match, so a PhaseMap-linked row can never be hijacked here.
+      if ((!synced || synced.length === 0) && email) {
+        // Respect UNIQUE(stripe_customer_id): if this customer id is already
+        // attached to some other users row, writing it again would 23505.
+        const { data: taken } = await db
+          .from("users").select("id")
+          .eq("stripe_customer_id", sub.customer as string)
+          .limit(1).maybeSingle();
+
+        if (taken) {
+          console.warn(
+            `customer ${sub.customer} already attached to users row ${taken.id}; ` +
+            `skipping email link for ${email}`,
+          );
+        } else {
+          const claimFields: Record<string, unknown> = {
+            ...subFields,
+            stripe_customer_id: sub.customer as string,
+            stripe_subscription_id: sub.id,
+          };
+          if (meta.plan) claimFields.subscription_plan = meta.plan;
+
+          const { data: claimed, error: claimErr } = await db
+            .from("users").update(claimFields)
+            .eq("email", email)
+            .is("stripe_subscription_id", null)
+            .select("id");
+          if (claimErr) console.error("users link by email failed:", claimErr);
+          else if (claimed && claimed.length > 0) {
+            console.log(`users linked by email fallback for ${email} (${claimed.length} row)`);
+          } else {
+            // Known gap: a RESUBSCRIBE lands here. The row holds a stale sub id, so
+            // step 1 misses and .is(null) blocks the claim. Deliberately not handled
+            // — telling "stale SSS sub" from "live PhaseMap sub" needs a Stripe
+            // lookup, and guessing wrong re-opens #94. Alert instead of silently
+            // dropping it.
+            console.error(
+              `UNLINKED SUB: ${email} paid on ${sub.id} but no users row could be ` +
+              `linked (row likely holds a different sub id). Manual link required.`,
+            );
+          }
+        }
+      }
 
       // First invoice -> create story + trigger chapter 1 (once).
       if (inv.billing_reason === "subscription_create" && sessionId && email) {
@@ -169,7 +235,7 @@ Deno.serve(async (req: Request) => {
                 amount_paid_cents: inv.amount_paid ?? null,
                 billing_reason: inv.billing_reason ?? null,
               },
-            }).then(({ error: evErr }) => {
+            }).then(({ error: evErr }: { error: unknown }) => {
               if (evErr) console.error("events payment_fulfilled insert failed:", evErr);
             });
 
