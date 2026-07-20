@@ -149,6 +149,7 @@ async function leadCount(db: any, fromIso: string, toIso: string): Promise<numbe
 }
 
 async function gatherStatsText(): Promise<string> {
+  const t0 = Date.now();
   const nowSec = Math.floor(Date.now() / 1000);
   const db = adminClient();
 
@@ -279,6 +280,7 @@ async function gatherStatsText(): Promise<string> {
   const churn30 = churnDen === 0 ? "n/a" : `${((cancels.d30 / churnDen) * 100).toFixed(1)}%`;
   const mix = [...planMix.entries()].map(([k, v]) => `${k}×${v}`).join(" / ") || "—";
 
+  console.log(`gatherStats took ${Date.now() - t0}ms (subCache: ${subCache.size} subs)`);
   return [
     `*📊 Stuff So Sweet — right now*`,
     `Active: *${activeCount}*${trialingCount ? ` (+${trialingCount} trialing)` : ""} · MRR: *${usd(mrrCents)}* · Plans: ${mix}`,

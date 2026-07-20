@@ -9,6 +9,9 @@
 -- the real value must never be committed. It IS visible in pg_trigger inside
 -- the DB — acceptable: reading pg_trigger already requires service-role access.
 
+-- idempotent re-apply; drops only this migration's own object
+drop trigger if exists users_account_created_webhook on public.users;
+
 create trigger users_account_created_webhook
   after insert on public.users
   for each row
@@ -17,5 +20,5 @@ create trigger users_account_created_webhook
     'POST',
     '{"Content-Type":"application/json","x-webhook-secret":"__ACCOUNT_WEBHOOK_SECRET__"}',
     '{}',
-    '1000'
+    '5000'
   );

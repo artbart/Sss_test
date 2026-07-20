@@ -136,10 +136,20 @@ Until you do this, only your account email gets emails.
    `https://gmhbcxylqubhxozomhlt.supabase.co/functions/v1/slack-stats` →
    Install to workspace. Copy Basic Information → Signing Secret into
    `SLACK_SIGNING_SECRET`.
-2. `supabase secrets set ACCOUNT_WEBHOOK_SECRET=<openssl rand -hex 32>`, then
+2. Precondition: confirm the webhooks helper exists — in the SQL editor run
+   `select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'supabase_functions' and p.proname = 'http_request';`
+   If it returns no rows, enable Database Webhooks once via Dashboard →
+   Database → Webhooks (create + delete a dummy webhook), then re-check.
+3. `supabase secrets set ACCOUNT_WEBHOOK_SECRET=<openssl rand -hex 32>`, then
    apply `migrations/20260720_account_created_webhook.sql` via the SQL editor
-   with `__ACCOUNT_WEBHOOK_SECRET__` substituted for the same value (sed shown
-   in the migration header). Never commit the real value.
-3. Deploy `slack-stats` and `notify-account-created` with `--no-verify-jwt`.
-4. Verify with `/stats` in Slack: `operation_timeout` ⇒ the ack/response_url
+   with `__ACCOUNT_WEBHOOK_SECRET__` substituted for the same value (e.g. `sed
+   "s/__ACCOUNT_WEBHOOK_SECRET__/$SECRET/" sss5/supabase/migrations/20260720_account_created_webhook.sql`).
+   Never commit the real value.
+4. Deploy `slack-stats` and `notify-account-created` with `--no-verify-jwt`.
+5. Verify with `/stats` in Slack: `operation_timeout` ⇒ the ack/response_url
    async pattern is broken; `dispatch_failed` ⇒ wrong URL or unset secret.
+   Also create a test account (fresh email, magic-link login) and confirm
+   BOTH the 👤 Slack alert AND that a `public.users` row exists for it — the
+   trigger fires inside the signup path, so this check protects against a
+   repeat of the 2026-07-08 incident class.
