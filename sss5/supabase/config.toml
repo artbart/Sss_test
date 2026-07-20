@@ -30,3 +30,6 @@ verify_jwt = false   # public POST from the funnel using the anon key
 
 [functions.stripe-webhook]
 verify_jwt = false   # public POST from Stripe; secured by signature verification, not JWT
+
+[functions.notify-account-created]
+verify_jwt = false   # called by the pg_net DB webhook; secured by x-webhook-secret header
