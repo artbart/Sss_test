@@ -210,7 +210,17 @@ async function gatherStatsText(): Promise<string> {
 
   // ---- cancellations (caveat: Stripe omits canceled subs of deleted customers) ----
   const cancels = newWin();
-  for await (const sub of stripe.subscriptions.list({ status: "canceled", limit: 100, expand: ["data.discounts"] })) {
+  // Bounded scan: the list API can't filter by canceled_at, so bound by
+  // created instead. Any sub cancelable within our 60d windows existed
+  // recently; a 2-year created horizon comfortably covers every SSS sub
+  // (product launched 2026-04) while keeping this loop from paging the
+  // shared account's entire cancellation history forever.
+  for await (const sub of stripe.subscriptions.list({
+    status: "canceled",
+    created: { gte: nowSec - 730 * DAY },
+    limit: 100,
+    expand: ["data.discounts"],
+  })) {
     cacheSub(sub);
     if (!ours(sub) || isFullyDiscounted(sub)) continue;
     if (sub.canceled_at) addToWindows(cancels, sub.canceled_at, nowSec);
@@ -283,23 +293,48 @@ async function gatherStatsText(): Promise<string> {
   ].join("\n");
 }
 
+// Basil moved the charge/PI -> invoice link to the InvoicePayment resource,
+// and npm:stripe@17's SDK predates it. Query the REST endpoint directly so
+// attribution works regardless of SDK version.
+async function invoiceIdForPaymentIntent(pi: string): Promise<string | null> {
+  try {
+    const params = new URLSearchParams({
+      "payment[type]": "payment_intent",
+      "payment[payment_intent]": pi,
+      limit: "10",
+    });
+    const res = await fetch(`https://api.stripe.com/v1/invoice_payments?${params}`, {
+      headers: {
+        Authorization: `Bearer ${Deno.env.get("STRIPE_SECRET_KEY")}`,
+        "Stripe-Version": "2025-03-31.basil",
+      },
+    });
+    if (!res.ok) {
+      console.warn("invoice_payments lookup failed:", res.status, await res.text().catch(() => ""));
+      return null;
+    }
+    const body = await res.json() as { data?: Array<{ invoice?: string | { id?: string } }> };
+    for (const p of body.data ?? []) {
+      const inv = typeof p.invoice === "string" ? p.invoice : p.invoice?.id ?? null;
+      if (inv) return inv;
+    }
+    return null;
+  } catch (e) {
+    console.warn("invoice_payments lookup threw:", e);
+    return null;
+  }
+}
+
 // Refund -> SSS subscription. Basil removed charge.invoice /
 // payment_intent.invoice, so the primary path is refund.payment_intent ->
-// InvoicePayments -> invoice; legacy charge.invoice is the fallback.
-// Unattributable refunds are excluded and logged.
+// REST invoice_payments lookup -> invoice; legacy charge.invoice is the
+// fallback. Unattributable refunds are excluded and logged.
 // deno-lint-ignore no-explicit-any
 async function refundSubId(r: any, invoiceSub: Map<string, string | null>): Promise<string | null> {
   try {
     let invId: string | null = null;
     const pi = typeof r.payment_intent === "string" ? r.payment_intent : r.payment_intent?.id;
-    // deno-lint-ignore no-explicit-any
-    const ip = (stripe as any).invoicePayments;
-    if (pi && ip?.list) {
-      for await (const p of ip.list({ payment: { type: "payment_intent", payment_intent: pi }, limit: 10 })) {
-        invId = typeof p.invoice === "string" ? p.invoice : p.invoice?.id ?? null;
-        if (invId) break;
-      }
-    }
+    if (pi) invId = await invoiceIdForPaymentIntent(pi);
     if (!invId && r.charge) {
       const chargeId = typeof r.charge === "string" ? r.charge : r.charge.id;
       // deno-lint-ignore no-explicit-any
