@@ -33,3 +33,6 @@ verify_jwt = false   # public POST from Stripe; secured by signature verificatio
 
 [functions.notify-account-created]
 verify_jwt = false   # called by the pg_net DB webhook; secured by x-webhook-secret header
+
+[functions.slack-stats]
+verify_jwt = false   # public POST from Slack; secured by signature verification, not JWT
