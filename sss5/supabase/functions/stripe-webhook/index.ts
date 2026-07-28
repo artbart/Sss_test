@@ -18,6 +18,13 @@ import { stripe, cryptoProvider } from "../_shared/stripe.ts";
 import { sendCapiPurchase } from "../_shared/meta.ts";
 import { notifySlack } from "../_shared/slack.ts";
 import { capturePosthog } from "../_shared/posthog.ts";
+import {
+  getGenerateFunctionUrl,
+  getQuizTableName,
+  getStoriesFkColumn,
+  buildStoriesInsertRow,
+  type QuizVersion,
+} from "../_shared/version_router.ts";
 import type Stripe from "npm:stripe@17";
 
 const WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET")!;
@@ -101,6 +108,10 @@ Deno.serve(async (req: Request) => {
 
     const meta = sub.metadata ?? {};
     const sessionId = meta.session_id ?? null;
+    // Quiz version (defaults to 1 for backward compat with pre-V2 subscriptions).
+    const quizVersion = (parseInt(String(meta.quiz_version ?? "1"), 10) || 1) as QuizVersion;
+    const quizTable = getQuizTableName(quizVersion);
+    const storiesFk = getStoriesFkColumn(quizVersion);
     const period = subPeriod(sub);
     const subFields = {
       subscription_status: event.type === "customer.subscription.deleted" ? "canceled" : sub.status,
@@ -113,22 +124,34 @@ Deno.serve(async (req: Request) => {
       const email = (meta.email ?? inv.customer_email ?? "").toLowerCase();
 
       if (sessionId) {
-        await db.from("quiz_sessions").update({
+        // Update the version-appropriate quiz_sessions or quizN_sessions table.
+        await db.from(quizTable).update({
           ...subFields,
           paid: true,
           payment_at: new Date().toISOString(),
           status: "paid",
         }).eq("id", sessionId);
       }
-      await db.from("users").update(subFields).eq("stripe_customer_id", sub.customer as string);
+      // Match the specific sub, not the customer (shared Stripe account has PhaseMap subs too).
+      // See task #94: a webhook for another product's sub on this customer must not overwrite our row.
+      await db.from("users").update(subFields)
+        .eq("stripe_customer_id", sub.customer as string)
+        .eq("stripe_subscription_id", sub.id);
 
       // First invoice -> create story + trigger chapter 1 (once).
       if (inv.billing_reason === "subscription_create" && sessionId && email) {
+        // Idempotency check must be version-aware (looks at the correct FK column).
         const { data: already } = await db
-          .from("stories").select("id").eq("session_id", sessionId).limit(1).maybeSingle();
+          .from("stories").select("id").eq(storiesFk, sessionId).limit(1).maybeSingle();
         if (!already) {
+          // Build the version-appropriate insert row (session_id for V1, quizN_session_id for V2+).
+          const insertRow = {
+            ...buildStoriesInsertRow(quizVersion, sessionId),
+            lead_email: email,
+            status: "pending",
+          };
           const { data: story, error: stErr } = await db.from("stories")
-            .insert({ session_id: sessionId, lead_email: email, status: "pending" })
+            .insert(insertRow)
             .select("id").single();
           if (stErr || !story) {
             console.error("story insert failed:", stErr);
@@ -165,7 +188,8 @@ Deno.serve(async (req: Request) => {
             // Also: generate-chapter takes 60-90s, longer than Stripe's 30s
             // webhook timeout. We use EdgeRuntime.waitUntil to keep the trigger
             // alive AFTER we ACK Stripe.
-            const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/generate-chapter`;
+            // Version-aware routing: V1 → generate-chapter, V2 → generate-chapter-v2, etc.
+            const url = getGenerateFunctionUrl(quizVersion);
             const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
             const trigger = fetch(url, {
               method: "POST",
@@ -238,8 +262,15 @@ Deno.serve(async (req: Request) => {
         },
       }));
     } else if (event.type === "invoice.payment_failed") {
-      await db.from("users").update({ subscription_status: "past_due" }).eq("stripe_customer_id", sub.customer as string);
-      if (sessionId) await db.from("quiz_sessions").update({ subscription_status: "past_due" }).eq("id", sessionId);
+      // Filter by BOTH customer_id AND subscription_id to prevent Stripe-account-sharing bugs
+      // (e.g. PhaseMap sub going past_due on a customer who also has an active SSS sub would
+      // otherwise flip our SSS user to past_due). See task #94 / Gibson/Quasi incident Jul 27.
+      await db.from("users").update({ subscription_status: "past_due" })
+        .eq("stripe_customer_id", sub.customer as string)
+        .eq("stripe_subscription_id", sub.id);
+      if (sessionId) await db.from(quizTable).update({ subscription_status: "past_due" })
+        .eq("id", sessionId)
+        .eq("stripe_subscription_id", sub.id);
 
       bg(notifySlack({
         kind: "payment_failed",
@@ -262,8 +293,17 @@ Deno.serve(async (req: Request) => {
       }));
     } else {
       // customer.subscription.updated | deleted
-      await db.from("users").update(subFields).eq("stripe_customer_id", sub.customer as string);
-      if (sessionId) await db.from("quiz_sessions").update(subFields).eq("id", sessionId);
+      // Filter by BOTH customer_id AND subscription_id — this Stripe account is shared with
+      // PhaseMap, so a customer can hold both an SSS sub AND a PhaseMap sub. Without the
+      // sub.id filter, a PhaseMap cancellation event overwrites the SSS user's active status
+      // to "canceled". This is the root cause of the Gibson/Quasi incident (task #94).
+      // If sub.id doesn't match the row we track for this customer, the update is a safe no-op.
+      await db.from("users").update(subFields)
+        .eq("stripe_customer_id", sub.customer as string)
+        .eq("stripe_subscription_id", sub.id);
+      if (sessionId) await db.from(quizTable).update(subFields)
+        .eq("id", sessionId)
+        .eq("stripe_subscription_id", sub.id);
 
       if (event.type === "customer.subscription.deleted") {
         bg(notifySlack({

@@ -14,6 +14,7 @@ import type Stripe from "npm:stripe@17";
 import { adminClient } from "../_shared/db.ts";
 import { handlePreflight, jsonResponse } from "../_shared/cors.ts";
 import { stripe, planConfig, normEmail } from "../_shared/stripe.ts";
+import { getQuizTableName, type QuizVersion } from "../_shared/version_router.ts";
 
 Deno.serve(async (req: Request) => {
   const pre = handlePreflight(req);
@@ -66,13 +67,33 @@ Deno.serve(async (req: Request) => {
 
   const db = adminClient();
 
-  // Reuse an existing incomplete subscription for this session (the Payment
-  // Element can re-mount on retries / page revisits).
-  const { data: existing } = await db
-    .from("quiz_sessions")
+  // Version detection: the session_id came from either the V1 quiz (quiz_sessions)
+  // or a Vn quiz (quizN_sessions). Try V2 first (most likely for new traffic once
+  // V2 launches), fall back to V1. Whichever table has the row defines the version.
+  // If neither has it, we treat as V1 for backward compatibility.
+  let quizVersion: QuizVersion = 1;
+  let existing: { stripe_customer_id: string | null; stripe_subscription_id: string | null; subscription_status: string | null } | null = null;
+
+  const { data: v2Row } = await db
+    .from("quiz2_sessions")
     .select("stripe_customer_id, stripe_subscription_id, subscription_status")
     .eq("id", sessionId)
     .maybeSingle();
+  if (v2Row) {
+    quizVersion = 2;
+    existing = v2Row;
+  } else {
+    const { data: v1Row } = await db
+      .from("quiz_sessions")
+      .select("stripe_customer_id, stripe_subscription_id, subscription_status")
+      .eq("id", sessionId)
+      .maybeSingle();
+    if (v1Row) {
+      quizVersion = 1;
+      existing = v1Row;
+    }
+  }
+  const quizTable = getQuizTableName(quizVersion);
 
   let customerId = existing?.stripe_customer_id ?? null;
 
@@ -139,7 +160,13 @@ Deno.serve(async (req: Request) => {
       // alt methods). Scoped to this subscription; PhaseMap is unaffected.
       payment_settings: { save_default_payment_method: "on_subscription", payment_method_types: ["card"] },
       expand: ["latest_invoice.confirmation_secret"],
-      metadata: { session_id: sessionId, email, plan, ...metaMeta },
+      metadata: {
+        session_id: sessionId,
+        email,
+        plan,
+        quiz_version: String(quizVersion),
+        ...metaMeta,
+      },
     });
   } catch (e) {
     console.error("subscription create failed:", e);
@@ -152,7 +179,8 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: "No client secret on invoice" }, 500);
   }
 
-  const { error: upsertErr } = await db.from("quiz_sessions").upsert({
+  // Mirror the stripe state onto the version-appropriate quiz table.
+  const { error: upsertErr } = await db.from(quizTable).upsert({
     id: sessionId,
     email,
     plan,
@@ -160,7 +188,7 @@ Deno.serve(async (req: Request) => {
     stripe_subscription_id: sub.id,
     subscription_status: "incomplete",
   }, { onConflict: "id" });
-  if (upsertErr) console.error("quiz_sessions mirror upsert failed:", upsertErr);
+  if (upsertErr) console.error(`${quizTable} mirror upsert failed:`, upsertErr);
 
   return jsonResponse({
     client_secret: clientSecret,

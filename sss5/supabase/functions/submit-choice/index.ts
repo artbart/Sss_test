@@ -17,6 +17,7 @@
 import { adminClient } from "../_shared/db.ts";
 import { handlePreflight, jsonResponse } from "../_shared/cors.ts";
 import { resolveAccess } from "../_shared/access.ts";
+import { getGenerateFunctionUrl, type QuizVersion } from "../_shared/version_router.ts";
 
 Deno.serve(async (req: Request) => {
   const pre = handlePreflight(req);
@@ -65,10 +66,10 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ status: "duplicate" });
   }
 
-  // Load the story once: needed for both the entitlement gate and the target.
+  // Load the story once: needed for entitlement gate + target + version routing.
   const { data: story } = await db
     .from("stories")
-    .select("target_chapter_count, user_id, lead_email")
+    .select("target_chapter_count, user_id, lead_email, quiz_version")
     .eq("id", storyId)
     .maybeSingle();
 
@@ -105,21 +106,24 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ status: "ok", final: true });
   }
 
-  // Trigger next-chapter generation in the background.
-  const generateUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/generate-chapter`;
+  // Trigger next-chapter generation in the background — version-aware routing.
+  // V1 stories go to generate-chapter, V2 stories go to generate-chapter-v2, etc.
+  const quizVersion = ((story?.quiz_version ?? 1) as QuizVersion);
+  const generateUrl = getGenerateFunctionUrl(quizVersion);
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
   const trigger = fetch(generateUrl, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${serviceKey}`,
+      apikey: serviceKey,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
       story_id: storyId,
       target_chapter_number: chapterNumber + 1,
     }),
-  }).catch((e) => console.error("background generate-chapter failed:", e));
+  }).catch((e) => console.error(`background generate-chapter (v${quizVersion}) failed:`, e));
 
   // @ts-ignore - EdgeRuntime is a Supabase global
   if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
