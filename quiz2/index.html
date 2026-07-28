@@ -1,0 +1,2999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Stuff So Sweet — Build your story</title>
+  <meta name="description" content="Interactive adult romance stories crafted just for You. Interactive romance crafted just for you. Based on Your desires with option to steer your story. It's sweet, wet, slightly dark but very tempting and seducing">
+
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Stuff So Sweet">
+  <meta property="og:title" content="Build Your Story — Stuff So Sweet">
+  <meta property="og:description" content="Interactive adult romance stories crafted just for You. Interactive romance crafted just for you. Based on Your desires with option to steer your story. It's sweet, wet, slightly dark but very tempting and seducing">
+  <meta property="og:url" content="https://stuffsosweet.com/quiz2/">
+  <meta property="og:image" content="https://stuffsosweet.com/media/og-card.jpg">
+  <meta property="og:image:type" content="image/jpeg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Build Your Story — Stuff So Sweet">
+  <meta name="twitter:description" content="Interactive adult romance stories crafted just for You. Interactive romance crafted just for you. Based on Your desires with option to steer your story. It's sweet, wet, slightly dark but very tempting and seducing">
+  <meta name="twitter:image" content="https://stuffsosweet.com/media/og-card.jpg">
+
+<!-- Stripe.js MUST load live from js.stripe.com (no SRI/integrity — Stripe updates
+     this file and a pinned hash would break checkout; it also keeps PCI SAQ-A scope). -->
+<script src="https://js.stripe.com/v3/"></script>
+  <!-- Google Tag Manager -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer','GTM-PKM537QM');</script>
+  <!-- End Google Tag Manager -->
+
+  <!-- PostHog product analytics (shared) -->
+  <script type="module" src="/assets/posthog.js"></script>
+</head>
+<body>
+  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-PKM537QM"
+  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
+
+<!-- ================= ROOT ================= -->
+<div id="app"></div>
+
+<!-- Meta Pixel Code -->
+<script>
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '2011659879327902');
+fbq('track', 'PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none"
+src="https://www.facebook.com/tr?id=2011659879327902&ev=PageView&noscript=1"
+/></noscript>
+<!-- End Meta Pixel Code -->
+
+<!-- ================= STYLES ================= -->
+<style>
+
+html, body{
+  width:100%;
+  max-width:100%;
+  overflow-x:hidden;
+  -webkit-text-size-adjust:100%;
+}
+
+
+*,
+*::before,
+*::after{
+  box-sizing:border-box;
+}
+
+body{
+  margin:0;
+  font-family:Georgia, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", serif;
+  background:linear-gradient(180deg,#4b0018,#1a0008);
+  color:#fff;
+}
+
+#app{
+  max-width:450px;
+  margin:0 auto;
+  min-height:100vh;
+  transition: opacity 0.25s ease;
+}
+
+.ss-container{
+  width:100%;
+  max-width:450px;
+  padding:20px 16px 120px;
+  box-sizing:border-box;
+}
+
+.ss-title{
+  font-size:26px;
+  text-align:center;
+  margin-bottom:20px;
+}
+
+.ss-sub{
+  text-align:center;
+  opacity:.8;
+  margin-bottom:20px;
+}
+
+.ss-btn{
+  width:100%;
+  padding:16px;
+  border-radius:14px;
+  border:none;
+  background:#e04b57;
+  color:#fff;
+  font-size:16px;
+  cursor:pointer;
+}
+
+.ss-btn:disabled{
+  background:#5c1e25;
+  color:#a1686e;
+  cursor:not-allowed;
+  opacity:1;
+}
+
+.ss-options{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.ss-option{
+  background:rgba(255,255,255,0.08);
+  padding:16px;
+  border-radius:14px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  cursor:pointer;
+  transition:all .15s ease;
+}
+
+.ss-option:hover{
+  background:rgba(255,255,255,0.18);
+  transform:translateY(-2px);
+}
+
+.ss-option.active{
+  background:rgba(255,255,255,0.22);
+  border:1px solid rgba(255,255,255,0.4);
+}
+
+.ss-progress{
+  height:4px;
+  background:#5a1a2a;
+  margin:12px 0 20px;
+  border-radius:4px;
+  overflow:hidden;
+}
+
+.ss-fill{
+  height:100%;
+  background:#ff6b7c;
+  width:0%;
+  transition:width .25s ease;
+}
+
+.ss-footer{
+  position:fixed;
+  bottom:0;
+  left:0;
+  width:100%;
+  display:flex;
+  justify-content:center;
+  padding:16px;
+  background:linear-gradient(to top, rgba(0,0,0,.6), transparent);
+  z-index:1000;
+}
+
+.ss-footer .ss-btn{
+  max-width:450px;
+}
+
+/* Intro1 CTA — inline on desktop (closer to content / aligned with intro2 button),
+   behaves like fixed footer on mobile so the original UX is preserved. */
+.ss-intro1-cta{
+  display:flex;
+  justify-content:center;
+  margin-top:24px;
+}
+
+.ss-intro1-cta .ss-btn{
+  width:100%;
+  max-width:450px;
+}
+
+@media (max-width: 900px){
+  .ss-intro1-cta{
+    position:fixed;
+    bottom:0;
+    left:0;
+    width:100%;
+    margin-top:0;
+    padding:16px;
+    background:linear-gradient(to top, rgba(0,0,0,.6), transparent);
+    z-index:1000;
+  }
+}
+
+.ss-input{
+  width:100%;
+  padding:16px;
+  border-radius:12px;
+  border:none;
+  background:rgba(255,255,255,0.2);
+  color:#fff;
+}
+
+.ss-page{
+  display:flex;
+  justify-content:center;
+  min-height:100vh;
+}
+
+.ss-logo{
+  text-align:center;
+}
+
+.ss-logo img{
+  height:28px;
+  margin-bottom:20px;
+}
+
+.ss-percent{
+  font-size:56px;
+  text-align:center;
+}
+
+.ss-bar{
+  height:16px;
+  background:#4a1c27;
+  border-radius:10px;
+  margin:10px 0 20px;
+  overflow:hidden;
+}
+
+.ss-bar-fill{
+  height:100%;
+  width:0%;
+  background:#ff4d5e;
+}
+
+.ss-subtitle{
+  margin:8px 4px;
+  padding-left:4px;
+  color:#e8cfcf;
+  font-size:16px;
+}
+
+.ss-check{
+  color:#e04b57;
+  margin-right:6px;
+  font-weight:bold;
+}
+
+.ss-testimonials-wrap{
+  position:fixed;
+  top:75%;
+  left:0;
+  transform:translateY(-50%);
+  width:100%;
+  display:flex;
+  justify-content:center;
+  pointer-events:none;
+}
+
+.ss-testimonials-wrap * {
+  pointer-events:auto;
+}
+
+.ss-testimonials{
+  width:100%;
+  max-width:450px;
+  padding:0 16px;
+}
+
+.ss-test-title{
+  font-size:22px;
+  margin:0 0 12px;
+  line-height:1.3;
+  text-align:center;
+}
+
+.ss-card{
+  background:#6b1a2b;
+  border-radius:14px;
+  height:260px;
+  padding:20px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  margin-top:10px;
+}
+
+.ss-stars{
+  color:#5fd28f;
+  text-align:center;
+  margin:6px 0;
+}
+
+.ss-text-wrap{
+  flex:1;
+  display:flex;
+  align-items:flex-start;
+  justify-content:center;
+  margin-top:0;
+}
+
+.ss-text{
+  font-family:Georgia, serif;
+  font-size:14px;
+  line-height:1.5;
+  text-align:center;
+  opacity:1;
+  transition:opacity .4s ease;
+}
+
+.ss-text.fade{
+  opacity:0;
+}
+
+.ss-author{
+  text-align:center;
+  opacity:.8;
+  font-family:Georgia, serif;
+  font-size:14px;
+  line-height:1.5;
+}
+
+.ss-modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.7);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:9999;
+}
+
+.ss-modal-box{
+  width:90%;
+  max-width:360px;
+  background:#6b0f25;
+  padding:24px;
+  border-radius:16px;
+  text-align:center;
+}
+
+.ss-modal-title{
+  font-size:20px;
+  margin-bottom:20px;
+}
+
+.ss-row{
+  display:flex;
+  gap:10px;
+}
+
+.ss-row .ss-btn{
+  flex:1;
+  width:auto;
+}
+
+.email-root{
+  background:linear-gradient(180deg,#4b0018,#a80f4b);
+  min-height:100vh;
+  min-height:100dvh;
+}
+
+.email-page{
+  display:flex;
+  justify-content:center;
+}
+
+.email-container{
+  width:100%;
+  max-width:450px;
+  padding:24px 16px 140px;
+}
+
+.email-logo{
+  text-align:center;
+}
+
+.email-logo img{
+  height:28px;
+  margin-bottom:24px;
+}
+
+.email-title{
+  font-size:30px;
+  text-align:center;
+  margin-bottom:12px;
+}
+
+.email-sub{
+  text-align:center;
+  font-size:18px;
+  opacity:.85;
+  margin-bottom:24px;
+}
+
+.email-input{
+  width:100%;
+  padding:16px;
+  border-radius:14px;
+  border:none;
+  background:rgba(255,255,255,0.2);
+  color:#fff;
+  font-size:16px;
+}
+
+.email-input::placeholder{
+  color:rgba(255,255,255,0.6);
+}
+
+.email-privacy{
+  display:flex;
+  gap:10px;
+  align-items:flex-start;
+  margin:16px 0 24px;
+  font-size:14px;
+}
+
+.email-check{
+  width:22px;
+  height:22px;
+  min-width:22px;
+  min-height:22px;
+  aspect-ratio:1/1;
+  border-radius:50%;
+  background:#4CAF50;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:12px;
+  flex-shrink:0;
+  line-height:1;
+}
+
+.email-awards{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+}
+
+.email-awards img{
+  width:100%;
+  height:110px;
+  object-fit:cover;
+  border-radius:14px;
+}
+
+.email-footer{
+  position:fixed;
+  bottom:0;
+  left:0;
+  width:100%;
+  display:flex;
+  justify-content:center;
+  padding:16px;
+  background:linear-gradient(to top, rgba(0,0,0,.6), transparent);
+  z-index:1000;
+}
+
+.email-footer button{
+  width:100%;
+  max-width:430px;
+}
+
+.email-btn{
+  background:#9b3a45;
+  opacity:.6;
+  cursor:not-allowed;
+  transition:.2s;
+}
+
+.email-btn.active{
+  background:#e04b57;
+  opacity:1;
+  cursor:pointer;
+}
+
+/* By default the email CTA floats at the bottom of the viewport,
+   matching the original desktop and unfocused-mobile behavior. */
+.email-inline-cta{
+  position:fixed;
+  bottom:0;
+  left:0;
+  width:100%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:16px;
+  background:linear-gradient(to top, rgba(0,0,0,.6), transparent);
+  z-index:1000;
+}
+
+/* Mobile only: when the email input is focused (keyboard up),
+   pull the CTA inline right under the input and hide the awards image
+   so the user doesn't have to dismiss the keyboard to see the button. */
+@media (max-width: 900px){
+  .email-root.email-focused .email-awards-block{ display:none; }
+  .email-root.email-focused .email-inline-cta{
+    position:static;
+    padding:16px 0 0;
+    background:none;
+    width:auto;
+  }
+}
+
+.ss-block{
+  margin-bottom:24px;
+}
+
+.ss-sticky{
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  background:#7a1c2d;
+  z-index:1000;
+  padding:10px 12px;
+}
+
+.ss-sticky-inner{
+  max-width:450px;
+  margin:0 auto;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.ss-timer{
+  color:#ffd76a;
+  font-weight:bold;
+  font-size:22px;
+}
+
+.ss-cta-top{
+  background:#ffd76a;
+  color:#000;
+  padding:10px 14px;
+  border-radius:10px;
+  font-weight:bold;
+  border:none;
+  cursor:pointer;
+  text-transform:uppercase;
+}
+
+.ss-compare-grid{
+  display:flex;
+  gap:12px;
+}
+
+.ss-col{
+  flex:1;
+}
+
+.ss-col-title{
+  text-align:center;
+  margin-bottom:10px;
+  font-weight:bold;
+  min-height:42px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.ss-img{
+  width:100%;
+  border-radius:16px;
+  display:block;
+}
+
+.ss-label{
+  font-size:13px;
+  opacity:.7;
+}
+
+.ss-value-red{
+  color:#ff5c6d;
+  font-weight:bold;
+}
+
+.ss-value-green{
+  color:#8eff6d;
+  font-weight:bold;
+}
+
+.ss-bar2{
+  height:6px;
+  background:#2a0a11;
+  border-radius:6px;
+  margin:6px 0;
+  position:relative;
+  overflow:hidden;
+}
+
+.ss-bar2-fill{
+  height:100%;
+  border-radius:6px;
+}
+
+.ss-bar{
+  height:6px;
+  background:#2a0a11;
+  border-radius:6px;
+  margin:6px 0;
+  position:relative;
+  overflow:hidden;
+}
+
+.ss-bar::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:repeating-linear-gradient(to right,transparent,transparent 14px,rgba(255,255,255,0.2) 14px,rgba(255,255,255,0.2) 18px);
+  opacity:.4;
+}
+
+.ss-bar-fill{
+  height:100%;
+  border-radius:6px;
+}
+
+.ss-books-wrap{
+  background:#3a0012;
+  border-radius:20px;
+  padding:24px 16px 28px;
+  text-align:center;
+}
+
+.ss-books-title{
+  font-size:24px;
+  margin-bottom:20px;
+}
+
+.ss-books-stage{
+  position:relative;
+  height:210px;
+  margin-bottom:20px;
+}
+
+.ss-book{
+  position:absolute;
+  width:138px;
+  height:196px;
+  object-fit:cover;
+  border-radius:14px;
+  top:0;
+  left:50%;
+  transform:translateX(-50%);
+  transition:all .6s cubic-bezier(.22,.61,.36,1);
+  opacity:0;
+}
+
+.ss-pos-center{
+  transform:translateX(-50%) scale(1);
+  opacity:1;
+  z-index:5;
+  filter:none;
+  box-shadow:0 10px 30px rgba(0,0,0,0.5);
+}
+
+.ss-pos-right{
+  left:50%;
+  transform:translateX(calc(-50% + 110px)) scale(.78);
+  opacity:.7;
+  z-index:4;
+  filter:blur(1px) brightness(.9);
+  box-shadow:0 6px 18px rgba(0,0,0,0.3);
+}
+
+.ss-pos-left{
+  left:50%;
+  transform:translateX(calc(-50% - 110px)) scale(.78);
+  opacity:.7;
+  z-index:4;
+  filter:blur(1px) brightness(.9);
+  box-shadow:0 6px 18px rgba(0,0,0,0.3);
+}
+
+.ss-pos-hidden{
+  opacity:0;
+  transform:translateX(-50%) scale(.7);
+  filter:blur(2px);
+}
+
+.ss-books-sub{
+  font-size:16px;
+}
+
+.ss-books-sub span{
+  color:#ffd76a;
+  font-weight:bold;
+}
+
+.ss-story-card{
+  position:relative;
+  width:100%;
+  border-radius:18px;
+  overflow:hidden;
+  margin-top:0;
+}
+
+.ss-story-bg{
+  width:100%;
+  height:260px;
+  object-fit:cover;
+  display:block;
+}
+
+.ss-story-overlay{
+  position:absolute;
+  inset:0;
+  padding:18px;
+  display:flex;
+  flex-direction:column;
+  background:linear-gradient(to bottom,rgba(0,0,0,0.4),rgba(0,0,0,0.85));
+}
+
+.ss-story-title{
+  font-size:28px;
+  margin-bottom:6px;
+}
+
+.ss-story-tags{
+  font-size:13px;
+  opacity:.85;
+  margin-bottom:12px;
+}
+
+.ss-story-text{
+  font-size:14px;
+  line-height:1.5;
+}
+
+.ss-benefits{
+  padding:10px 4px;
+}
+
+.ss-benefits-title{
+  text-align:center;
+  font-size:30px;
+  margin-bottom:20px;
+}
+
+.ss-benefits-list{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.ss-item{
+  font-size:13px;
+  line-height:1.5;
+  opacity:.95;
+}
+
+.ss-rating{
+  margin-top:26px;
+  text-align:center;
+}
+
+.ss-rating-sub{
+  font-size:14px;
+  opacity:.8;
+}
+
+.ss-benefits-cta{
+  width:100%;
+  margin-top:20px;
+  background:#ff2f7d;
+  border:none;
+  padding:18px;
+  border-radius:16px;
+  font-size:20px;
+  font-weight:bold;
+  color:#fff;
+  cursor:pointer;
+}
+
+.ss-reviews-title{
+  font-size:26px;
+  margin-bottom:16px;
+  text-align:center;
+}
+
+.ss-reviews-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+
+.ss-review{
+  background:#6a1426;
+  border-radius:16px;
+  padding:14px;
+  position:relative;
+  text-align:center;
+}
+
+.ss-review .ss-review-text{
+  font-size:13px;
+  line-height:1.4;
+  opacity:.9;
+  margin-bottom:10px;
+}
+
+.ss-review .ss-stars{
+  margin:6px 0;
+}
+
+.ss-review-head{
+  font-size:13px;
+  margin-top:6px;
+}
+
+.ss-fantasy-card{
+  margin-top:20px;
+  background:#2a000b;
+  border-radius:20px;
+  padding:20px 16px;
+  text-align:center;
+  border:1px solid rgba(255,120,120,0.15);
+}
+
+.ss-fantasy-title{
+  font-size:22px;
+  margin-bottom:18px;
+}
+
+.ss-fantasy-books{
+  position:relative;
+  height:160px;
+  margin-bottom:20px;
+}
+
+.ss-fantasy-books img{
+  position:absolute;
+  width:85px;
+  height:125px;
+  object-fit:cover;
+  border-radius:12px;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  box-shadow:0 6px 20px rgba(0,0,0,.4);
+}
+
+.ss-fantasy-books img:nth-child(1){ transform:translate(-140%,-40%) rotate(-12deg) scale(.9); opacity:.7; }
+.ss-fantasy-books img:nth-child(2){ transform:translate(-80%,-80%) rotate(-6deg) scale(.95); }
+.ss-fantasy-books img:nth-child(3){ transform:translate(-50%,-50%) scale(1.15); z-index:3; }
+.ss-fantasy-books img:nth-child(4){ transform:translate(10%,-70%) rotate(6deg) scale(.95); }
+.ss-fantasy-books img:nth-child(5){ transform:translate(70%,-40%) rotate(10deg) scale(.9); opacity:.7; }
+.ss-fantasy-books img:nth-child(6){ transform:translate(110%,-10%) rotate(14deg) scale(.85); opacity:.5; }
+
+.ss-fantasy-cta{
+  width:100%;
+  background:#ff2f7d;
+  border:none;
+  padding:16px;
+  border-radius:14px;
+  font-size:16px;
+  font-weight:bold;
+  color:#fff;
+  cursor:pointer;
+  position:relative;
+  z-index:10;
+}
+
+.ss-mbg{
+  background:#6a1226;
+  border-radius:18px;
+  padding:18px;
+}
+
+.ss-mbg-row{
+  display:flex;
+  gap:14px;
+  align-items:flex-start;
+}
+
+.ss-mbg-icon img{
+  width:54px;
+  height:54px;
+  object-fit:contain;
+}
+
+.ss-mbg-content{ flex:1; }
+
+.ss-mbg-title{
+  font-size:20px;
+  margin-bottom:8px;
+}
+
+.ss-mbg-text{
+  font-size:14px;
+  line-height:1.5;
+  opacity:.85;
+}
+
+.ss-pricing-shell{
+  background:#5b001c;
+  padding:20px 14px 22px;
+  border-radius:20px;
+}
+
+.ss-offer{
+  background:#000;
+  text-align:center;
+  margin-bottom:22px;
+  padding:14px;
+  border-radius:14px;
+  font-size:16px;
+}
+
+.ss-offer span{
+  background:#ffd76a;
+  color:#000;
+  padding:6px 10px;
+  border-radius:6px;
+  font-weight:bold;
+}
+
+.ss-plan{
+  border:1px solid rgba(255,255,255,0.25);
+  border-radius:18px;
+  padding:18px;
+  margin-bottom:14px;
+  position:relative;
+  cursor:pointer;
+  background:transparent;
+  transition:all .2s ease;
+}
+
+.ss-plan.active{
+  background:#c03b6b;
+  border:2px solid #ffd76a;
+}
+
+.ss-plan.popular{
+  margin-top:24px;
+  border:1px solid rgba(255,255,255,0.25);
+}
+
+.ss-popular{
+  position:absolute;
+  top:-16px;
+  left:-2px;
+  width:calc(100% + 4px);
+  text-align:center;
+  background:#ffd76a;
+  color:#000;
+  padding:8px 0;
+  font-weight:bold;
+  font-size:12px;
+  border-radius:14px 14px 0 0;
+}
+
+.ss-plan-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:16px;
+}
+
+.ss-plan-left{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+
+.ss-plan-title{ font-size:22px; }
+
+.ss-save{
+  background:#3b0b15;
+  padding:4px 8px;
+  border-radius:6px;
+  font-size:12px;
+  display:inline-block;
+  margin-top:4px;
+}
+
+.ss-price-wrap{
+  text-align:right;
+  flex-shrink:0;
+}
+
+.ss-price{
+  font-size:30px;
+  font-weight:bold;
+}
+
+.ss-per{
+  font-size:14px;
+  opacity:.8;
+}
+
+.ss-old{
+  font-size:14px;
+  opacity:.6;
+  text-decoration:line-through;
+  margin-right:6px;
+}
+
+.ss-new{ font-size:14px; }
+
+.ss-main-cta{
+  width:100%;
+  background:#ff4d7a;
+  border:none;
+  padding:18px;
+  border-radius:16px;
+  font-size:18px;
+  font-weight:bold;
+  color:#fff;
+  margin-top:14px;
+  cursor:pointer;
+}
+
+.ss-cta-sub{
+  text-align:center;
+  font-size:14px;
+  margin-top:10px;
+  opacity:.85;
+}
+
+.ss-legal{
+  margin-top:18px;
+  font-size:12px;
+  line-height:1.5;
+  opacity:.7;
+  text-align:center;
+}
+
+.ss-trust{
+  text-align:center;
+  margin-top:18px;
+  font-size:14px;
+}
+
+.ss-lock{
+  margin-top:6px;
+  font-size:13px;
+  opacity:.8;
+}
+
+.ss-payments{
+  display:flex;
+  justify-content:center;
+  gap:10px;
+  margin-top:10px;
+}
+
+.ss-payments img{
+  width:42px;
+  height:26px;
+  object-fit:contain;
+  background:#fff;
+  border-radius:6px;
+  padding:2px;
+}
+
+@media (max-width:360px){
+  .ss-review-head{ flex-direction:column; gap:2px; }
+}
+
+@keyframes ss-spin{
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.ss-btn-login {
+  width: 100%;
+  background: #0f9127;
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  padding: 14px;
+  cursor: pointer;
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.ss-btn-login:disabled { opacity: 0.6; cursor: not-allowed; }
+.ss-btn-login > div:first-child { text-decoration: underline; }
+.ss-status {
+  margin-top: 10px;
+  text-align: center;
+  font-family: Arial, sans-serif;
+  font-size: 13px;
+  min-height: 18px;
+}
+.ss-status.ok  { color: #8eff6d; }
+.ss-status.err { color: #ff6b7c; }
+.ss-success-video {
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: 14px;
+  display: block;
+  margin: 22px auto;
+}
+
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function(){
+
+// Ensure viewport exists in fragment-rendered pages (no <head> access)
+(function ensureViewport(){
+  var existing = document.querySelector('meta[name="viewport"]');
+  if (!existing) {
+    var meta = document.createElement("meta");
+    meta.name = "viewport";
+    meta.content = "width=device-width, initial-scale=1, viewport-fit=cover";
+    document.head.appendChild(meta);
+  } else if (!/width=device-width/.test(existing.content)) {
+    existing.content = "width=device-width, initial-scale=1, viewport-fit=cover";
+  }
+})();
+
+(function ensureCharset(){
+  if (document.querySelector("meta[charset]")) return;
+  var meta = document.createElement("meta");
+  meta.setAttribute("charset", "UTF-8");
+  if (document.head.firstChild) document.head.insertBefore(meta, document.head.firstChild);
+  else document.head.appendChild(meta);
+})();
+
+if (window.__MHS_QUIZ_INIT__) return;
+window.__MHS_QUIZ_INIT__ = true;
+
+const app = document.getElementById("app");
+if (!app) return;
+
+// Supabase config — anon key is safe to ship in client code (RLS protects the DB).
+const SUPABASE_URL = "https://gmhbcxylqubhxozomhlt.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdtaGJjeHlscXViaHhvem9taGx0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxNTk5OTksImV4cCI6MjA5MjczNTk5OX0.GAM73P5X7fT1BIziTfvqUpFT2W_W5EtFb5Gze5cIFfY";
+const SUBMIT_QUIZ_URL = `${SUPABASE_URL}/functions/v1/submit-quiz2`;
+const CREATE_SUBSCRIPTION_URL = `${SUPABASE_URL}/functions/v1/create-subscription`;
+
+// Stripe publishable key (TEST). Safe to ship. Swap to the live pk_live_ key at go-live.
+const STRIPE_PUBLISHABLE_KEY = "pk_live_51TRcmOKD4axecwd4ACFmdInTT88jkMg9c7Sr7Fy5RgGdBGUbSoMfqFYOZcp9wg1V3YW2qHk6K7upgNqkQWaBQqxz00agSU8gvc";
+const stripeClient = (typeof Stripe === "function") ? Stripe(STRIPE_PUBLISHABLE_KEY) : null;
+let stripeElements = null;   // set when the Payment Element mounts
+
+let session_id = localStorage.getItem("ss_session");
+if(!session_id){
+  session_id = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+  localStorage.setItem("ss_session", session_id);
+}
+
+let step = 0;
+let state = {};
+
+state.landing_page = window.location.href;
+state.user_agent = navigator.userAgent;
+state.device_type = /Mobi|Android/i.test(navigator.userAgent) ? "mobile" : "desktop";
+state.funnel_version = "v2";
+
+function getParam(name){
+  return new URLSearchParams(window.location.search).get(name);
+}
+
+state.fbclid = getParam("fbclid") || "";
+state.promo = getParam("promo") || "";   // internal testing: ?promo=<secret> → $0.50
+
+if(state.fbclid){
+  const ts = Math.floor(Date.now()/1000);
+  state.fbc = `fb.1.${ts}.${state.fbclid}`;
+}
+
+let checkoutTimerInterval = null;
+let checkoutBooksInterval = null;
+let progressiveTestimonialInterval = null;
+
+// Preloading: each step type lists the media files it needs. We trigger
+// preload one step ahead inside render() so by the time the user advances,
+// the next page's images are already in the browser cache.
+const STEP_ASSETS = {
+  intro2:     ["/media/logos_1.webp"],
+  interrupt1: ["/media/woman_read.webp"],
+  email:      ["/media/awards_email.webp"],
+  checkout: [
+    "/media/before_reading.webp", "/media/after_reading2.webp",
+    "/media/book_A2.webp", "/media/book_b.webp", "/media/book_c.webp",
+    "/media/book_d.webp", "/media/book_e.webp", "/media/book_f.webp",
+    "/media/book_eg.webp", "/media/money-back.png",
+    "/media/maestro.png", "/media/mastercard.png", "/media/visa.png"
+  ]
+};
+const _preloaded = new Set();
+function preloadFor(stepType){
+  const list = STEP_ASSETS[stepType];
+  if (!list) return;
+  list.forEach(url => {
+    if (_preloaded.has(url)) return;
+    _preloaded.add(url);
+    const img = new Image();
+    img.src = url;
+  });
+}
+
+function upgradeInsecureMedia(root){
+  const scope = root || document;
+  scope.querySelectorAll('img[src^="http://"], video[src^="http://"], source[src^="http://"]').forEach((el)=>{
+    const src = el.getAttribute("src");
+    if(src && src.indexOf("http://") === 0){
+      el.setAttribute("src", "https://" + src.slice(7));
+    }
+  });
+}
+
+// V2 quiz steps. Each step can have `showIf: state => boolean` to skip it conditionally.
+// Question shape matches quiz2_sessions schema fields (see submit-quiz2/index.ts).
+const steps = [
+  {type:"intro1"},
+  {type:"intro2"},
+
+  // Q0 — 18+ gate
+  {type:"confirm", key:"age_confirmed", title:"Before we start",
+   sub:"This is an adult product. You must be 18+ to continue.",
+   label:"I confirm I am 18 years or older"},
+
+  // Q1 — Are you in this story?
+  {type:"single", key:"in_story"},
+
+  // Q1b — Compound name + gender (only if in_story = yes)
+  {type:"compound", key:"you",
+   showIf: s => s.in_story === "yes"},
+
+  // Q2 — Pairing (5 options; "surprise me" hidden when self-inserting)
+  {type:"single_dynamic", key:"pairing"},
+
+  // Q3 — World
+  {type:"single", key:"world"},
+
+  // Q4 — Love interest archetype
+  {type:"single", key:"love_interest"},
+
+  // Q5 — Opening style
+  {type:"single", key:"opening"},
+
+  {type:"interrupt1"},
+
+  // Q6 — Heat level
+  {type:"single", key:"spicy"},
+
+  // Q7 — Mood chips (multi)
+  {type:"multi", key:"mood"},
+
+  // Q8b — Setup depth (only if non-sweet)
+  {type:"single_rich", key:"setup_depth",
+   showIf: s => s.spicy === "spicy" || s.spicy === "very_spicy"},
+
+  // Q8 — Specifics (only when Full mode)
+  {type:"multi", key:"specifics",
+   showIf: s => s.setup_depth === "full"},
+
+  // ═══ Drills — only if setup_depth = full AND relevant triggers ═══
+  {type:"single", key:"restraint",
+   showIf: s => s.setup_depth === "full" && ((s.mood||[]).includes("rough_care") || (s.specifics||[]).some(x => ["restraint","marking"].includes(x)) || s.spicy === "very_spicy")},
+  {type:"multi", key:"sensory",
+   showIf: s => s.setup_depth === "full" && ((s.mood||[]).includes("rough_care") || (s.specifics||[]).some(x => ["restraint","marking"].includes(x)))},
+  {type:"multi", key:"talk", max:3,
+   showIf: s => s.setup_depth === "full" && ((s.specifics||[]).some(x => ["praise","instruction","filthy_talk"].includes(x)))},
+  {type:"single", key:"aftercare",
+   showIf: s => s.setup_depth === "full" && ((s.mood||[]).includes("rough_care") || (s.specifics||[]).some(x => ["restraint","marking"].includes(x)))},
+  {type:"multi", key:"paranormal_kind",
+   showIf: s => s.setup_depth === "full" && s.world === "fantasy_paranormal"},
+  {type:"multi", key:"monster_flavor",
+   showIf: s => s.setup_depth === "full" && s.world === "monster"},
+  {type:"multi", key:"omegaverse",
+   showIf: s => s.setup_depth === "full" && (s.world === "omegaverse" || (s.paranormal_kind||[]).some(x => ["wolf","dragon","bearcat"].includes(x)))},
+  {type:"single", key:"size",
+   showIf: s => s.setup_depth === "full" && (["fantasy_paranormal","monster","omegaverse"].includes(s.world) || (s.specifics||[]).includes("size_diff"))},
+  {type:"single", key:"partner_dynamic",
+   showIf: s => s.setup_depth === "full" && (s.mood||[]).includes("multiple_partners")},
+  {type:"single", key:"dark_kind",
+   showIf: s => s.setup_depth === "full" && ((s.mood||[]).includes("dark_obsessive") || (s.mood||[]).includes("forbidden"))},
+  {type:"single", key:"dark_consent",
+   showIf: s => s.setup_depth === "full" && ((s.mood||[]).includes("dark_obsessive") || (s.mood||[]).includes("forbidden"))},
+  {type:"single", key:"voyeur",
+   showIf: s => s.setup_depth === "full" && (s.specifics||[]).includes("public_watched")},
+
+  {type:"interrupt2"},
+
+  // Q9 — Skip preferences (compound with escape hatch + mutex + free text)
+  {type:"skip", key:"skip"},
+
+  {type:"progressive"},
+  {type:"email"},
+  {type:"checkout"}
+];
+
+function cleanupIntervals(){
+  if(checkoutTimerInterval){ clearInterval(checkoutTimerInterval); checkoutTimerInterval = null; }
+  if(checkoutBooksInterval){ clearInterval(checkoutBooksInterval); checkoutBooksInterval = null; }
+  if(progressiveTestimonialInterval){ clearInterval(progressiveTestimonialInterval); progressiveTestimonialInterval = null; }
+}
+
+// POST to the submit-quiz edge function. Body shape:
+//   { session_id, event, payload }
+// Retries up to 3 times with backoff (1.2s, 2.5s) to survive cold-start
+// 503s and transient network blips. Critical for payment_successful — if
+// that single event is lost, the story never gets created.
+async function postQuizEvent(event, payload){
+  try { console.log("[MHS quiz] -> submit-quiz", event, payload); } catch (_) {}
+
+  const body = JSON.stringify({
+    session_id: session_id,
+    event: event,
+    payload: payload || {},
+  });
+
+  const delays = [1200, 2500];
+  let lastErr = null;
+
+  for (let attempt = 0; attempt <= delays.length; attempt++) {
+    try {
+      const res = await fetch(SUBMIT_QUIZ_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": SUPABASE_ANON_KEY,
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+        body: body,
+        keepalive: true,
+      });
+      if (res.ok) {
+        if (attempt > 0) console.warn(`[MHS quiz] submit-quiz succeeded on attempt ${attempt + 1}`);
+        return res;
+      }
+      lastErr = new Error(`HTTP ${res.status}`);
+      try { console.warn(`[MHS quiz] submit-quiz attempt ${attempt + 1} failed:`, lastErr.message); } catch (_) {}
+    } catch (err) {
+      lastErr = err;
+      try { console.warn(`[MHS quiz] submit-quiz attempt ${attempt + 1} threw:`, err); } catch (_) {}
+    }
+    if (attempt < delays.length) {
+      await new Promise(r => setTimeout(r, delays[attempt]));
+    }
+  }
+  console.error("[MHS quiz] submit-quiz GAVE UP after 3 attempts. Event lost:", event, lastErr);
+}
+
+function sendEmailCapture(){
+  if(!state.email) return;
+  postQuizEvent("email_capture", {
+    email: state.email,
+    plan: state.plan,
+    // attribution
+    fbclid: state.fbclid,
+    fbc: state.fbc,
+    funnel_version: state.funnel_version,
+    landing_page: state.landing_page,
+    user_agent: state.user_agent,
+    device_type: state.device_type,
+    // V2 quiz answers (map state names → submit-quiz2 payload names)
+    age_confirmed:   state.age_confirmed,
+    in_story:        state.in_story,
+    you:             state.you,
+    pairing:         state.pairing,
+    world:           state.world,
+    love_interest:   state.love_interest,
+    opening:         state.opening,
+    spicy:           state.spicy,
+    mood:            state.mood,
+    specifics:       state.specifics,
+    setup_depth:     state.setup_depth,
+    skip:            state.skip,
+    // drills (all optional — may be undefined if the reader's path didn't hit them)
+    restraint:       state.restraint,
+    sensory:         state.sensory,
+    talk:            state.talk,
+    aftercare:       state.aftercare,
+    paranormal_kind: state.paranormal_kind,
+    monster_flavor:  state.monster_flavor,
+    omegaverse:      state.omegaverse,
+    size:            state.size,
+    partner_dynamic: state.partner_dynamic,
+    dark_kind:       state.dark_kind,
+    dark_consent:    state.dark_consent,
+    voyeur:          state.voyeur,
+  });
+}
+
+function sendPlanSelection(){
+  if(!state.email || !state.plan) return;
+  postQuizEvent("plan_selected", {
+    email: state.email,
+    plan: state.plan,
+  });
+}
+
+async function sendPaymentSuccess(){
+  if(!state.email) return;
+  // AWAIT this one — the user is on the "You're in!" success screen and
+  // isn't going anywhere. If the network is slow or the function cold-starts,
+  // we want to give it the full retry window before we move on.
+  await postQuizEvent("payment_successful", {
+    email: state.email,
+    plan: state.plan || "",
+  });
+}
+
+function sendFinal(){
+  // No-op in the new flow — submit-quiz is event-driven now, no "final" payload needed.
+}
+
+function sendEvent(event, data){
+  postQuizEvent(event, data || {});
+}
+
+function sendPageLoadEventOnce(){
+  // Disabled by design. We only post on 3 milestones:
+  // 1) email captured, 2) plan selected/card_page_shown, 3) payment success.
+  return;
+}
+
+// V2: honour showIf on each step — skip steps whose predicate returns false.
+function isStepActive(s){
+  if(!s) return false;
+  if(typeof s.showIf === "function"){
+    try { return !!s.showIf(state); } catch(_) { return false; }
+  }
+  return true;
+}
+
+// V2: return the next active step index after `from`, or -1 if none.
+function nextActiveIndex(from){
+  for(let i = from + 1; i < steps.length; i++){
+    if(isStepActive(steps[i])) return i;
+  }
+  return -1;
+}
+
+function next(){
+  const nextIdx = nextActiveIndex(step);
+  if(nextIdx < 0) return;
+  app.style.opacity = 0;
+  setTimeout(() => {
+    step = nextIdx;
+    render();
+    requestAnimationFrame(() => { app.style.opacity = 1; });
+  }, 250);
+}
+
+function getProgress(){
+  // Count only currently-active steps for a stable progress bar.
+  const active = steps.map((_, i) => i).filter(i => isStepActive(steps[i]));
+  const currentIdx = active.indexOf(step);
+  if(currentIdx < 0 || active.length <= 1) return 0;
+  return Math.round((currentIdx / (active.length - 1)) * 100);
+}
+
+function render(){
+  cleanupIntervals();
+  const s = steps[step];
+  if(!s) return;
+
+  // If the current step became inactive (rare — e.g. user backed up and changed
+  // an answer that invalidates this step's showIf), auto-advance.
+  if(!isStepActive(s)){
+    return next();
+  }
+
+  // Kick off preloading for the next active step's images so they're cached.
+  const nextIdx = nextActiveIndex(step);
+  if (nextIdx >= 0) preloadFor(steps[nextIdx].type);
+
+  if(s.type==="intro1") return renderIntro1();
+  if(s.type==="intro2") return renderIntro2();
+  if(s.type==="confirm") return renderConfirm(s);
+  if(s.type==="single") return renderSingle(s);
+  if(s.type==="single_dynamic") return renderSingleDynamic(s);
+  if(s.type==="single_rich") return renderSingleRich(s);
+  if(s.type==="compound") return renderCompound(s);
+  if(s.type==="multi") return renderMulti(s);
+  if(s.type==="skip") return renderSkip(s);
+  if(s.type==="interrupt1") return renderInterrupt1();
+  if(s.type==="interrupt2") return renderInterrupt2();
+  if(s.type==="progressive") return renderProgressive();
+  if(s.type==="email") return renderEmail();
+  if(s.type==="checkout") return renderCheckout();
+}
+
+function renderIntro1(){
+  app.innerHTML = `
+    <div class="ss-container">
+      <div class="ss-logo" style="margin-bottom:30px;font-size:24px;font-weight:bold;">Stuff So Sweet</div>
+      <div class="ss-title">You know exactly what you want. You just haven't said it out loud yet.</div>
+      <div class="ss-sub">This is where you say it. A few choices, and we turn them into a story only you will ever read.</div>
+      <div style="text-align:center;font-family:Arial;font-size:14px;margin-bottom:30px;"><span style="color:#ffd76a;">&#9733;&#9733;&#9733;&#9733;&#9733;</span> &nbsp; 4.8 out of 5 | 19k reviews</div>
+      <div class="ss-intro1-cta">
+        <button class="ss-btn" id="nextBtn">CREATE MY STORY</button>
+      </div>
+    </div>
+  `;
+  document.getElementById("nextBtn").onclick = next;
+}
+
+function renderIntro2(){
+  app.innerHTML = `
+    <div class="ss-container">
+      <div class="ss-logo" style="margin-bottom:20px;font-size:24px;font-weight:bold;">Stuff So Sweet</div>
+      <div style="background:rgba(255,255,255,0.06);border-radius:18px;padding:20px;text-align:center;">
+        <div style="font-size:34px;margin-bottom:10px;">247,000+ people</div>
+        <div class="ss-sub">Have discovered what they really want and stopped apologizing for it.</div>
+        <div style="background:#7a0d2b;border-radius:14px;padding:16px;margin-top:20px;">"Stuff So Sweet gives readers a private space to explore their fantasies through personalized, interactive romance fiction."</div>
+        <div style="margin-top:20px;"><img src="/media/logos_1.webp" style="width:100%;border-radius:14px;"></div>
+      </div>
+      <button class="ss-btn" id="nextBtn" style="margin-top:30px;">CONTINUE</button>
+    </div>
+  `;
+  document.getElementById("nextBtn").onclick = next;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// V2 question content — {value, label} shape (matches quiz2_sessions CHECK enums)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const V2_SINGLE = {
+  in_story: {
+    title: "Are you in this story?",
+    options: [
+      { value: "no",  label: "No &mdash; I want to read about them" },
+      { value: "yes", label: "Yes &mdash; write me in" },
+    ],
+  },
+  world: {
+    title: "What kind of world?",
+    options: [
+      { value: "contemporary",       label: "Contemporary" },
+      { value: "historical",         label: "Historical / regency" },
+      { value: "fantasy_paranormal", label: "Fantasy or paranormal" },
+      { value: "monster",            label: "Monster / non-human" },
+      { value: "omegaverse",         label: "Omegaverse" },
+      { value: "surprise",           label: "Surprise me" },
+    ],
+  },
+  love_interest: {
+    title: "What kind of love interest appeals to you?",
+    options: [
+      { value: "brooding",   label: "Brooding &amp; mysterious" },
+      { value: "protective", label: "Protective &amp; steady" },
+      { value: "playful",    label: "Playful &amp; bright" },
+      { value: "ruthless",   label: "Ruthless &amp; controlled" },
+      { value: "wounded",    label: "Wounded &amp; guarded" },
+      { value: "cinnamon",   label: "Cinnamon roll &mdash; sweet, devoted" },
+      { value: "wildcard",   label: "Wildcard &mdash; unpredictable" },
+      { value: "surprise",   label: "Surprise me" },
+    ],
+  },
+  opening: {
+    title: "How does the story start?",
+    options: [
+      { value: "slow_build",  label: "Slow build &mdash; tension grows" },
+      { value: "meet_cute",   label: "Meet-cute &mdash; unexpected first encounter" },
+      { value: "already_ten", label: "Already-tension &mdash; they have history when the story opens" },
+      { value: "one_night",   label: "One night that becomes more" },
+      { value: "forced",      label: "Forced together &mdash; proximity, situation" },
+      { value: "fresh_start", label: "Fresh start &mdash; new place, new person" },
+      { value: "surprise",    label: "Surprise me" },
+    ],
+  },
+  spicy: {
+    title: "How spicy?",
+    options: [
+      { value: "sweet",      label: "Sweet &mdash; no explicit scenes" },
+      { value: "spicy",      label: "Spicy &mdash; explicit scenes on the page" },
+      { value: "very_spicy", label: "Very spicy &mdash; very explicit, throughout" },
+    ],
+  },
+  // BDSM drill: restraint level
+  restraint: {
+    title: "How much restraint feels right?",
+    options: [
+      { value: "held",  label: "Just held &mdash; hands, weight, position" },
+      { value: "light", label: "Light bindings &mdash; silk, a tie" },
+      { value: "real",  label: "Real restraints &mdash; cuffs, rope" },
+      { value: "full",  label: "Full bondage &mdash; advanced, immobilization" },
+    ],
+  },
+  aftercare: {
+    title: "Aftercare tone",
+    options: [
+      { value: "warm",    label: "Warm and wrapped up" },
+      { value: "fed",     label: "Fed, taken care of" },
+      { value: "quiet",   label: "Quiet, just staying" },
+      { value: "playful", label: "Playful banter, ease it down" },
+      { value: "fade",    label: "Fade to next scene &mdash; don't linger" },
+    ],
+  },
+  size: {
+    title: "Size / power difference",
+    options: [
+      { value: "massive",     label: "Massive &mdash; physical impossibility played for tension" },
+      { value: "significant", label: "Significant but grounded" },
+      { value: "present",     label: "Present but not the point" },
+      { value: "skip",        label: "Skip" },
+    ],
+  },
+  partner_dynamic: {
+    title: "How do the partners connect to each other?",
+    options: [
+      { value: "mutual",       label: "Fully mutual &mdash; everyone with everyone" },
+      { value: "centered",     label: "Centered on the main character" },
+      { value: "two_plus_one", label: "Two-plus-one &mdash; one primary, other(s) join" },
+      { value: "hierarchical", label: "Hierarchical (alpha primary, others secondary)" },
+      { value: "decide",       label: "Let the story figure it out" },
+    ],
+  },
+  dark_kind: {
+    title: "The dark love interest &mdash; what kind?",
+    options: [
+      { value: "mafia",        label: "Mafia / underworld" },
+      { value: "villain",      label: "Villain / antihero" },
+      { value: "stalker",      label: "Stalker energy &mdash; obsession, watching" },
+      { value: "captor",       label: "Captor / captivity dynamic" },
+      { value: "gray",         label: "Morally gray but not evil" },
+      { value: "full_villain", label: "Full villain, no redemption" },
+    ],
+  },
+  dark_consent: {
+    title: "Consent flavor in dark scenes",
+    options: [
+      { value: "fully",  label: "Fully consensual throughout" },
+      { value: "dubcon", label: "Dubcon &mdash; blurred lines that resolve as consensual" },
+      { value: "cnc",    label: "CNC &mdash; negotiated fantasy, safewords off-page" },
+      { value: "skip",   label: "Skip dark consent territory entirely" },
+    ],
+  },
+  voyeur: {
+    title: "Voyeurism &mdash; how?",
+    options: [
+      { value: "watched",      label: "Being watched" },
+      { value: "watching",     label: "Watching them" },
+      { value: "mutual",       label: "Watching each other" },
+      { value: "someone_else", label: "With someone else present" },
+      { value: "risk_only",    label: "Just the possibility &mdash; public risk, no audience" },
+    ],
+  },
+};
+
+const V2_MULTI = {
+  mood: {
+    title: "Story feels like...",
+    hint:  "Multi-select, all optional.",
+    options: [
+      { value: "soft_tender",       label: "Soft &amp; tender" },
+      { value: "slow_burn",         label: "Slow burn tension" },
+      { value: "playful_bratty",    label: "Playful &amp; bratty" },
+      { value: "rough_care",        label: "Rough with real care" },
+      { value: "dark_obsessive",    label: "Dark &amp; obsessive" },
+      { value: "forbidden",         label: "Forbidden / risky" },
+      { value: "sensual_worship",   label: "Sensual, worship-tempo" },
+      { value: "multiple_partners", label: "Multiple partners" },
+    ],
+  },
+  specifics: {
+    title: "Specific things I want",
+    hint:  "Multi-select, all optional.",
+    options: [
+      { value: "praise",         label: "Praise talk / worship" },
+      { value: "instruction",    label: "Instruction / commands" },
+      { value: "restraint",      label: "Restraint / being held down" },
+      { value: "marking",        label: "Marking (bruises, evidence)" },
+      { value: "slow_denial",    label: "Slow denial / edging" },
+      { value: "public_watched", label: "Public / being watched" },
+      { value: "explicit_oral",  label: "Explicit oral" },
+      { value: "explicit_anal",  label: "Explicit anal" },
+      { value: "size_diff",      label: "Size difference" },
+      { value: "breeding",       label: "Breeding / creampie" },
+      { value: "filthy_talk",    label: "Filthy talk" },
+    ],
+  },
+  sensory: {
+    title: "Sensory play",
+    hint:  "Multi-select. Zero picks is fine.",
+    options: [
+      { value: "blindfold",   label: "Blindfolds" },
+      { value: "gag",         label: "Gags / silencing" },
+      { value: "temperature", label: "Temperature (ice, wax)" },
+      { value: "deprivation", label: "Deprivation (blindfold + earplug)" },
+    ],
+  },
+  talk: {
+    title: "Style of intimate talk",
+    hint:  "Multi-select, up to 3.",
+    options: [
+      { value: "praise",        label: "Praise (\"perfect\", \"look at me\")" },
+      { value: "instruction",   label: "Instruction (\"hold still\", \"eyes here\")" },
+      { value: "filthy_praise", label: "Filthy praise (worship + explicit mixed)" },
+      { value: "degradation",   label: "Degradation edge" },
+      { value: "silent",        label: "Almost silent &mdash; bodies do the talking" },
+    ],
+  },
+  paranormal_kind: {
+    title: "What kind of paranormal?",
+    hint:  "Multi-select.",
+    options: [
+      { value: "vampire", label: "Vampire" },
+      { value: "wolf",    label: "Wolf shifter" },
+      { value: "dragon",  label: "Dragon shifter" },
+      { value: "bearcat", label: "Bear / big-cat shifter" },
+      { value: "fae",     label: "Fae / elf" },
+      { value: "demon",   label: "Demon" },
+      { value: "angel",   label: "Angel" },
+    ],
+  },
+  monster_flavor: {
+    title: "What kind of monster?",
+    hint:  "Multi-select. All are intelligent beings &mdash; never actual animals.",
+    options: [
+      { value: "orc",      label: "Orc" },
+      { value: "alien",    label: "Alien (human-compatible)" },
+      { value: "tentacle", label: "Tentacle beings" },
+      { value: "sea",      label: "Sea creatures / merfolk" },
+      { value: "invented", label: "Something the story invents" },
+    ],
+  },
+  omegaverse: {
+    title: "Heat &amp; mating dynamics",
+    hint:  "Multi-select.",
+    options: [
+      { value: "heat",      label: "Heat cycles as story engine" },
+      { value: "knot",      label: "Knotting" },
+      { value: "bond",      label: "Mating bonds (permanent)" },
+      { value: "scent",     label: "Scenting / claiming" },
+      { value: "rivals",    label: "Rival alphas / competition" },
+      { value: "find_pair", label: "Omega finding their alpha (or vice versa)" },
+    ],
+  },
+};
+
+const V2_SINGLE_RICH = {
+  setup_depth: {
+    title: "Want to fine-tune the details?",
+    hint:  "Since you picked something spicy, we can use smart defaults or let you customize every detail.",
+    options: [
+      { value: "quick", label: "Quick",
+        subLabel: "Take me to the story. Smart defaults for the rest &mdash; I can refine my profile later." },
+      { value: "full",  label: "Full",
+        subLabel: "Customize every detail now (~10-15 more questions)." },
+    ],
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Common shell — every question step gets the same header + progress bar
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function questionShellHtml(title, bodyHtml, extraFooter){
+  return `
+    <div class="ss-container">
+      <div style="text-align:center;margin-bottom:16px;font-size:24px;font-weight:bold;">Stuff So Sweet</div>
+      <div class="ss-progress"><div class="ss-fill" style="width:${getProgress()}%"></div></div>
+      <div class="ss-title">${title}</div>
+      ${bodyHtml}
+    </div>
+    ${extraFooter || ""}
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// renderSingle — V2 shape (options are {value, label})
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function renderSingle(s){
+  const q = V2_SINGLE[s.key];
+  if(!q){ console.error("[quiz2] renderSingle: unknown key", s.key); return; }
+
+  app.innerHTML = questionShellHtml(q.title, `<div class="ss-options" id="opts"></div>`);
+  const wrap = document.getElementById("opts");
+  q.options.forEach(opt => {
+    const el = document.createElement("div");
+    el.className = "ss-option";
+    el.innerHTML = `<div>${opt.label}</div>`;
+    el.onclick = () => { state[s.key] = opt.value; next(); };
+    wrap.appendChild(el);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// renderSingleDynamic — Q2 pairing. "Surprise me" hidden if reader is in the story.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function renderSingleDynamic(s){
+  if(s.key !== "pairing"){ return renderSingle(s); }
+
+  const base = [
+    { value: "wm",    label: "A woman and a man" },
+    { value: "ww",    label: "Women" },
+    { value: "mm",    label: "Men" },
+    { value: "queer", label: "Multiple partners / queer romance" },
+  ];
+  if(state.in_story !== "yes"){
+    base.push({ value: "surprise", label: "Surprise me" });
+  }
+
+  app.innerHTML = questionShellHtml("Who should the romance be between?", `<div class="ss-options" id="opts"></div>`);
+  const wrap = document.getElementById("opts");
+  base.forEach(opt => {
+    const el = document.createElement("div");
+    el.className = "ss-option";
+    el.innerHTML = `<div>${opt.label}</div>`;
+    el.onclick = () => { state[s.key] = opt.value; next(); };
+    wrap.appendChild(el);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// renderSingleRich — options with subtitles (Q8b setup_depth)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function renderSingleRich(s){
+  const q = V2_SINGLE_RICH[s.key];
+  if(!q){ console.error("[quiz2] renderSingleRich: unknown key", s.key); return; }
+
+  const hintHtml = q.hint ? `<div class="ss-sub">${q.hint}</div>` : "";
+  app.innerHTML = questionShellHtml(q.title, `${hintHtml}<div class="ss-options" id="opts"></div>`);
+  const wrap = document.getElementById("opts");
+  q.options.forEach(opt => {
+    const el = document.createElement("div");
+    el.className = "ss-option";
+    el.style.flexDirection = "column";
+    el.style.alignItems = "flex-start";
+    el.innerHTML = `<div style="font-weight:600;font-size:16px;">${opt.label}</div><div style="opacity:.75;font-size:13px;margin-top:4px;">${opt.subLabel}</div>`;
+    el.onclick = () => { state[s.key] = opt.value; next(); };
+    wrap.appendChild(el);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// renderCompound — Q1b: name (text) + gender (radio) collected in one step
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function renderCompound(s){
+  if(s.key !== "you"){ console.error("[quiz2] renderCompound: unknown key", s.key); return; }
+
+  app.innerHTML = questionShellHtml("Tell us about you",
+    `<div class="ss-sub">Both fields feed into the character the engine builds for you.</div>
+     <div style="margin:16px 0;">
+       <label style="display:block;font-size:13px;opacity:.75;margin-bottom:6px;">Name in the story</label>
+       <input id="q1b-name" type="text" maxlength="30" placeholder="e.g. Neve"
+         style="width:100%;padding:14px;border-radius:12px;border:none;background:rgba(255,255,255,0.12);color:#fff;font-size:16px;box-sizing:border-box;">
+     </div>
+     <div style="margin:16px 0;">
+       <label style="display:block;font-size:13px;opacity:.75;margin-bottom:6px;">Gender</label>
+       <div class="ss-options" id="gender-opts"></div>
+     </div>`,
+    `<div class="ss-footer"><button class="ss-btn" id="cta" disabled>CONTINUE</button></div>`);
+
+  const genders = [
+    { value: "woman", label: "Woman" },
+    { value: "man",   label: "Man" },
+    { value: "nb",    label: "Non-binary" },
+  ];
+  const genderWrap = document.getElementById("gender-opts");
+  let selectedGender = null;
+  genders.forEach(g => {
+    const el = document.createElement("div");
+    el.className = "ss-option";
+    el.innerHTML = `<div>${g.label}</div>`;
+    el.onclick = () => {
+      selectedGender = g.value;
+      genderWrap.querySelectorAll(".ss-option").forEach(e => e.classList.remove("active"));
+      el.classList.add("active");
+      validate();
+    };
+    genderWrap.appendChild(el);
+  });
+
+  const nameInput = document.getElementById("q1b-name");
+  const cta = document.getElementById("cta");
+  nameInput.addEventListener("input", validate);
+
+  function isValidName(n){
+    n = (n || "").trim();
+    if(n.length < 2) return false;
+    if(/^\d+$/.test(n)) return false;
+    // reject repeated single character (aaa, zzz, xxx)
+    if(new Set(n.toLowerCase().replace(/\s/g, "")).size === 1) return false;
+    const placeholders = ["test","user","admin","name","foo","bar","xxx","abc","qqq","asdf","zzz","aaa"];
+    if(placeholders.includes(n.toLowerCase())) return false;
+    return true;
+  }
+  function validate(){
+    cta.disabled = !(isValidName(nameInput.value) && selectedGender);
+  }
+
+  cta.onclick = () => {
+    const n = nameInput.value.trim();
+    if(!isValidName(n)){
+      alert("Try a name your character would actually go by.");
+      return;
+    }
+    state.you = { name: n, gender: selectedGender };
+    next();
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// renderMulti — V2 shape ({value, label})
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function renderMulti(s){
+  const q = V2_MULTI[s.key];
+  if(!q){ console.error("[quiz2] renderMulti: unknown key", s.key); return; }
+
+  const hintHtml = q.hint ? `<div class="ss-sub">${q.hint}</div>` : "";
+  app.innerHTML = questionShellHtml(q.title, `${hintHtml}<div class="ss-options" id="opts"></div>`,
+    `<div class="ss-footer"><button class="ss-btn" id="cta">CONTINUE</button></div>`);
+
+  const wrap = document.getElementById("opts");
+  const cta  = document.getElementById("cta");
+  const selected = new Set();
+
+  q.options.forEach(opt => {
+    const el = document.createElement("div");
+    el.className = "ss-option";
+    el.innerHTML = `<div style="display:flex;gap:10px;align-items:center;width:100%;">
+      <div style="flex:1">${opt.label}</div>
+      <div class="check" style="width:20px;height:20px;border:2px solid rgba(255,255,255,0.4);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;color:#e04b57;font-weight:bold;"></div>
+    </div>`;
+    el.onclick = () => {
+      if(selected.has(opt.value)){
+        selected.delete(opt.value);
+        el.classList.remove("active");
+        el.querySelector(".check").innerHTML = "";
+      } else {
+        if(s.max && selected.size >= s.max){
+          alert(`Max ${s.max} selections.`);
+          return;
+        }
+        selected.add(opt.value);
+        el.classList.add("active");
+        el.querySelector(".check").innerHTML = "&#10003;";
+      }
+    };
+    wrap.appendChild(el);
+  });
+
+  cta.onclick = () => {
+    state[s.key] = Array.from(selected);
+    next();
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// renderConfirm — Q0 age gate (single checkbox)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function renderConfirm(s){
+  app.innerHTML = questionShellHtml(s.title || "Please confirm",
+    `<div class="ss-sub">${s.sub || ""}</div>
+     <label class="ss-option" style="cursor:pointer;">
+       <input type="checkbox" id="confirm-box" style="margin-right:10px;transform:scale(1.3);accent-color:#e04b57;">
+       <div>${s.label || "I confirm"}</div>
+     </label>`,
+    `<div class="ss-footer"><button class="ss-btn" id="cta" disabled>CONTINUE</button></div>`);
+
+  const box = document.getElementById("confirm-box");
+  const cta = document.getElementById("cta");
+  box.onchange = () => { cta.disabled = !box.checked; };
+  cta.onclick = () => {
+    if(!box.checked){ return; }
+    state[s.key] = true;
+    next();
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// renderSkip — Q9 compound with escape-hatch mutex + specifics + free text
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function renderSkip(s){
+  const specifics = [
+    { value: "traditional_only",     label: "Only traditional romance", hint: "skip kink and dark themes" },
+    { value: "no_kink",              label: "No kinks or BDSM" },
+    { value: "no_bestiality",        label: "No bestiality" },
+    { value: "no_dark",              label: "No dark romance", hint: "no mafia, villain, stalker, captor" },
+    { value: "enthusiastic_consent", label: "Only clear, enthusiastic consent" },
+  ];
+
+  app.innerHTML = questionShellHtml("Anything to skip?",
+    `<div class="ss-sub">All optional. These override everything above.</div>
+     <div class="ss-options" style="margin-bottom:12px;">
+       <label class="ss-option" style="cursor:pointer;">
+         <input type="checkbox" id="skip-open" style="margin-right:10px;transform:scale(1.2);accent-color:#e04b57;">
+         <div>I'm open to any kind of story</div>
+       </label>
+     </div>
+     <div style="border-top:1px solid rgba(255,255,255,0.2);margin:16px 0;"></div>
+     <div class="ss-options" id="skip-specifics"></div>
+     <div style="margin-top:16px;">
+       <label style="display:block;font-size:13px;opacity:.75;margin-bottom:6px;">Anything else to skip? (optional)</label>
+       <input id="skip-free" type="text" maxlength="200"
+         placeholder="e.g. no cheating, no breath play, no sad endings..."
+         style="width:100%;padding:12px;border-radius:12px;border:none;background:rgba(255,255,255,0.12);color:#fff;font-size:14px;box-sizing:border-box;">
+     </div>`,
+    `<div class="ss-footer"><button class="ss-btn" id="cta">CONTINUE</button></div>`);
+
+  const openBox = document.getElementById("skip-open");
+  const specWrap = document.getElementById("skip-specifics");
+  const freeInput = document.getElementById("skip-free");
+  const cta = document.getElementById("cta");
+  const specBoxes = [];
+
+  specifics.forEach(o => {
+    const label = document.createElement("label");
+    label.className = "ss-option";
+    label.style.cursor = "pointer";
+    label.innerHTML = `<input type="checkbox" value="${o.value}" style="margin-right:10px;transform:scale(1.2);accent-color:#e04b57;">
+      <div style="flex:1">${o.label}${o.hint ? ` <span style="opacity:.6;font-size:13px;">&mdash; ${o.hint}</span>` : ""}</div>`;
+    specWrap.appendChild(label);
+    const cb = label.querySelector("input");
+    cb.addEventListener("change", () => {
+      if(cb.checked && openBox.checked){ openBox.checked = false; }
+    });
+    specBoxes.push(cb);
+  });
+
+  openBox.addEventListener("change", () => {
+    if(openBox.checked){
+      specBoxes.forEach(cb => { cb.checked = false; cb.disabled = true; });
+    } else {
+      specBoxes.forEach(cb => { cb.disabled = false; });
+    }
+  });
+
+  cta.onclick = () => {
+    state[s.key] = {
+      open_any: openBox.checked,
+      specifics: specBoxes.filter(cb => cb.checked).map(cb => cb.value),
+      free_text: (freeInput.value || "").trim(),
+    };
+    next();
+  };
+}
+
+// (V1 renderMulti removed — V2 renderMulti is defined earlier in this file with {value,label} shape.)
+
+function renderInterrupt1(){
+  app.innerHTML = `
+    <div class="ss-container">
+      <div style="text-align:center;margin-bottom:16px;font-size:24px;font-weight:bold;">Stuff So Sweet</div>
+      <div class="ss-progress"><div class="ss-fill" style="width:${getProgress()}%"></div></div>
+      <div class="ss-title">You don't just read this story.<br>You decide what happens.</div>
+      <div class="ss-sub">Every scene has a choice. The heat rises or slows based on what you want. No two stories are ever the same.</div>
+      <div style="margin-bottom:20px;text-align:center;">
+        <img src="/media/woman_read.webp" style="width:80%;border-radius:16px;display:block;margin:0 auto;">
+      </div>
+      <div style="background:rgba(255,255,255,0.08);padding:20px;border-radius:14px;font-size:14px;margin-bottom:20px;">
+        <div style="color:#4caf50;margin-bottom:6px;">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+        <div style="opacity:.8;font-size:12px;text-align:right;margin-bottom:6px;">@ashley</div>
+        Best romance app I've tried, and I've tried a lot. My choices actually change what happens, so it feels like MY story. Some scenes had me putting my phone down just to breathe.
+      </div>
+    </div>
+    <div class="ss-footer"><button class="ss-btn" id="nextBtn">CONTINUE</button></div>
+  `;
+  document.getElementById("nextBtn").onclick = next;
+}
+
+function renderInterrupt2(){
+  app.innerHTML = `
+    <div class="ss-container">
+      <div style="text-align:center;margin-bottom:16px;font-size:24px;font-weight:bold;">Stuff So Sweet</div>
+      <div class="ss-progress"><div class="ss-fill" style="width:${getProgress()}%"></div></div>
+      <div class="ss-title">You're in good company!</div>
+      <div class="ss-sub">78,247 readers shared how Stuff So Sweet changed their lives.</div>
+      <div style="text-align:center;margin:20px 0;"><div style="font-size:42px;color:#ff4d5e;">87%</div><div>felt confident asking for what they want</div></div>
+      <div style="text-align:center;margin:20px 0;"><div style="font-size:42px;color:#ff4d5e;">93%</div><div>stopped feeling guilty about their fantasies</div></div>
+      <div style="text-align:center;margin:20px 0;"><div style="font-size:42px;color:#ff4d5e;">81%</div><div>brought the spark back</div></div>
+      <button class="ss-btn" id="nextBtn" style="margin-top:80px;">CONTINUE</button>
+    </div>
+  `;
+  document.getElementById("nextBtn").onclick = next;
+}
+
+function renderProgressive(){
+  app.innerHTML = `
+    <div class="ss-page">
+      <div class="ss-container">
+        <div class="ss-logo" style="font-size:24px;font-weight:bold;margin-bottom:20px;">Stuff So Sweet</div>
+        <div class="ss-percent" id="percent">0%</div>
+        <div class="ss-bar2" style="height:16px;margin:10px 0 20px;">
+          <div class="ss-bar2-fill" id="bar" style="width:0%;background:#ff4d5e;"></div>
+        </div>
+        <div id="subtitles" style="min-height:160px;display:flex;flex-direction:column;justify-content:flex-start;"></div>
+        <div class="ss-testimonials-wrap" style="position:relative;top:auto;transform:none;margin-top:30px;margin-bottom:40px;">
+          <div class="ss-testimonials">
+            <div class="ss-test-title">Loved by 247,000+ people</div>
+            <div class="ss-card">
+              <div class="ss-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+              <div class="ss-text-wrap"><div class="ss-text" id="testimonial"></div></div>
+              <div class="ss-author" id="author"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="modal-root"></div>
+  `;
+
+  const progressiveSteps = [
+    { key:"intense", text:"Weaving in your desires", question:"Do you want your story to include unexpected, emotionally intense moments?" },
+    { key:"explicit", text:"Building the tension between you two", question:"Would you like fully explicit content if the story calls for it?" },
+    { key:"explore", text:"Setting heat exactly as you want", question:"Are you open to exploring different fantasies and storylines over time?" },
+    { key:"relationship", text:"Finishing your first chapter", question:"Are you currently in a relationship?" }
+  ];
+
+  const finalStep = { title:"Only 9% of readers have picked this combination.", text:"We love when someone knows exactly what they want." };
+
+  const testimonials = [
+    { text:"I've honestly never found a story that felt so personal - it's like the author was literally living inside my head. Every choice I made, every twist that hit, felt like it was written just for me. I stayed up until 2am and I have zero regrets. This is unlike anything I've ever read.", author:"Sarah" },
+    { text:"After binge-reading three completely different paths back to back, I have to admit - I am NOT okay and I mean that in the best way possible. Every route hit differently, every ending wrecked me in a new way. This is the kind of story you think about for days. Absolutely obsessed.", author:"Monica" },
+    { text:"I cranked the intensity all the way to the max and oh my god, I had to put my phone down and just stare at the ceiling for a minute. My heart was racing, my hands were shaking - I was NOT prepared. This story does NOT play around. Easily one of the most gripping things I've ever experienced.", author:"Chloe" }
+  ];
+
+  let currentStep = 0;
+  let percent = 0;
+  let t = 0;
+
+  const bar = document.getElementById("bar");
+  const percentEl = document.getElementById("percent");
+  const subtitleWrap = document.getElementById("subtitles");
+  const testimonialEl = document.getElementById("testimonial");
+  const authorEl = document.getElementById("author");
+  const modalRoot = document.getElementById("modal-root");
+
+  function updateTestimonial(){
+    testimonialEl.classList.add("fade");
+    setTimeout(()=>{
+      const item = testimonials[t % testimonials.length];
+      testimonialEl.innerText = item.text;
+      authorEl.innerText = item.author;
+      testimonialEl.classList.remove("fade");
+      t++;
+    }, 300);
+  }
+
+  progressiveTestimonialInterval = setInterval(updateTestimonial, 2500);
+  updateTestimonial();
+
+  function runLoader(onDone, subtitleEl){
+    percent = 0;
+    bar.style.transition = "none";
+    bar.style.width = "0%";
+    percentEl.innerText = "0%";
+    bar.offsetHeight;
+    bar.style.transition = "width 0.2s linear";
+    const interval = setInterval(()=>{
+      percent += 2;
+      percentEl.innerText = percent + "%";
+      bar.style.width = percent + "%";
+      if(percent >= 100){
+        clearInterval(interval);
+        subtitleEl.innerHTML = `<span class="ss-check">&#10003;</span> ` + subtitleEl.dataset.text;
+        setTimeout(onDone, 300);
+      }
+    }, 50);
+  }
+
+  function showYesNo(question, key, onDone){
+    modalRoot.innerHTML = `
+      <div class="ss-modal">
+        <div class="ss-modal-box">
+          <div class="ss-modal-title">${question}</div>
+          <div class="ss-row">
+            <button class="ss-btn" id="yesBtn">YES</button>
+            <button class="ss-btn" id="noBtn">NO</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.getElementById("yesBtn").onclick = ()=>{ state[key]="yes"; modalRoot.innerHTML=""; onDone(); };
+    document.getElementById("noBtn").onclick = ()=>{ state[key]="no"; modalRoot.innerHTML=""; onDone(); };
+  }
+
+  function showFinal(){
+    modalRoot.innerHTML = `
+      <div class="ss-modal">
+        <div class="ss-modal-box">
+          <div class="ss-modal-title">${finalStep.title}</div>
+          <div style="margin-bottom:20px">${finalStep.text}</div>
+          <button class="ss-btn" id="continueBtn">CONTINUE</button>
+        </div>
+      </div>
+    `;
+    document.getElementById("continueBtn").onclick = ()=>{ next(); };
+  }
+
+  function nextStep(){
+    const stepData = progressiveSteps[currentStep];
+    const el = document.createElement("div");
+    el.className = "ss-subtitle";
+    el.dataset.text = stepData.text;
+    el.innerText = stepData.text;
+    subtitleWrap.appendChild(el);
+    runLoader(()=>{
+      if(currentStep === progressiveSteps.length - 1){ showFinal(); return; }
+      showYesNo(stepData.question, stepData.key, ()=>{ currentStep++; nextStep(); });
+    }, el);
+  }
+
+  nextStep();
+}
+
+function renderEmail(){
+  app.innerHTML = `
+    <div class="email-root" id="emailRoot">
+      <div class="email-page">
+        <div class="email-container">
+          <div class="email-logo" style="font-size:24px;font-weight:bold;margin-bottom:24px;">Stuff So Sweet</div>
+          <div class="email-title">Your personalized story is ready</div>
+          <div class="email-sub">Enter your email to unlock it</div>
+          <input type="email" id="emailInput" class="email-input" placeholder="Enter your email">
+          <div class="email-privacy">
+            <div class="email-check">&#10003;</div>
+            <div>We respect your privacy and are committed to protecting your personal data</div>
+          </div>
+          <div class="email-awards-block" style="text-align:center;padding-top:10px;">
+            <img class="email-awards-img" src="/media/awards_email.webp" style="width:50%;border-radius:14px;height:auto;object-fit:contain;">
+          </div>
+          <div class="email-inline-cta" id="emailInlineCta">
+            <div id="emailAlert" style="opacity:0;transition:opacity .2s;color:#ff4d5e;font-size:14px;margin-bottom:10px;text-align:center;">Please, enter your email to continue</div>
+            <button id="emailCta" class="ss-btn email-btn" style="max-width:320px;">CONTINUE</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const input = document.getElementById("emailInput");
+  const cta = document.getElementById("emailCta");
+  const root = document.getElementById("emailRoot");
+
+  setTimeout(()=>{ const t = document.querySelector(".email-title"); if(t) cta.style.maxWidth = t.offsetWidth + "px"; }, 10);
+
+  function isValidEmail(email){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
+
+  input.addEventListener("input", ()=>{
+    cta.classList.toggle("active", isValidEmail(input.value.trim()));
+  });
+
+  // Mobile-only UX: when keyboard is open (input focused), hide awards image
+  // and let the inline CTA sit directly under the input — no scrolling needed.
+  // We DO NOT remove this class on blur, because tapping the CTA itself fires
+  // a blur first; if we removed the class then, the layout would shift before
+  // the tap registered as a click and the user would have to tap twice.
+  // The class persists for the lifetime of this step (next() rerenders).
+  input.addEventListener("focus", ()=>{ root.classList.add("email-focused"); });
+
+  // Belt-and-braces: prevent the input from losing focus when the user
+  // interacts with the CTA, so the page never reshuffles mid-tap.
+  cta.addEventListener("mousedown", (e)=>{ e.preventDefault(); });
+  cta.addEventListener("touchstart", (e)=>{ /* allow native tap, just don't blur */ }, { passive: true });
+
+  cta.onclick = ()=>{
+    const val = input.value.trim();
+    if(!isValidEmail(val)){
+      const alertEl = document.getElementById("emailAlert");
+      if(alertEl){ alertEl.style.opacity = 1; setTimeout(()=>alertEl.style.opacity=0, 3000); }
+      return;
+    }
+    state.email = val;
+
+    sendEmailCapture();
+    next();
+  };
+}
+
+function pricingShellHTML(withId){
+  return `
+    <div class="ss-block ss-pricing-shell"${withId ? ` id="${withId}"` : ""}>
+      <div class="ss-title">Unleash your innermost desires</div>
+      <div class="ss-offer">Offer expires in: <span class="js-countdown">12:00</span></div>
+
+      <div class="ss-plan" data-plan="4">
+        <div class="ss-plan-row">
+          <div class="ss-plan-left">
+            <div class="ss-plan-title">4-week plan</div>
+            <div class="ss-save">SAVE 57%</div>
+            <div><span class="ss-old">$45.99</span><span class="ss-new">$19.99</span></div>
+          </div>
+          <div class="ss-price-wrap"><div class="ss-price">$0.71</div><div class="ss-per">per day</div></div>
+        </div>
+      </div>
+
+      <div class="ss-plan popular active" data-plan="8">
+        <div class="ss-popular">MOST POPULAR</div>
+        <div class="ss-plan-row">
+          <div class="ss-plan-left">
+            <div class="ss-plan-title">8-week plan</div>
+            <div class="ss-save">SAVE 64%</div>
+            <div><span class="ss-old">$83.99</span><span class="ss-new">$29.99</span></div>
+          </div>
+          <div class="ss-price-wrap"><div class="ss-price">$0.54</div><div class="ss-per">per day</div></div>
+        </div>
+      </div>
+
+      <div class="ss-plan" data-plan="1">
+        <div class="ss-plan-row">
+          <div class="ss-plan-left">
+            <div class="ss-plan-title">1-week plan</div>
+            <div>$29.99</div>
+          </div>
+          <div class="ss-price-wrap"><div class="ss-price">$4.28</div><div class="ss-per">per day</div></div>
+        </div>
+      </div>
+
+      <button class="ss-main-cta js-buy-btn">Get my plan</button>
+      <div class="ss-cta-sub">Instant access. Cancel anytime.</div>
+      <div class="ss-legal">By clicking Get my plan, I confirm that I have read and agree to our Terms of Service, Privacy Policy, Subscription & Refund Policy, and Acceptable Use Policy, and I undertake to comply with these terms. I understand that by enrolling, I am purchasing a subscription at the discounted introductory price. Unless I cancel in accordance with the Terms of Service, my subscription will automatically renew at the regular (non-discounted) price for successive periods, and you authorize us to charge me accordingly.</div>
+      <div class="ss-trust">
+        &#10003; Guaranteed safe checkout
+        <div class="ss-payments">
+          <img src="/media/maestro.png" alt="Maestro">
+          <img src="/media/mastercard.png" alt="Mastercard">
+          <img src="/media/visa.png" alt="Visa">
+        </div>
+        <div class="ss-lock">&#128274; All transactions are secure and encrypted</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderCheckout(){
+  app.innerHTML = `
+    <div class="ss-sticky">
+      <div class="ss-sticky-inner">
+        <div class="ss-timer" id="timer">12:00</div>
+        <button class="ss-cta-top" id="ctaTop">Claim my 64% off</button>
+      </div>
+    </div>
+    <div class="ss-page">
+      <div class="ss-container" style="padding:80px 16px 40px;">
+        <div class="ss-block">
+          <div class="ss-logo" style="font-size:24px;font-weight:bold;margin-bottom:20px;">Stuff So Sweet</div>
+          <div class="ss-title">Indulge in Something Made Entirely for You</div>
+          <div class="ss-sub">You built this story. Now finish it.</div>
+          <div class="ss-compare-grid">
+            <div class="ss-col">
+              <div class="ss-col-title">Now</div>
+              <img class="ss-img" src="/media/before_reading.webp">
+              <div class="ss-card">
+                <div class="ss-label">Sensation</div><div class="ss-value-red">Numb</div>
+                <div class="ss-label">Arousal</div><div>Barely there</div>
+                <div class="ss-bar2"><div class="ss-bar2-fill" style="width:20%;background:#ff5c6d;"></div></div>
+                <div class="ss-label">Self-Worth</div><div>Last on the list</div>
+                <div class="ss-bar2"><div class="ss-bar2-fill" style="width:15%;background:#ff5c6d;"></div></div>
+              </div>
+            </div>
+            <div class="ss-col">
+              <div class="ss-col-title">After Reading</div>
+              <img class="ss-img" src="/media/after_reading2.webp">
+              <div class="ss-card">
+                <div class="ss-label">Sensation</div><div class="ss-value-green">On fire</div>
+                <div class="ss-label">Arousal</div><div>Constant</div>
+                <div class="ss-bar2"><div class="ss-bar2-fill" style="width:90%;background:#8eff6d;"></div></div>
+                <div class="ss-label">Self-Worth</div><div>I come first now</div>
+                <div class="ss-bar2"><div class="ss-bar2-fill" style="width:85%;background:#8eff6d;"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ss-block">
+          <div class="ss-books-wrap">
+            <div class="ss-books-title">4,000+ stories that won't let you put your phone down</div>
+            <div class="ss-books-stage">
+              <img src="/media/book_A2.webp" class="ss-book">
+              <img src="/media/book_b.webp" class="ss-book">
+              <img src="/media/book_c.webp" class="ss-book">
+              <img src="/media/book_d.webp" class="ss-book">
+              <img src="/media/book_e.webp" class="ss-book">
+              <img src="/media/book_f.webp" class="ss-book">
+            </div>
+            <div class="ss-books-sub">Join <span>248,550+</span> members already living their fantasies</div>
+          </div>
+        </div>
+
+        <div class="ss-block">
+          <div class="ss-story-card">
+            <img src="/media/book_eg.webp" class="ss-story-bg">
+            <div class="ss-story-overlay">
+              <div class="ss-story-title">WICKED VOWS</div>
+              <div class="ss-story-tags">Instant Attraction | Intense | Possessive | Paranormal</div>
+              <div class="ss-story-text">A lonely Friday night, a bottle of wine, and an antique Latin book from an estate sale - that's all it takes to accidentally summon Malachar, an ancient demon lord into your IKEA-furnished apartment. He's crimson-skinned, gold-horned, and terrifyingly beautiful.. and he's not here for your soul.</div>
+            </div>
+          </div>
+        </div>
+
+        ${pricingShellHTML("pricing")}
+
+        <div class="ss-block">
+          <div class="ss-benefits">
+            <div class="ss-benefits-title">What You Get</div>
+            <div class="ss-benefits-list">
+              <div class="ss-item">&#10024; <b>Unlimited stories.</b> No rationing. Binge without guilt.</div>
+              <div class="ss-item">&#10024; <b>You decide what happens next.</b> Every choice changes everything.</div>
+              <div class="ss-item">&#10024; <b>4,000+ stories.</b> Or build one from your deepest fantasy.</div>
+              <div class="ss-item">&#10024; <b>Set the heat yourself.</b> Slow burn to full surrender. Your call.</div>
+              <div class="ss-item">&#10024; <b>It learns what you like.</b> The more you read, the closer it gets.</div>
+              <div class="ss-item">&#10024; <b>No ads. No interruptions.</b> Nothing between you and that scene.</div>
+              <div class="ss-item">&#10024; <b>Every genre you crave.</b> Mafia, paranormal, workplace, royal. And worse.</div>
+              <div class="ss-item">&#10024; <b>Replay with different choices.</b> Same story. Completely different night.</div>
+              <div class="ss-item">&#10024; <b>Nothing held back.</b> Uncensored. Unfiltered. Finally.</div>
+              <div class="ss-item">&#10024; <b>No one will ever know.</b> Fully encrypted. Completely private. Yours.</div>
+            </div>
+            <div class="ss-rating">
+              <div>Excellent</div>
+              <div class="ss-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+              <div class="ss-rating-sub">4.8 out of 5 | 19k users</div>
+            </div>
+            <button class="ss-benefits-cta js-scroll-pricing">Chapter ready for you</button>
+          </div>
+        </div>
+
+        <div class="ss-block">
+          <div class="ss-reviews">
+            <div class="ss-reviews-title">Why people love Stuff So Sweet</div>
+            <div class="ss-reviews-grid">
+              <div class="ss-review"><div class="ss-review-text">I read 50+ books a year and was NOT expecting app-based stories to be actually good...</div><div class="ss-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div><div class="ss-review-head"><div>Harper Wilson</div></div></div>
+              <div class="ss-review"><div class="ss-review-text">Personalization actually works as advertised. Already recommended it.</div><div class="ss-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div><div class="ss-review-head"><div>Linda Hoffman</div></div></div>
+              <div class="ss-review"><div class="ss-review-text">Strong tension, addictive pacing. Didn't expect this level.</div><div class="ss-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div><div class="ss-review-head"><div>Catherine W.</div></div></div>
+              <div class="ss-review"><div class="ss-review-text">Way better than expected. Honestly hard to stop reading.</div><div class="ss-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div><div class="ss-review-head"><div>James K.</div></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ss-block">
+          <div class="ss-fantasy-card">
+            <div class="ss-fantasy-title">What other user fantasies look like</div>
+            <div class="ss-fantasy-books">
+              <img src="/media/book_01.webp">
+              <img src="/media/book_02.webp">
+              <img src="/media/book_03.webp">
+              <img src="/media/book_04.webp">
+              <img src="/media/book_05.webp">
+              <img src="/media/book_06.webp">
+            </div>
+            <button class="ss-fantasy-cta js-scroll-pricing">Read Your Story</button>
+          </div>
+        </div>
+
+        ${pricingShellHTML("")}
+
+        <div class="ss-block">
+          <div class="ss-mbg">
+            <div class="ss-mbg-row">
+              <div class="ss-mbg-icon"><img src="/media/money-back.png"></div>
+              <div class="ss-mbg-content">
+                <div class="ss-mbg-title">14-Day Money-Back Guarantee</div>
+                <div class="ss-mbg-text">We believe SweetSecrets will change how you experience romance stories. But we also believe you should have time to decide for yourself. Subscribe today and you have 14 days to explore everything. If it's not what you hoped for, a full refund is available within that window.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  `;
+
+  initCheckoutLogic();
+}
+
+function initCheckoutLogic(){
+  let selected = "8";
+  let buyClicked = false;
+
+  document.querySelectorAll(".ss-plan").forEach(el=>{
+    if(el.classList.contains("active")) selected = el.dataset.plan || "8";
+    el.onclick = ()=>{
+      selected = el.dataset.plan;
+      document.querySelectorAll(".ss-plan").forEach(x=>x.classList.remove("active"));
+      document.querySelectorAll(`.ss-plan[data-plan="${selected}"]`).forEach(x=>x.classList.add("active"));
+    };
+  });
+
+  document.querySelectorAll(".js-buy-btn").forEach(btn=>{
+    btn.onclick = ()=>{
+      if(buyClicked) return;
+      buyClicked = true;
+
+      state.plan = selected;
+
+      sendPlanSelection();
+      renderPayment();
+    };
+  });
+
+  const scrollHandler = ()=>{
+    const target = document.getElementById("pricing");
+    if(target) target.scrollIntoView({behavior:"smooth"});
+  };
+
+  const ctaTop = document.getElementById("ctaTop");
+  if (ctaTop) ctaTop.onclick = scrollHandler;
+  document.querySelectorAll(".js-scroll-pricing").forEach(btn=>{ btn.onclick = scrollHandler; });
+
+  let seconds = 720;
+  function tick(){
+    const m = Math.floor(seconds/60);
+    const s = seconds%60;
+    const val = (m<10?"0"+m:m)+":"+(s<10?"0"+s:s);
+    const timerEl = document.getElementById("timer");
+    if(timerEl) timerEl.innerText = val;
+    document.querySelectorAll(".js-countdown").forEach(el=>{ el.innerText = val; });
+    if(seconds > 0){ seconds--; } else { seconds = 720; }
+  }
+  checkoutTimerInterval = setInterval(tick, 1000);
+  tick();
+
+  const books = document.querySelectorAll(".ss-books-stage .ss-book");
+  let order = Array.from(books);
+
+  function renderBooks(){
+    order.forEach(el=>{ el.classList.remove("ss-pos-left","ss-pos-center","ss-pos-right","ss-pos-hidden"); });
+    if(order[0]) order[0].classList.add("ss-pos-left");
+    if(order[1]) order[1].classList.add("ss-pos-center");
+    if(order[2]) order[2].classList.add("ss-pos-right");
+    for(let i=3;i<order.length;i++) order[i].classList.add("ss-pos-hidden");
+  }
+
+  function stepBooks(){
+    if(!order.length) return;
+    order.push(order.shift());
+    renderBooks();
+  }
+
+  renderBooks();
+  checkoutBooksInterval = setInterval(stepBooks, 2000);
+}
+
+function renderPayment(){
+  const planData = {
+    "1": { label:"1-week plan", original:null,     price:"$29.99", discount:null,  discountAmt:null },
+    "4": { label:"4-week plan", original:"$45.99", price:"$19.99", discount:"57%", discountAmt:"-$26.00" },
+    "8": { label:"8-week plan", original:"$83.99", price:"$29.99", discount:"64%", discountAmt:"-$54.00" }
+  };
+  let plan = planData[state.plan] || planData["8"];
+  // Testing promo: reflect the real $0.50 charge in the cosmetic summary.
+  if (state.promo) {
+    plan = { label: plan.label + " (test)", original: plan.price, price: "$0.50", discount: null, discountAmt: null };
+  }
+
+  // card_page_shown is now posted together with plan selection event
+  // in sendPlanSelection() to keep a clean 3-post model.
+
+  if(typeof fbq === "function"){
+    fbq("track", "AddToCart", {
+      value: state.plan === "4" ? 19.99 : state.plan === "1" ? 29.99 : 29.99,
+      currency: "USD"
+    });
+  }
+
+  app.innerHTML = `
+    <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 0;background:linear-gradient(180deg,#4b0018,#1a0008);">
+
+      <div style="font-size:24px;font-weight:bold;color:#fff;margin-bottom:20px;text-align:center;">Stuff So Sweet</div>
+
+      <div style="max-width:418px;width:calc(100% - 32px);padding:24px 20px 20px;border-radius:24px;background:#f6eddc;box-shadow:0 18px 40px rgba(0,0,0,0.28);color:#2a1b22;font-family:system-ui,-apple-system,sans-serif;">
+
+        <button id="payBackBtn" style="border:none;background:transparent;color:#6b123b;font-size:13px;margin:4px 0 10px;padding:0;cursor:pointer;">&larr; Back</button>
+
+        <div style="text-align:center;margin-bottom:16px;">
+          <div style="font-size:18px;color:#2a1b22;font-weight:500;">Card Payment</div>
+        </div>
+
+        <div style="margin-bottom:12px;">
+          <div id="payment-element"><div style="color:#7b6c80;font-size:13px;padding:8px 0;">Loading secure payment…</div></div>
+          <div id="cardNumErr" style="color:#c93a29;font-size:12px;min-height:16px;margin-top:8px;"></div>
+        </div>
+
+        <button id="payBtn" type="button" disabled style="width:100%;border:none;border-radius:16px;padding:13px 16px;background:#111;color:#fff;font-size:15px;font-weight:500;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;box-sizing:border-box;opacity:.6;">
+          &#128274; Submit secure payment
+        </button>
+
+        <div style="margin:12px 0 8px;display:flex;align-items:center;gap:6px;font-size:13px;color:#6c6468;">&#128737; Guaranteed safe checkout</div>
+
+        <div style="display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;margin:8px 0 4px;">
+          <div style="background:#1a1f71;border-radius:5px;padding:4px 9px;font-size:11px;font-weight:800;color:#fff;letter-spacing:1px;">VISA</div>
+          <div style="background:#fff;border:1px solid #ccc;border-radius:5px;padding:4px 7px;display:flex;align-items:center;">
+            <span style="width:16px;height:16px;border-radius:50%;background:#eb001b;display:inline-block;"></span>
+            <span style="width:16px;height:16px;border-radius:50%;background:#f79e1b;display:inline-block;margin-left:-7px;"></span>
+          </div>
+          <div style="background:#016fd0;border-radius:5px;padding:4px 9px;font-size:11px;font-weight:800;color:#fff;letter-spacing:.5px;">AMEX</div>
+          <div style="background:#fff;border:1px solid #ccc;border-radius:5px;padding:4px 9px;font-size:10px;font-weight:700;color:#004b87;">MAESTRO</div>
+          <div style="background:#fff;border:1px solid #ccc;border-radius:5px;padding:4px 9px;font-size:11px;font-weight:700;color:#003087;">Pay<span style="color:#009cde;">Pal</span></div>
+        </div>
+
+        <div style="text-align:center;font-size:12px;color:#7b6c80;margin-bottom:14px;">&#128274; All transactions are secure and encrypted</div>
+
+        <div style="background:#fff;border-radius:14px;padding:12px 14px 10px;font-size:13px;color:#2a1b22;box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+          <div style="font-weight:600;margin-bottom:8px;">Order Summary</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;">
+            <div>${plan.label}</div>
+            <div>
+              ${plan.original ? `<span style="text-decoration:line-through;color:#b5a6a0;margin-right:6px;font-size:12px;">${plan.original}</span>` : ""}
+              <span style="font-weight:500;">${plan.price}</span>
+            </div>
+          </div>
+          ${plan.discount ? `
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-top:1px solid #f0e2d6;">
+            <div style="color:#c93a29;font-weight:500;">Discount (${plan.discount})</div>
+            <div style="color:#c93a29;font-weight:600;">${plan.discountAmt}</div>
+          </div>` : ""}
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0 2px;border-top:1px solid #f0e2d6;">
+            <div style="font-weight:600;">Total</div>
+            <div style="font-weight:600;">${plan.price}</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  `;
+
+  document.getElementById("payBackBtn").onclick = function(){
+    state.card_page_sent = false;
+    stripeElements = null;
+    const idx = steps.findIndex(s => s.type === "checkout");
+    if(idx !== -1) step = idx;
+    render();
+  };
+
+  // Mount the Stripe Payment Element from a freshly-created subscription, then
+  // wire the pay button to confirm it. Access + chapter 1 are granted by the
+  // Stripe webhook (invoice.paid), never by this screen.
+  initStripePayment();
+  document.getElementById("payBtn").onclick = submitPayment;
+}
+
+function readCookie(n){ const m = document.cookie.match(new RegExp('(?:^|; )' + n + '=([^;]*)')); return m ? decodeURIComponent(m[1]) : ""; }
+
+async function initStripePayment(){
+  const errEl = document.getElementById("cardNumErr");
+  const payBtn = document.getElementById("payBtn");
+  if(!stripeClient){ errEl.innerText = "Payment failed to load. Please refresh."; return; }
+  // Meta CAPI: one shared event_id (client Pixel + server) for dedup, plus the
+  // _fbc/_fbp cookies for ad attribution. Carried into the subscription metadata.
+  const eventId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (String(Date.now()) + Math.random());
+  state.meta_event_id = eventId;
+  const fbp = readCookie("_fbp");
+  const fbc = readCookie("_fbc") || state.fbc || "";
+  try {
+    const res = await fetch(CREATE_SUBSCRIPTION_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({
+        session_id: session_id, email: state.email, plan: state.plan, promo: state.promo,
+        event_id: eventId, fbc: fbc, fbp: fbp,
+        event_source_url: window.location.href, user_agent: state.user_agent,
+      }),
+    });
+    const data = await res.json();
+    // The customer already has a live subscription — create-subscription
+    // returns 409 instead of charging again. Steer them to log in, don't
+    // show a scary error. Their card was NOT charged.
+    if (res.status === 409 && data.error === "already_subscribed") {
+      renderAlreadySubscribed();
+      return;
+    }
+    if(!res.ok || !data.client_secret) throw new Error(data.error || "Could not start payment");
+    if(data.meta_event_id) state.meta_event_id = data.meta_event_id; // server's effective id (survives retries)
+
+    stripeElements = stripeClient.elements({
+      clientSecret: data.client_secret,
+      appearance: { theme: "flat", variables: { colorPrimary: "#6b123b", borderRadius: "12px" } },
+    });
+    const paymentEl = stripeElements.create("payment", { layout: "tabs" });
+    paymentEl.mount("#payment-element");
+    paymentEl.on("ready", function(){
+      payBtn.disabled = false;
+      payBtn.style.opacity = "1";
+    });
+  } catch (e) {
+    errEl.innerText = e.message || "Could not start payment. Please try again.";
+  }
+}
+
+async function submitPayment(){
+  const errEl = document.getElementById("cardNumErr");
+  const payBtn = document.getElementById("payBtn");
+  if(!stripeElements){ errEl.innerText = "Payment isn't ready yet — one moment."; return; }
+  payBtn.disabled = true;
+  payBtn.style.opacity = ".6";
+  errEl.innerText = "";
+
+  // Persist for the redirect-return path (?paid=1), where in-memory state is lost.
+  try { localStorage.setItem("ss_plan", state.plan || ""); localStorage.setItem("ss_email", state.email || ""); } catch(_) {}
+
+  const { error } = await stripeClient.confirmPayment({
+    elements: stripeElements,
+    confirmParams: { return_url: window.location.origin + window.location.pathname + "?paid=1" },
+    redirect: "if_required",
+  });
+
+  if(error){
+    errEl.innerText = error.message || "Payment failed. Please check your card and try again.";
+    payBtn.disabled = false;
+    payBtn.style.opacity = "1";
+    return;
+  }
+
+  // Payment confirmed. Fulfillment (story + chapter 1 + access) is handled by
+  // the Stripe webhook; show the success screen optimistically.
+  renderProcessing();
+}
+
+// Shown when create-subscription reports the customer already has an active
+// subscription (HTTP 409 already_subscribed). Their card was NOT charged, so
+// steer them to log in rather than pay again.
+function renderAlreadySubscribed(){
+  const loginUrl = "https://app.stuffsosweet.com/";
+  app.innerHTML = `
+    <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:linear-gradient(180deg,#4b0018,#1a0008);color:#fff;padding:24px;">
+      <div style="font-size:44px;margin-bottom:14px;">💕</div>
+      <div style="font-size:24px;font-weight:bold;margin-bottom:12px;max-width:22ch;">You're already subscribed!</div>
+      <div style="opacity:.85;font-size:16px;line-height:1.5;max-width:34ch;margin-bottom:8px;">
+        Good news — there's already an active Stuff So Sweet subscription for this email, so <b>we didn't charge you again</b>.
+      </div>
+      <div style="opacity:.7;font-size:14px;line-height:1.5;max-width:34ch;margin-bottom:26px;">
+        Just log in to pick up where you left off.
+      </div>
+      <a href="${loginUrl}" style="display:inline-block;background:#ffd76a;color:#4b0018;font-weight:bold;font-size:17px;text-decoration:none;padding:15px 30px;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.3);">
+        Log in to your account
+      </a>
+      <div style="opacity:.6;font-size:13px;margin-top:16px;max-width:34ch;">
+        Enter your email at app.stuffsosweet.com and we'll send a one-tap login link.
+      </div>
+    </div>
+  `;
+}
+
+function renderProcessing(){
+  app.innerHTML = `
+    <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:linear-gradient(180deg,#4b0018,#1a0008);">
+      <div style="width:56px;height:56px;border:4px solid rgba(255,255,255,0.25);border-top-color:#ffd76a;border-radius:50%;margin-bottom:20px;animation:ss-spin 1s linear infinite;"></div>
+      <div style="font-size:22px;font-weight:bold;margin-bottom:10px;">Processing your order...</div>
+      <div style="opacity:.7;font-size:15px;">Please wait a moment</div>
+    </div>
+  `;
+  setTimeout(function(){ renderSuccess(); }, 2200);
+}
+
+function renderSuccess(){
+  // ============================================================
+  // GOOGLE ADS CONVERSION FIRING — runs ONLY when renderSuccess
+  // is reached, which only happens after a real Stripe payment.
+  // ============================================================
+  //
+  // Important: cold-visiting /quiz/a.html?status=paid does NOT trigger
+  // anything. The URL is just a label. The events below fire only inside
+  // renderSuccess, which is only reached via the Stripe Payment Element
+  // confirmation path. There is no Stripe charge, no story creation, no
+  // submit-quiz event here — those have all happened before this function
+  // runs. Loading the URL cold is pure pageview, nothing else.
+  //
+  // 1) Rewrite browser URL so Google Ads' URL-pattern trigger can match.
+  //    Email is left mostly unencoded so it reads as a plain address —
+  //    only chars that would actually break URL parsing get escaped
+  //    (+ and &; everything else including @ . _ - is URL-safe).
+  try {
+    const emailRaw = state.email || "";
+    const emailForUrl = emailRaw.replace(/\+/g, "%2B").replace(/&/g, "%26");
+    const successUrl = "/quiz/a.html?status=paid" +
+      (emailRaw ? "&email=" + emailForUrl : "");
+    window.history.replaceState(null, "", successUrl);
+  } catch (_) { /* ignore */ }
+
+  // 2) Push a 'purchase' event to the GTM dataLayer — ONCE per session.
+  //    Guarded by state.gtagPurchaseFired so a refresh / re-render can't
+  //    double-count on the client. GTM picks up the event and fires whatever
+  //    tags you've attached to it inside the GTM dashboard. Recommended GTM
+  //    configuration:
+  //      - Custom Event trigger: Event name = 'purchase'
+  //      - Google Ads Conversion Tracking tag with AW-18259925180 + your
+  //        Conversion Label, pulling Value / Order ID / Currency from these
+  //        dataLayer variables (set those up as 'DataLayer variable' type
+  //        in GTM with names 'value', 'transaction_id', 'currency').
+  //    Alternative: a Page View trigger matching URL contains 'status=paid'
+  //    works just as well — the URL is already rewritten above. Use one or
+  //    the other; if you use both, the transaction_id (Order ID) is Google
+  //    Ads' canonical dedup mechanism — same purchase counts at most once.
+  if (!state.gtagPurchaseFired && window.dataLayer) {
+    state.gtagPurchaseFired = true;
+    try {
+      const txId = (typeof session_id !== "undefined" ? session_id : "") || state.session_id || "";
+      const planValue = state.plan === "4" ? 19.99 : (state.plan === "1" || state.plan === "8") ? 29.99 : 0;
+
+      window.dataLayer.push({
+        event: "purchase",
+        transaction_id: txId,
+        value: planValue,
+        currency: "USD",
+        items: [{
+          item_id: "plan_" + (state.plan || "unknown"),
+          item_name: (state.plan || "unknown") + "-week plan",
+          price: planValue,
+          quantity: 1,
+        }],
+      });
+    } catch (e) {
+      console.warn("[dataLayer] purchase fire failed:", e);
+    }
+  }
+
+  const planData = {
+    "1": { label:"1-week access", price:"$29.99" },
+    "4": { label:"4-week access", price:"$19.99" },
+    "8": { label:"8-week access", price:"$29.99" }
+  };
+  let plan = planData[state.plan] || planData["8"];
+  if (state.promo) { plan = { label: plan.label + " (test)", price: "$0.50" }; }
+
+  state.payment_successful = "yes";
+  sendPaymentSuccess();
+
+  if(typeof fbq === "function"){
+    fbq("track", "Purchase", {
+      value: state.plan === "4" ? 19.99 : state.plan === "1" ? 29.99 : 29.99,
+      currency: "USD"
+    }, state.meta_event_id ? { eventID: state.meta_event_id } : undefined);
+  }
+
+  // Auto-save the default delivery preference to quiz_sessions immediately.
+  // User can update + save again via the "Save delivery option" button below.
+  state.notification_preference_choice = "email_link_only";
+  postQuizEvent("set_notification_preference", { notification_preference_choice: "email_link_only" });
+
+  app.innerHTML = `
+    <div class="ss-container" style="padding-top:32px;">
+
+      <div style="font-size:22px;font-weight:bold;text-align:center;margin-bottom:24px;">Stuff So Sweet</div>
+
+      <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:14px;">
+        <div style="width:42px;height:42px;border-radius:50%;background:#1a6e38;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">&#10003;</div>
+        <div style="font-size:24px;font-weight:bold;">Payment Successful</div>
+      </div>
+
+      <div style="font-size:15px;opacity:.85;text-align:center;line-height:1.5;margin-bottom:26px;">
+        We will soon send You the first Chapter of a custom and interactive story.
+      </div>
+
+      <video src="/media/success_video.mp4" autoplay muted loop playsinline class="ss-success-video"></video>
+
+      <button type="button" id="loginBtn" class="ss-btn-login" style="margin-top:14px;">
+        <div style="font-size:16px;font-weight:bold;">Login to Your Account</div>
+        <div style="font-size:12px;opacity:0.8;margin-top:2px;">One click — no password needed</div>
+      </button>
+      <div id="loginStatus" class="ss-status"></div>
+
+      <div style="background:rgba(255,255,255,0.07);border-radius:18px;padding:18px;width:100%;margin-bottom:26px;">
+        <div style="font-size:14px;opacity:.7;margin-bottom:12px;text-align:center;">Your plan summary</div>
+        <div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px;">
+          <span>Plan</span><span>${plan.label}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px;">
+          <span>Billed</span><span>${plan.price}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:14px;">
+          <span>Access</span><span style="color:#8eff6d;">Active now</span>
+        </div>
+      </div>
+
+    </div>
+  `;
+
+  setupSuccessHandlers(state.email || "");
+  localStorage.removeItem("ss_session");
+}
+
+function setupSuccessHandlers(userEmail){
+  // The notification-preference radio panel is gone — the default 'email_link_only'
+  // is auto-saved on renderSuccess so the user receives a chapter-1 notification
+  // email without configuring anything. They can change it later in the app's
+  // Settings page.
+  //
+  // Only handler left here: the "Login to Your Account" magic-link button.
+
+  document.getElementById("loginBtn")?.addEventListener("click", async () => {
+    const btn = document.getElementById("loginBtn");
+    const status = document.getElementById("loginStatus");
+    if (!userEmail) {
+      status.textContent = "Couldn't find your email — please refresh and try again.";
+      status.className = "ss-status err";
+      return;
+    }
+    if (!session_id) {
+      status.textContent = "Couldn't find your session — please refresh and try again.";
+      status.className = "ss-status err";
+      return;
+    }
+    btn.disabled = true;
+    btn.innerHTML = '<div style="font-size:16px;font-weight:bold;">Signing you in…</div>';
+    status.textContent = "";
+    try {
+      // Use the auth-create-magic-link edge function to get a one-click
+      // signin URL (no email round-trip). Since the user JUST paid using
+      // this email (verified server-side via paid quiz_session), we can
+      // hand them a signed magic link directly. Browser redirects to it,
+      // Supabase /verify validates, sets the session, lands them at /stories.
+      const res = await fetch(SUPABASE_URL + "/functions/v1/auth-create-magic-link", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": SUPABASE_ANON_KEY,
+          "Authorization": "Bearer " + SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({
+          session_id: session_id,
+          email: userEmail.trim().toLowerCase(),
+          redirect_to: "https://app.stuffsosweet.com/auth/callback?next=%2Fstories.html",
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.magic_link_url) {
+        throw new Error(data.error || ("HTTP " + res.status));
+      }
+      // Mark optimistic success — page is about to navigate anyway
+      btn.innerHTML = '<div style="font-size:16px;font-weight:bold;">Taking you to your account…</div>';
+      window.location.href = data.magic_link_url;
+    } catch (e) {
+      console.error("auto-signin failed:", e);
+      status.textContent = "Couldn't sign you in. " + (e?.message || "Try again in a moment.");
+      status.className = "ss-status err";
+      btn.disabled = false;
+      btn.innerHTML = '<div style="font-size:16px;font-weight:bold;">Login to Your Account</div><div style="font-size:12px;opacity:0.8;margin-top:2px;">One click — no password needed</div>';
+    }
+  });
+}
+
+const mediaObserver = new MutationObserver((mutations)=>{
+  mutations.forEach((m)=>{
+    m.addedNodes.forEach((node)=>{
+      if(node && node.nodeType === 1){
+        upgradeInsecureMedia(node);
+      }
+    });
+  });
+});
+mediaObserver.observe(app, { childList: true, subtree: true });
+
+// If Stripe sent the user through a redirect-based authentication, they return
+// to ?paid=1. Recover the success screen instead of restarting the funnel.
+// (Most card payments confirm inline via redirect:"if_required" and never hit this.)
+if(getParam("paid") === "1"){
+  try {
+    state.plan = state.plan || localStorage.getItem("ss_plan") || "8";
+    state.email = state.email || localStorage.getItem("ss_email") || "";
+  } catch(_) {}
+  renderSuccess();
+} else {
+  render();
+}
+upgradeInsecureMedia(document);
+sendPageLoadEventOnce();
+
+});
+</script></body>
+</html>
