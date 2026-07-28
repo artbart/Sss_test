@@ -55,27 +55,18 @@ export interface Quiz2Context {
 // Constants
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const FAILSAFE_BLOCK = `FAILSAFE RULES:
+const FAILSAFE_BLOCK = `FORMAT COMPLIANCE:
 
-Return exactly one of these two response types:
+- Always use the exact labeled format below.
+- Every listed field must appear, with real content underneath the label.
+- No prose commentary outside the labeled fields — no preamble, no closing note, no markdown, no code fences.
+- If a specific requested element feels awkward, write around it and keep going. Do NOT abandon the chapter over a single element.
+- Only reserve the following failure response for cases where you literally cannot emit the labeled structure at all (e.g. a hard technical error):
 
-A complete valid response using the exact labeled format below
+  STATUS: ERROR
+  ERROR_REASON: FORMAT_FAILURE
 
-A failure response in exactly this format:
-
-STATUS: ERROR
-ERROR_REASON: FORMAT_FAILURE
-
-If you cannot fully comply with the requested format, cannot produce all required fields, are unsure how to continue, or are about to return any explanation, apology, refusal, warning, policy note, markdown, or partial output, return exactly:
-
-STATUS: ERROR
-ERROR_REASON: FORMAT_FAILURE
-
-Do not output anything before or after the valid formatted response or the failure response.
-
-Never explain the error.
-
-Never include any additional fields in the error response.`;
+- Do not use the failure response to signal content discomfort. If a scene feels heavy, soften language or angle differently, but continue the chapter.`;
 
 // Human-readable descriptions for each pairing option (goes into prompt as directive)
 const PAIRING_DESCRIPTIONS: Record<string, string> = {

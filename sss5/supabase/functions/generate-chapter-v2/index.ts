@@ -186,7 +186,39 @@ async function generateChapterOneV2(db: ReturnType<typeof adminClient>, story: a
   }
   const f = parsed.fields;
 
-  // Validate must-have fields.
+  // In emergency-fallback mode, Claude sometimes drops scaffolding fields
+  // (STORY_TITLE, NEXT_OPTIONS_*) even when it delivers a full chapter body.
+  // Rather than fail the story after all retries burned, synthesize sensible
+  // defaults so the "always deliver a chapter" contract holds. The user gets
+  // a competent chapter; ops sees was_emergency_fallback=true in events and
+  // can revisit the prompt if it becomes a pattern.
+  if (result.was_emergency_fallback) {
+    if (!f.STORY_TITLE || f.STORY_TITLE.trim().length < 2) {
+      f.STORY_TITLE = "An Unwritten Story";
+    }
+    // Emergency prompt asks for options as a single NEXT_OPTIONS_1 block with
+    // three numbered lines. If the parser split them into 1/2/3 already, keep
+    // those. Otherwise try to split NEXT_OPTIONS_1 into three lines.
+    if (!f.NEXT_OPTIONS_2 && !f.NEXT_OPTIONS_3 && f.NEXT_OPTIONS_1) {
+      const lines = f.NEXT_OPTIONS_1.split(/\n+/).map((l) => l.replace(/^\s*\d+[\.\):-]?\s*/, "").trim()).filter(Boolean);
+      if (lines.length >= 3) {
+        f.NEXT_OPTIONS_1 = lines[0];
+        f.NEXT_OPTIONS_2 = lines[1];
+        f.NEXT_OPTIONS_3 = lines[2];
+      }
+    }
+    if (!f.NEXT_OPTIONS_1) f.NEXT_OPTIONS_1 = "Continue exactly where things left off.";
+    if (!f.NEXT_OPTIONS_2) f.NEXT_OPTIONS_2 = "Push the intensity higher — take a bolder step.";
+    if (!f.NEXT_OPTIONS_3) f.NEXT_OPTIONS_3 = "Slow the pace and let the emotional weight settle.";
+    if (!f.STORY_GENRE) f.STORY_GENRE = "Contemporary Romance / Erotic Fiction";
+    if (!f.TONE_LABEL) f.TONE_LABEL = "Emotionally grounded";
+    if (!f.HEAT_LEVEL) f.HEAT_LEVEL = "Spicy";
+    if (!f.SETTING_TYPE) f.SETTING_TYPE = "Contemporary";
+    if (!f.CHAPTER_1_SUMMARY) f.CHAPTER_1_SUMMARY = f.CHAPTER_1_TEXT.slice(0, 200).replace(/\s+\S*$/, "…");
+    console.log(`[V2 emergency-fallback] synthesized missing scaffolding for story ${story.id}`);
+  }
+
+  // Validate must-have fields (after emergency synthesis, so genuine failures still throw).
   for (const k of ["CHAPTER_1_TEXT", "STORY_TITLE", "NEXT_OPTIONS_1", "NEXT_OPTIONS_2", "NEXT_OPTIONS_3"]) {
     if (!f[k]) throw new Error(`V2 AI output missing field: ${k}`);
   }

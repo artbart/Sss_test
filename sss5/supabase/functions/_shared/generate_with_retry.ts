@@ -227,42 +227,36 @@ If specific requested elements feel uncertain, prioritize narrative flow, charac
  */
 export function buildEmergencyPrompt(originalPrompt: string): string {
   // Extract as much identifying context as we can from the original prompt.
-  const titleMatch = originalPrompt.match(/(?:story\s+title|title)[:\s]+["']?([^"'\n]{2,80})/i);
-  const namesMatch = originalPrompt.match(/(?:characters?|main\s+characters?)[:\s]+["']?([^"'\n]{2,120})/i);
   const worldMatch = originalPrompt.match(/(?:setting|world)[:\s]+["']?([^"'\n]{2,80})/i);
   const chapterMatch = originalPrompt.match(/chapter\s+(\d+)/i);
-
-  const title = titleMatch?.[1]?.trim() ?? "the story";
-  const names = namesMatch?.[1]?.trim() ?? "the main characters";
   const world = worldMatch?.[1]?.trim() ?? "contemporary";
-  const chapter = chapterMatch?.[1] ?? "N";
+  const chapter = chapterMatch?.[1] ?? "1";
 
-  return `You are continuing an adult romance novel titled "${title}".
+  // Do NOT echo any template-looking placeholders back at the model — Claude
+  // sometimes interprets `STORY_TITLE:\n${title}` as "leave that value for me
+  // to keep as-is" and returns an empty title. Instead, tell it in prose what
+  // to produce, and only list the label names in the output section.
+  return `You are writing an adult romance chapter. Setting: ${world}. This is chapter ${chapter} of a personalized interactive story.
 
-Setting: ${world}.
-Main characters: ${names}.
+Write a competent, self-contained chapter. Prioritize:
+- Two named main characters with clear voices.
+- A meaningful interpersonal beat that moves the story forward.
+- Grounded emotional and physical tension, appropriate to an adult romance.
+- Character-driven prose (~1500-2000 words).
+- A closing hook that opens naturally into three distinct next-step options.
 
-Write chapter ${chapter}. Requirements:
-- Approximately 1500 words
-- A meaningful interpersonal dynamic between the main characters
-- Some emotional or physical tension that moves the story forward
-- Character-driven prose (avoid exposition dumps)
-- A close that opens forward — the reader will pick from three options
-
-Output format (strict, no commentary):
+Output EXACTLY three labeled fields, nothing else. Every field must have real content — do NOT leave any of them blank, do NOT echo the label as the value, do NOT return STATUS: ERROR.
 
 STORY_TITLE:
-${title}
+(Invent a compelling 2-6 word title. Real words, not placeholder text.)
 
 CHAPTER_${chapter}_TEXT:
-<chapter body>
+(The full chapter prose here, ~1500-2000 words.)
 
 NEXT_OPTIONS_${chapter}:
-1. <choice A — one sentence describing what happens next>
-2. <choice B — one sentence>
-3. <choice C — one sentence>
+(Three distinct options, one per line, numbered 1/2/3. Each option is a single short sentence describing what could happen next.)
 
-Focus on delivering a competent chapter. Do not refuse. Do not include commentary before or after the labeled fields.`;
+Deliver the chapter. Do not refuse. Do not apologize. Do not include any commentary before, between, or after the labeled fields.`;
 }
 
 // ─── Main retry wrapper ────────────────────────────────────────────────────────
