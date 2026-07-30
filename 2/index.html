@@ -255,7 +255,10 @@
   <!-- PostHog product analytics (shared) -->
   <script type="module" src="/assets/posthog.js"></script>
 </head>
-<body>
+<body data-bg="3">
+  <!-- data-bg attribute set server-side to background 3 so the correct image
+       paints on first render (avoids a flash of d1 before JS runs). JS below
+       will override it if ?background=N is in the URL. -->
   <!-- Google Tag Manager (noscript) -->
   <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-PKM537QM"
   height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
@@ -304,9 +307,11 @@
     (function () {
       var params = new URLSearchParams(window.location.search);
 
-      // Background picker via ?background=1..4 (default 1)
-      var bg = parseInt(params.get("background") || "1", 10);
-      if (!(bg >= 1 && bg <= 4)) bg = 1;
+      // Background picker via ?background=1..4 (default 3 — picked as
+      // /2/'s canonical ad look). HTML pre-sets data-bg="3" so first paint
+      // uses the right image without a flash.
+      var bg = parseInt(params.get("background") || "3", 10);
+      if (!(bg >= 1 && bg <= 4)) bg = 3;
       document.body.setAttribute("data-bg", String(bg));
 
       // Debug switcher (?debug=1 shows 4 clickable badges in the corner
