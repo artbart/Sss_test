@@ -50,6 +50,32 @@
 <!-- ================= ROOT ================= -->
 <div id="app"></div>
 
+<!-- Meta / Instagram in-app browser banner. Their iOS webview has bugs
+     (broken keyboard interaction, sometimes uninteractive buttons on the
+     name+gender step). Show a one-tap Safari escape when we detect it. -->
+<div id="inappBanner" style="display:none;position:fixed;top:12px;left:12px;right:12px;z-index:9999;
+  background:rgba(224,75,87,0.16);border:1px solid rgba(224,75,87,0.55);color:#ffd7db;
+  font-family:Arial,sans-serif;font-size:13px;line-height:1.4;padding:12px 14px;border-radius:10px;
+  max-width:520px;margin:0 auto;">
+  <div><b style="color:#fff">Facebook / Instagram browser detected.</b></div>
+  <div>Some controls don't work reliably here on iPhone. Open in Safari for a smooth flow:</div>
+  <a id="openInSafariBtn" href="#" style="display:inline-block;margin-top:6px;padding:8px 12px;
+    background:#e04b57;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">Open in Safari →</a>
+</div>
+<script>
+  (function () {
+    var ua = navigator.userAgent || "";
+    var isInApp = /FBAN|FBAV|Instagram|MessengerLite|MessengerForiOS|Line|Twitter/i.test(ua);
+    var isIOS = /iPhone|iPad|iPod/.test(ua);
+    if (isInApp && isIOS) {
+      var el = document.getElementById("inappBanner");
+      if (el) el.style.display = "block";
+      var btn = document.getElementById("openInSafariBtn");
+      if (btn) btn.href = "x-safari-" + window.location.href;
+    }
+  })();
+</script>
+
 <!-- Meta Pixel Code -->
 <script>
 !function(f,b,e,v,n,t,s)
