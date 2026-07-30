@@ -153,9 +153,14 @@ body{
   transition:all .15s ease;
 }
 
-.ss-option:hover{
-  background:rgba(255,255,255,0.18);
-  transform:translateY(-2px);
+/* Only apply :hover on devices with a real mouse pointer. On iOS Safari
+   + Meta/Instagram in-app browsers, :hover state STICKS after a tap, which
+   leaves the last-tapped option looking permanently highlighted. */
+@media (hover: hover) and (pointer: fine) {
+  .ss-option:hover{
+    background:rgba(255,255,255,0.18);
+    transform:translateY(-2px);
+  }
 }
 
 .ss-option.active{
