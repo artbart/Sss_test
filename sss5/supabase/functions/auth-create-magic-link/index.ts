@@ -55,16 +55,34 @@ Deno.serve(async (req: Request) => {
   const db = adminClient();
 
   // Verify session: must be paid AND must match the email.
-  const { data: session, error: sErr } = await db
-    .from("quiz_sessions")
+  // V2-aware: check quiz2_sessions first (new traffic), fall back to quiz_sessions (V1).
+  // Same lookup semantics either way — same three columns matter for the check.
+  let session: { id: string; email: string | null; paid: boolean | null } | null = null;
+
+  const { data: v2Row, error: v2Err } = await db
+    .from("quiz2_sessions")
     .select("id, email, paid")
     .eq("id", sessionId)
     .maybeSingle();
-
-  if (sErr) {
-    console.error("[auth-create-magic-link] session lookup failed:", sErr);
+  if (v2Err) {
+    console.error("[auth-create-magic-link] quiz2_sessions lookup failed:", v2Err);
     return jsonResponse({ error: "Could not verify session" }, 500);
   }
+  if (v2Row) {
+    session = v2Row;
+  } else {
+    const { data: v1Row, error: v1Err } = await db
+      .from("quiz_sessions")
+      .select("id, email, paid")
+      .eq("id", sessionId)
+      .maybeSingle();
+    if (v1Err) {
+      console.error("[auth-create-magic-link] quiz_sessions lookup failed:", v1Err);
+      return jsonResponse({ error: "Could not verify session" }, 500);
+    }
+    session = v1Row;
+  }
+
   if (!session) {
     return jsonResponse({ error: "Session not found" }, 404);
   }
