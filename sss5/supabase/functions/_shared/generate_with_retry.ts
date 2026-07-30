@@ -107,13 +107,17 @@ export function categorizeResponse(response: string): FailureKind | null {
   const firstChunk = trimmed.slice(0, 200);
   if (softRefuseStarts.some((re) => re.test(firstChunk))) return "soft_refuse";
 
-  // FORMAT — response must contain labeled fields for the parser to work
-  const hasChapterText = /CHAPTER_\d+_TEXT:/m.test(response);
+  // FORMAT — response must contain labeled fields for the parser to work.
+  // V1 + V2 chapter 1 use CHAPTER_1_TEXT / CHAPTER_2_TEXT (numbered);
+  // V2 chapter N uses CHAPTER_TEXT (unnumbered). Accept both to avoid
+  // wrongly marking a well-formed chapter-N response as format_error and
+  // retrying/failing it in a loop.
+  const hasChapterText = /CHAPTER(?:_\d+)?_TEXT:/m.test(response);
   const hasOptions = /NEXT_OPTIONS_\d+:/m.test(response);
   if (!hasChapterText || !hasOptions) return "format_error";
 
-  // QUALITY — chapter body must be substantial (rough check on the CHAPTER_N_TEXT section)
-  const chapterMatch = response.match(/CHAPTER_\d+_TEXT:\s*([\s\S]*?)(?=\n[A-Z_]+:|$)/);
+  // QUALITY — chapter body must be substantial (rough check on the CHAPTER_(_N)_TEXT section)
+  const chapterMatch = response.match(/CHAPTER(?:_\d+)?_TEXT:\s*([\s\S]*?)(?=\n[A-Z_]+:|$)/);
   const chapterBody = chapterMatch?.[1]?.trim() ?? "";
   const wordCount = chapterBody.split(/\s+/).filter(Boolean).length;
   if (wordCount < 500) return "quality_issue";
