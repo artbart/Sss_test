@@ -1807,15 +1807,23 @@ function questionShellHtml(title, bodyHtml, extraFooter){
 // renderSingle — V2 shape (options are {value, label})
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// Split "🌸 Sweet — ..." (or HTML-icon "<span>♀</span> ...") into an icon
-// half and a text half. First raw space is the delimiter. Works because our
-// icon HTML never has spaces inside attributes (style='color:...' etc.).
-// Rendering both halves as separate flex children lets .ss-option's gap:10px
-// give the icon real breathing room from the text — matches V1's look.
+// Split "🌸 Sweet — ..." (or HTML-icon "<span style='...'>♀</span> ...")
+// into an icon half + text half. Delimiter = first space OUTSIDE any HTML
+// tag (spaces INSIDE `< >`, e.g. between `<span` and `style=...`, are part
+// of the icon markup and must not split). Rendering the two halves as
+// separate flex children lets .ss-option's gap:10px give the icon real
+// breathing room from the text — matches V1's look.
 function splitLabel(label){
-  const i = label.indexOf(" ");
-  if(i < 0) return { icon: label, text: "" };
-  return { icon: label.slice(0, i), text: label.slice(i + 1) };
+  let inTag = false;
+  for(let i = 0; i < label.length; i++){
+    const c = label[i];
+    if(c === "<") inTag = true;
+    else if(c === ">") inTag = false;
+    else if(c === " " && !inTag){
+      return { icon: label.slice(0, i), text: label.slice(i + 1) };
+    }
+  }
+  return { icon: label, text: "" };
 }
 function optionBodyHtml(label){
   const { icon, text } = splitLabel(label);
