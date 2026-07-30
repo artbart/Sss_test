@@ -28,14 +28,23 @@ export async function resolveAccess(
 
   if (leadEmail) {
     const email = leadEmail.trim().toLowerCase();
-    const { data } = await db
-      .from("quiz_sessions")
-      .select("current_period_end, subscription_status")
-      .eq("email", email)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (data) return { periodEnd: data.current_period_end ?? null, subStatus: data.subscription_status ?? null };
+    // V2-aware: check both quiz tables and use the most recent row (in case a
+    // user has sessions in both). Same class of fix as #111 (trigger) and the
+    // magic-link function — email fallback was V1-only.
+    const [v1, v2] = await Promise.all([
+      db.from("quiz_sessions")
+        .select("current_period_end, subscription_status, created_at")
+        .eq("email", email).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      db.from("quiz2_sessions")
+        .select("current_period_end, subscription_status, created_at")
+        .eq("email", email).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+    ]);
+    const rows = [v1.data, v2.data].filter(Boolean) as Array<{ current_period_end: string | null; subscription_status: string | null; created_at: string }>;
+    if (rows.length) {
+      rows.sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
+      const best = rows[0];
+      return { periodEnd: best.current_period_end ?? null, subStatus: best.subscription_status ?? null };
+    }
   }
 
   return { periodEnd: null, subStatus: null };
