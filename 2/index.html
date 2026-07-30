@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stuff So Sweet — Interactive adult stories</title>
+  <meta name="description" content="Interactive adult romance. Your fantasy. Your heat. Your choices. A 10-chapter story built around exactly what turns you on.">
+
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Stuff So Sweet">
+  <meta property="og:title" content="Interactive adult stories — Stuff So Sweet">
+  <meta property="og:description" content="Your fantasy. Your heat. Your choices. A 10-chapter interactive adult romance built around exactly what turns you on.">
+  <meta property="og:url" content="https://stuffsosweet.com/2/">
+  <meta property="og:image" content="https://stuffsosweet.com/media/og-card.jpg">
+  <meta property="og:image:type" content="image/jpeg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Interactive adult stories — Stuff So Sweet">
+  <meta name="twitter:description" content="Your fantasy. Your heat. Your choices. A 10-chapter interactive adult romance built around exactly what turns you on.">
+  <meta name="twitter:image" content="https://stuffsosweet.com/media/og-card.jpg">
+
+  <!-- Meta Pixel -->
+  <script>
+  !function(f,b,e,v,n,t,s)
+  {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+  n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+  if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+  n.queue=[];t=b.createElement(e);t.async=!0;
+  t.src=v;s=b.getElementsByTagName(e)[0];
+  s.parentNode.insertBefore(t,s)}(window, document,'script',
+  'https://connect.facebook.net/en_US/fbevents.js');
+  fbq('init', '2011659879327902');
+  fbq('track', 'PageView');
+  </script>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-top: #4b0018;
+      --bg-bottom: #1a0008;
+      --text: #ffffff;
+      --muted: rgba(255,255,255,0.86);
+      --faint: rgba(255,255,255,0.66);
+      --brand-gold: #f0d48c;
+      --cta: #e04b57;
+      --cta-hover: #c63d49;
+      --bullet-glow: #ffd76a;
+      --shadow: 0 18px 45px rgba(0,0,0,0.38);
+    }
+
+    html, body {
+      min-height: 100%;
+      background: linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+      color: var(--text);
+      font-family: Georgia, serif;
+    }
+
+    body {
+      min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    .hero {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      background: linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+      isolation: isolate;
+    }
+
+    /* --- Background image selection via body[data-bg="N"] -----------------
+       ?background=1 (default) .. ?background=4 pick which /2/media pair to
+       show. Desktop uses dN.webp; mobile @media block swaps to mN.webp.    */
+    .hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-repeat: no-repeat;
+      background-size: cover;
+      background-position: center right;
+      background-image:
+        linear-gradient(90deg, rgba(10,0,5,0.90) 0%, rgba(12,1,6,0.86) 26%, rgba(18,3,10,0.54) 48%, rgba(20,5,13,0.14) 70%, rgba(16,3,9,0.22) 100%),
+        url('/2/media/d1.webp');
+      z-index: -2;
+    }
+    body[data-bg="2"] .hero::before {
+      background-image:
+        linear-gradient(90deg, rgba(10,0,5,0.90) 0%, rgba(12,1,6,0.86) 26%, rgba(18,3,10,0.54) 48%, rgba(20,5,13,0.14) 70%, rgba(16,3,9,0.22) 100%),
+        url('/2/media/d2.webp');
+    }
+    body[data-bg="3"] .hero::before {
+      background-image:
+        linear-gradient(90deg, rgba(10,0,5,0.90) 0%, rgba(12,1,6,0.86) 26%, rgba(18,3,10,0.54) 48%, rgba(20,5,13,0.14) 70%, rgba(16,3,9,0.22) 100%),
+        url('/2/media/d3.webp');
+    }
+    body[data-bg="4"] .hero::before {
+      background-image:
+        linear-gradient(90deg, rgba(10,0,5,0.90) 0%, rgba(12,1,6,0.86) 26%, rgba(18,3,10,0.54) 48%, rgba(20,5,13,0.14) 70%, rgba(16,3,9,0.22) 100%),
+        url('/2/media/d4.webp');
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(102deg, rgba(255,255,255,0) 0 18px, rgba(255,255,255,0.06) 18px 19px, rgba(255,255,255,0) 19px 46px);
+      opacity: 0.35;
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    .wrap { width: 100%; max-width: 1280px; margin: 0 auto; padding: 24px 32px 20px; }
+    .brand {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-family: Arial, sans-serif; font-size: 18px; font-weight: 500;
+      color: #fff4ec; margin-bottom: 10px; margin-left: 18px;
+    }
+    .brand::before, .brand::after { content: '•'; color: var(--brand-gold); font-size: 14px; line-height: 1; }
+    .content { width: min(100%, 550px); padding: 8px 0 0 18px; }
+
+    h1 {
+      font-size: clamp(32px, 3.5vw, 48px);
+      line-height: 1.05;
+      font-weight: 400;
+      letter-spacing: -0.03em;
+      margin-top: 10px;
+    }
+    .gold { color: var(--brand-gold); font-weight: 700; text-shadow: 0 0 16px rgba(240, 212, 140, 0.18); }
+
+    .subtext {
+      margin-top: 20px;
+      color: var(--muted);
+      font-family: Arial, sans-serif;
+      font-size: 20px;
+      line-height: 1.35;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+    }
+
+    .cta {
+      display: inline-flex; justify-content: center; align-items: center;
+      width: min(100%, 305px); min-height: 56px; margin-top: 18px;
+      border-radius: 6px; background: var(--cta); color: #fff;
+      text-decoration: none; font-family: Arial, sans-serif; font-size: 16px;
+      font-weight: 600; box-shadow: var(--shadow);
+      transition: background 0.2s ease, transform 0.2s ease;
+    }
+    .cta:hover { background: var(--cta-hover); transform: translateY(-1px); }
+
+    .features { list-style: none; margin-top: 22px; display: grid; gap: 14px; max-width: 570px; }
+    .features li { display: flex; gap: 12px; align-items: flex-start; color: var(--muted); font-size: 18px; line-height: 1.35; }
+
+    .new-pill {
+      display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+      padding: 2px 7px; border-radius: 6px; background: #e04b57; color: #fff;
+      margin-right: 8px; vertical-align: 2px;
+    }
+
+    .dot {
+      width: 16px; height: 16px; min-width: 16px; margin-top: 4px; border-radius: 50%;
+      position: relative;
+      background: radial-gradient(circle at 35% 35%, #fff9c7, var(--bullet-glow) 52%, #9a7616 100%);
+      box-shadow: 0 0 14px rgba(255, 215, 106, 0.38);
+    }
+    .dot::before, .dot::after {
+      content: ""; position: absolute; left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255,255,255,0.95); border-radius: 999px;
+    }
+    .dot::before { width: 7px; height: 1.5px; }
+    .dot::after { width: 1.5px; height: 7px; }
+
+    .footer { margin-top: 48px; max-width: 760px; color: var(--faint); font-family: Arial, sans-serif; font-size: 10px; line-height: 1.45; }
+    .footer a { color: var(--faint); text-decoration: underline; }
+
+    .signin-corner {
+      position: absolute; top: 24px; right: 32px; z-index: 5;
+      font-family: Arial, sans-serif; font-size: 13px; font-weight: 500;
+      color: rgba(255,255,255,0.78); text-decoration: none;
+      padding: 8px 14px; border-radius: 8px;
+      background: rgba(0,0,0,0.22); border: 1px solid rgba(255,255,255,0.14);
+      transition: background 0.15s, color 0.15s;
+    }
+    .signin-corner:hover { background: rgba(0,0,0,0.36); color: #fff; }
+
+    /* Optional background switcher UI — only appears when ?debug=1 is in the URL
+       so it doesn't clutter the ad landing page for real visitors. */
+    .bg-switcher {
+      position: fixed; bottom: 12px; left: 12px; z-index: 20;
+      display: none; gap: 6px; padding: 6px 8px;
+      background: rgba(0,0,0,0.6); border-radius: 8px; backdrop-filter: blur(8px);
+    }
+    body[data-debug="1"] .bg-switcher { display: inline-flex; }
+    .bg-switcher a {
+      display: inline-block; width: 28px; height: 28px; border-radius: 6px;
+      background: rgba(255,255,255,0.14); color: #fff; text-decoration: none;
+      font-family: Arial, sans-serif; font-size: 12px; font-weight: 600;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .bg-switcher a.active { background: #e04b57; }
+
+    @media (max-width: 900px) {
+      .hero { align-items: flex-start; }
+      .hero::before {
+        background-position: center top;
+        background-image:
+          linear-gradient(180deg, rgba(10,0,5,0.74) 0%, rgba(16,2,8,0.50) 30%, rgba(18,3,10,0.82) 100%),
+          url('/2/media/m1.webp');
+      }
+      body[data-bg="2"] .hero::before {
+        background-image:
+          linear-gradient(180deg, rgba(10,0,5,0.74) 0%, rgba(16,2,8,0.50) 30%, rgba(18,3,10,0.82) 100%),
+          url('/2/media/m2.webp');
+      }
+      body[data-bg="3"] .hero::before {
+        background-image:
+          linear-gradient(180deg, rgba(10,0,5,0.74) 0%, rgba(16,2,8,0.50) 30%, rgba(18,3,10,0.82) 100%),
+          url('/2/media/m3.webp');
+      }
+      body[data-bg="4"] .hero::before {
+        background-image:
+          linear-gradient(180deg, rgba(10,0,5,0.74) 0%, rgba(16,2,8,0.50) 30%, rgba(18,3,10,0.82) 100%),
+          url('/2/media/m4.webp');
+      }
+      .wrap { padding: 20px 20px 16px; }
+      .content { width: 100%; padding-left: 0; padding-top: 8px; }
+      .brand { font-size: 17px; margin-bottom: 26px; margin-left: 0; }
+      h1 { font-size: clamp(28px, 8.5vw, 38px); }
+      .subtext { font-size: 17px; }
+      .cta { width: 100%; max-width: 100%; }
+      .features li { font-size: 16px; }
+      .signin-corner { top: 18px; right: 18px; font-size: 12px; padding: 6px 12px; }
+      .footer { margin-top: 34px; }
+    }
+  </style>
+
+  <!-- Google Tag Manager -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer','GTM-PKM537QM');</script>
+
+  <!-- PostHog product analytics (shared) -->
+  <script type="module" src="/assets/posthog.js"></script>
+</head>
+<body>
+  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-PKM537QM"
+  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+
+  <section class="hero">
+    <a class="signin-corner" href="https://app.stuffsosweet.com/">Sign in &rarr;</a>
+    <div class="wrap">
+      <div class="brand">Stuff So Sweet</div>
+      <div class="content">
+        <h1>Interactive <span class="gold">adult stories.</span></h1>
+
+        <p class="subtext">
+          Your fantasy. Your heat. Your choices.
+        </p>
+
+        <a class="cta" id="startQuizLink" href="/quiz2/" data-ph="cta_get_started" data-ph-props='{"location":"home_v2"}'>Start My Story &rarr;</a>
+
+        <ul class="features">
+          <li><span class="dot"></span><span>Escape into your fantasy &mdash; decide how obsessed he is, how hot it gets, where the story goes.</span></li>
+          <li><span class="dot"></span><span>A quiz that actually listens: pick your world, your love interest, your spice level.</span></li>
+          <li><span class="dot"></span><span><span class="new-pill">NEW</span>Talk to the characters. Chat one-on-one with your love interest between chapters &mdash; he remembers what happened.</span></li>
+          <li><span class="dot"></span><span>Start multiple stories. Switch anytime without losing progress.</span></li>
+          <li><span class="dot"></span><span>Heat control from sweet to all-consuming &mdash; adjustable anytime.</span></li>
+        </ul>
+
+        <div class="footer">
+          2026 &copy; All Rights Reserved Stuff So Sweet. By continuing you agree to our
+          <a href="/privacy-policy.html">Privacy Policy</a>,
+          <a href="/terms-of-services.html">Terms and Conditions</a>,
+          <a href="/acceptable-use-policy.html">Acceptable Use Policy</a>
+          and
+          <a href="/refund-policy.html">Subscriptions and Refund Policy</a>.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Background switcher: shown when ?debug=1 (or add ?debug=1&background=N for direct link) -->
+  <div class="bg-switcher" id="bgSwitcher"></div>
+
+  <noscript><img height="1" width="1" style="display:none"
+  src="https://www.facebook.com/tr?id=2011659879327902&ev=PageView&noscript=1"
+  /></noscript>
+
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+
+      // Background picker via ?background=1..4 (default 1)
+      var bg = parseInt(params.get("background") || "1", 10);
+      if (!(bg >= 1 && bg <= 4)) bg = 1;
+      document.body.setAttribute("data-bg", String(bg));
+
+      // Debug switcher (?debug=1 shows 4 clickable badges in the corner
+      // so you can flip through backgrounds side-by-side without editing URL).
+      if (params.get("debug") === "1") {
+        document.body.setAttribute("data-debug", "1");
+        var wrap = document.getElementById("bgSwitcher");
+        wrap.innerHTML = "";
+        [1, 2, 3, 4].forEach(function (n) {
+          var a = document.createElement("a");
+          a.textContent = "bg" + n;
+          var q = new URLSearchParams(window.location.search);
+          q.set("background", String(n));
+          a.href = "?" + q.toString();
+          if (n === bg) a.className = "active";
+          wrap.appendChild(a);
+        });
+      }
+
+      // Forward ?fbclid / ?promo / etc. to the quiz link so attribution is preserved
+      var link = document.getElementById("startQuizLink");
+      if (link) {
+        var forward = new URLSearchParams();
+        params.forEach(function (v, k) {
+          // Don't leak our own bg/debug params into the funnel
+          if (k !== "background" && k !== "debug") forward.set(k, v);
+        });
+        var qs = forward.toString();
+        link.href = "/quiz2/" + (qs ? "?" + qs : "");
+      }
+    })();
+  </script>
+</body>
+</html>
