@@ -1943,14 +1943,19 @@ function renderCompound(s){
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function renderYouName(s){
+  // Continue button rendered INLINE (right below the input), NOT in the fixed
+  // ss-footer. On mobile the on-screen keyboard covers the fixed bottom bar,
+  // and older users don't know to dismiss the keyboard to reach it. Inline
+  // button sits directly under the input where the thumb already is.
   app.innerHTML = questionShellHtml("Your name in the story",
     `<div class="ss-sub">First name is fine. This is what the engine will call you throughout the story.</div>
      <div style="margin:16px 0;">
        <input id="q1b-name" type="text" maxlength="30" placeholder="e.g. Neve"
          autocapitalize="words" autocomplete="off" spellcheck="false"
          style="width:100%;padding:16px;border-radius:12px;border:none;background:rgba(255,255,255,0.12);color:#fff;font-size:17px;box-sizing:border-box;">
-     </div>`,
-    `<div class="ss-footer"><button class="ss-btn" id="cta" disabled>CONTINUE</button></div>`);
+       <button class="ss-btn" id="cta" disabled
+         style="width:100%;margin-top:12px;">CONTINUE</button>
+     </div>`);
 
   const nameInput = document.getElementById("q1b-name");
   const cta = document.getElementById("cta");
@@ -1966,6 +1971,7 @@ function renderYouName(s){
   cta.onclick = () => {
     const n = nameInput.value.trim();
     if(n.length < 1) return;
+    document.activeElement?.blur?.();
     state.you = { ...(state.you || {}), name: n };
     next();
   };
