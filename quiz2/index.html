@@ -50,32 +50,6 @@
 <!-- ================= ROOT ================= -->
 <div id="app"></div>
 
-<!-- Meta / Instagram in-app browser banner. Their iOS webview has bugs
-     (broken keyboard interaction, sometimes uninteractive buttons on the
-     name+gender step). Show a one-tap Safari escape when we detect it. -->
-<div id="inappBanner" style="display:none;position:fixed;top:12px;left:12px;right:12px;z-index:9999;
-  background:rgba(224,75,87,0.16);border:1px solid rgba(224,75,87,0.55);color:#ffd7db;
-  font-family:Arial,sans-serif;font-size:13px;line-height:1.4;padding:12px 14px;border-radius:10px;
-  max-width:520px;margin:0 auto;">
-  <div><b style="color:#fff">Facebook / Instagram browser detected.</b></div>
-  <div>Some controls don't work reliably here on iPhone. Open in Safari for a smooth flow:</div>
-  <a id="openInSafariBtn" href="#" style="display:inline-block;margin-top:6px;padding:8px 12px;
-    background:#e04b57;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">Open in Safari →</a>
-</div>
-<script>
-  (function () {
-    var ua = navigator.userAgent || "";
-    var isInApp = /FBAN|FBAV|Instagram|MessengerLite|MessengerForiOS|Line|Twitter/i.test(ua);
-    var isIOS = /iPhone|iPad|iPod/.test(ua);
-    if (isInApp && isIOS) {
-      var el = document.getElementById("inappBanner");
-      if (el) el.style.display = "block";
-      var btn = document.getElementById("openInSafariBtn");
-      if (btn) btn.href = "x-safari-" + window.location.href;
-    }
-  })();
-</script>
-
 <!-- Meta Pixel Code -->
 <script>
 !function(f,b,e,v,n,t,s)
@@ -1281,9 +1255,11 @@ const steps = [
   // Q1 — Are you in this story?
   {type:"single", key:"in_story"},
 
-  // Q1b — Compound name + gender (only if in_story = yes)
-  {type:"compound", key:"you",
-   showIf: s => s.in_story === "yes"},
+  // Q1b — Name (only if in_story = yes) — split from compound to reduce
+  // per-step friction (mobile in-app browsers stumble on multi-field steps).
+  {type:"you_name",   key:"you", showIf: s => s.in_story === "yes"},
+  // Q1c — Gender (only if in_story = yes)
+  {type:"you_gender", key:"you", showIf: s => s.in_story === "yes"},
 
   // Q2 — Pairing (5 options; "surprise me" hidden when self-inserting)
   {type:"single_dynamic", key:"pairing"},
@@ -1533,6 +1509,8 @@ function render(){
   if(s.type==="single_dynamic") return renderSingleDynamic(s);
   if(s.type==="single_rich") return renderSingleRich(s);
   if(s.type==="compound") return renderCompound(s);
+  if(s.type==="you_name") return renderYouName(s);
+  if(s.type==="you_gender") return renderYouGender(s);
   if(s.type==="multi") return renderMulti(s);
   if(s.type==="skip") return renderSkip(s);
   if(s.type==="interrupt1") return renderInterrupt1();
@@ -1956,6 +1934,70 @@ function renderCompound(s){
     state.you = { name: n, gender: selectedGender };
     next();
   };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// renderYouName — Q1b (split from compound): name only. Continue activates
+// on any character. Kept intentionally lax so mobile users aren't fighting
+// autocorrect + strict validation on a single-line input.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function renderYouName(s){
+  app.innerHTML = questionShellHtml("Your name in the story",
+    `<div class="ss-sub">First name is fine. This is what the engine will call you throughout the story.</div>
+     <div style="margin:16px 0;">
+       <input id="q1b-name" type="text" maxlength="30" placeholder="e.g. Neve"
+         autocapitalize="words" autocomplete="off" spellcheck="false"
+         style="width:100%;padding:16px;border-radius:12px;border:none;background:rgba(255,255,255,0.12);color:#fff;font-size:17px;box-sizing:border-box;">
+     </div>`,
+    `<div class="ss-footer"><button class="ss-btn" id="cta" disabled>CONTINUE</button></div>`);
+
+  const nameInput = document.getElementById("q1b-name");
+  const cta = document.getElementById("cta");
+
+  // Prefill if user came back
+  if(state.you?.name) nameInput.value = state.you.name;
+  cta.disabled = nameInput.value.trim().length < 1;
+
+  nameInput.addEventListener("input", () => {
+    cta.disabled = nameInput.value.trim().length < 1;
+  });
+
+  cta.onclick = () => {
+    const n = nameInput.value.trim();
+    if(n.length < 1) return;
+    state.you = { ...(state.you || {}), name: n };
+    next();
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// renderYouGender — Q1c: 3 options with icons. Auto-advance on tap.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function renderYouGender(s){
+  const options = [
+    { value: "woman", label: "👩 Woman" },
+    { value: "man",   label: "👨 Man" },
+    { value: "nb",    label: "🌈 Non-binary" },
+  ];
+
+  app.innerHTML = questionShellHtml("Your gender in the story",
+    `<div class="ss-sub">How the story will refer to you.</div>
+     <div class="ss-options" id="opts"></div>`);
+
+  const wrap = document.getElementById("opts");
+  options.forEach(opt => {
+    const el = document.createElement("div");
+    el.className = "ss-option";
+    if(state.you?.gender === opt.value) el.classList.add("active");
+    el.innerHTML = `<div>${opt.label}</div>`;
+    el.onclick = () => {
+      state.you = { ...(state.you || {}), gender: opt.value };
+      next();
+    };
+    wrap.appendChild(el);
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
