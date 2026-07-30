@@ -1807,6 +1807,21 @@ function questionShellHtml(title, bodyHtml, extraFooter){
 // renderSingle — V2 shape (options are {value, label})
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// Split "🌸 Sweet — ..." (or HTML-icon "<span>♀</span> ...") into an icon
+// half and a text half. First raw space is the delimiter. Works because our
+// icon HTML never has spaces inside attributes (style='color:...' etc.).
+// Rendering both halves as separate flex children lets .ss-option's gap:10px
+// give the icon real breathing room from the text — matches V1's look.
+function splitLabel(label){
+  const i = label.indexOf(" ");
+  if(i < 0) return { icon: label, text: "" };
+  return { icon: label.slice(0, i), text: label.slice(i + 1) };
+}
+function optionBodyHtml(label){
+  const { icon, text } = splitLabel(label);
+  return `<div style="font-size:20px;line-height:1;flex-shrink:0;">${icon}</div><div style="flex:1;">${text}</div>`;
+}
+
 function renderSingle(s){
   const q = V2_SINGLE[s.key];
   if(!q){ console.error("[quiz2] renderSingle: unknown key", s.key); return; }
@@ -1816,7 +1831,7 @@ function renderSingle(s){
   q.options.forEach(opt => {
     const el = document.createElement("div");
     el.className = "ss-option";
-    el.innerHTML = `<div>${opt.label}</div>`;
+    el.innerHTML = optionBodyHtml(opt.label);
     el.onclick = () => { state[s.key] = opt.value; next(); };
     wrap.appendChild(el);
   });
@@ -1829,10 +1844,12 @@ function renderSingle(s){
 function renderSingleDynamic(s){
   if(s.key !== "pairing"){ return renderSingle(s); }
 
+  // margin-right dropped — flex gap:10px from .ss-option now handles the
+  // icon-to-text spacing via optionBodyHtml split.
   const base = [
-    { value: "wm",    label: "<span style='color:#ff8fa3'>♀</span><span style='color:#7fbfff;margin-right:8px'>♂</span> A woman and a man" },
-    { value: "ww",    label: "<span style='color:#ff8fa3'>♀</span><span style='color:#ff8fa3;margin-right:8px'>♀</span> Women" },
-    { value: "mm",    label: "<span style='color:#7fbfff'>♂</span><span style='color:#7fbfff;margin-right:8px'>♂</span> Men" },
+    { value: "wm",    label: "<span style='color:#ff8fa3'>♀</span><span style='color:#7fbfff'>♂</span> A woman and a man" },
+    { value: "ww",    label: "<span style='color:#ff8fa3'>♀</span><span style='color:#ff8fa3'>♀</span> Women" },
+    { value: "mm",    label: "<span style='color:#7fbfff'>♂</span><span style='color:#7fbfff'>♂</span> Men" },
     { value: "queer", label: "🏳️‍🌈 Multiple partners / queer romance" },
   ];
   if(state.in_story !== "yes"){
@@ -1844,7 +1861,7 @@ function renderSingleDynamic(s){
   base.forEach(opt => {
     const el = document.createElement("div");
     el.className = "ss-option";
-    el.innerHTML = `<div>${opt.label}</div>`;
+    el.innerHTML = optionBodyHtml(opt.label);
     el.onclick = () => { state[s.key] = opt.value; next(); };
     wrap.appendChild(el);
   });
