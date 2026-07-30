@@ -370,7 +370,11 @@ async function generateChapterNV2(db: ReturnType<typeof adminClient>, story: any
     quizVersion: 2,
     originalPrompt: prompt,
     anthropicApiKey,
-    maxTokens: 6000,
+    // 8000 tokens matches chapter 1 and leaves headroom for the 10+ scaffolding
+    // fields chapter N needs (world/character/relationship state carry-over) plus
+    // a ~2000-word body. Chapter 4 hit the 6000 ceiling and got truncated
+    // mid-response, chopping off NEXT_OPTIONS_* and forcing a format_error retry.
+    maxTokens: 8000,
   });
 
   if (!result.success || !result.chapter_text) {
