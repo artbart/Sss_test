@@ -17,7 +17,7 @@
   <meta property="og:title" content="Interactive adult stories — Stuff So Sweet">
   <meta property="og:description" content="Your fantasy. Your heat. Your choices. A 10-chapter interactive adult romance built around exactly what turns you on.">
   <meta property="og:url" content="https://stuffsosweet.com/2/">
-  <meta property="og:image" content="https://stuffsosweet.com/media/og-card.jpg">
+  <meta property="og:image" content="https://stuffsosweet.com/2/media/og2.jpg">
   <meta property="og:image:type" content="image/jpeg">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
@@ -25,7 +25,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Interactive adult stories — Stuff So Sweet">
   <meta name="twitter:description" content="Your fantasy. Your heat. Your choices. A 10-chapter interactive adult romance built around exactly what turns you on.">
-  <meta name="twitter:image" content="https://stuffsosweet.com/media/og-card.jpg">
+  <meta name="twitter:image" content="https://stuffsosweet.com/2/media/og2.jpg">
 
   <!-- Meta Pixel -->
   <script>
@@ -331,7 +331,10 @@
         });
       }
 
-      // Forward ?fbclid / ?promo / etc. to the quiz link so attribution is preserved
+      // Forward ?fbclid / ?promo / etc. to the quiz link so attribution is preserved.
+      // Also stamp src=v2landing so we can count /2/-originated quiz starts in the DB
+      // (quiz2_sessions.landing_page will contain it, since the quiz2 frontend stores
+      // window.location.href at session start).
       var link = document.getElementById("startQuizLink");
       if (link) {
         var forward = new URLSearchParams();
@@ -339,8 +342,8 @@
           // Don't leak our own bg/debug params into the funnel
           if (k !== "background" && k !== "debug") forward.set(k, v);
         });
-        var qs = forward.toString();
-        link.href = "/quiz2/" + (qs ? "?" + qs : "");
+        forward.set("src", "v2landing");
+        link.href = "/quiz2/?" + forward.toString();
       }
     })();
   </script>
