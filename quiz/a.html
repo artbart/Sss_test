@@ -1276,6 +1276,12 @@ function cleanupIntervals(){
 async function postQuizEvent(event, payload){
   try { console.log("[MHS quiz] -> submit-quiz", event, payload); } catch (_) {}
 
+  // Mirror this funnel step into PostHog (assets/posthog.js). Fires before the
+  // fetch so analytics still records the step even if submit-quiz is down.
+  // Optional-call because posthog.js is an async ES module and may not have
+  // finished loading yet — a missed early event must never break the funnel.
+  try { window.sssTrackFunnel?.(event, payload); } catch (_) {}
+
   const body = JSON.stringify({
     session_id: session_id,
     event: event,
