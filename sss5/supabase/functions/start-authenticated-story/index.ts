@@ -70,6 +70,9 @@ Deno.serve(async (req: Request) => {
   // Access gate: lifetime holders always pass; otherwise paid-through must be
   // in the future. Shared with submit-choice via _shared/access.ts.
   const access = await resolveAccess(db, profile.id);
+  if (access.lookupFailed) {
+    return jsonResponse({ error: "Couldn't verify subscription access", detail: "access lookup failed, please retry" }, 500);
+  }
   if (!hasAccess(access)) {
     return jsonResponse(
       { error: "Active subscription required to start a new story", subscription_status: access.subStatus },

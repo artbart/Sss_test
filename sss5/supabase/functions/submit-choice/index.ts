@@ -78,6 +78,10 @@ Deno.serve(async (req: Request) => {
   // RLS). We check BEFORE recording the choice so a lapsed user can retry
   // after reactivating.
   const access = await resolveAccess(db, story?.user_id, story?.lead_email);
+  if (access.lookupFailed) {
+    console.error("submit-choice: access lookup failed for story", storyId);
+    return jsonResponse({ status: "error", message: "Couldn't verify subscription access" }, 500);
+  }
   if (!hasAccess(access)) {
     return jsonResponse(
       { status: "error", message: "Subscription required to continue", subscription_status: access.subStatus ?? "none" },

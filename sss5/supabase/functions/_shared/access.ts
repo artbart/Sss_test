@@ -12,6 +12,12 @@ export interface AccessInfo {
   subStatus: string | null;   // subscription_status, for messaging/ops
   lifetimeAt: string | null;  // ISO timestamp of the lifetime purchase, or null
   planTier: string;           // 'standard' | 'lite' — drives the monthly story quota
+  // True when the underlying query errored (transient DB failure), as opposed
+  // to succeeding and finding no subscription. Callers MUST check this before
+  // treating a false `hasAccess()` as an entitlement denial — a lookup
+  // failure should surface as a 5xx, never as "no access" (403/402), or a
+  // transient blip locks out a fully paid subscriber.
+  lookupFailed: boolean;
 }
 
 // Monthly story quota per plan tier. Unknown tiers fall back to standard so a
@@ -28,16 +34,26 @@ export async function resolveAccess(
   leadEmail?: string | null,
 ): Promise<AccessInfo> {
   if (userId) {
-    const { data } = await db
+    const { data, error } = await db
       .from("users")
       .select("current_period_end, subscription_status, lifetime_at, plan_tier")
       .eq("id", userId)
       .maybeSingle();
+    // A query error means we could not determine entitlement — distinct from
+    // a successful query that simply found no matching row. Do not fall
+    // through to the leadEmail branch in this case: the caller passed a
+    // userId because it already knows this is an account, and swallowing the
+    // error here previously produced an indistinguishable "no access" result
+    // that turned a transient DB blip into a 403 for a paying subscriber.
+    if (error) {
+      return { periodEnd: null, subStatus: null, lifetimeAt: null, planTier: "standard", lookupFailed: true };
+    }
     if (data) return {
       periodEnd: data.current_period_end ?? null,
       subStatus: data.subscription_status ?? null,
       lifetimeAt: data.lifetime_at ?? null,
       planTier: data.plan_tier ?? "standard",
+      lookupFailed: false,
     };
   }
 
@@ -54,16 +70,21 @@ export async function resolveAccess(
         .select("current_period_end, subscription_status, created_at")
         .eq("email", email).order("created_at", { ascending: false }).limit(1).maybeSingle(),
     ]);
+    // Treat a failure on either leg as a lookup failure — we can't be
+    // confident we're not missing the row that would have granted access.
+    if (v1.error || v2.error) {
+      return { periodEnd: null, subStatus: null, lifetimeAt: null, planTier: "standard", lookupFailed: true };
+    }
     const rows = [v1.data, v2.data].filter(Boolean) as Array<{ current_period_end: string | null; subscription_status: string | null; created_at: string }>;
     if (rows.length) {
       rows.sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
       const best = rows[0];
       // Pre-signup leads cannot hold lifetime; they are always standard tier.
-      return { periodEnd: best.current_period_end ?? null, subStatus: best.subscription_status ?? null, lifetimeAt: null, planTier: "standard" };
+      return { periodEnd: best.current_period_end ?? null, subStatus: best.subscription_status ?? null, lifetimeAt: null, planTier: "standard", lookupFailed: false };
     }
   }
 
-  return { periodEnd: null, subStatus: null, lifetimeAt: null, planTier: "standard" };
+  return { periodEnd: null, subStatus: null, lifetimeAt: null, planTier: "standard", lookupFailed: false };
 }
 
 // True when the user holds lifetime, or the paid-through date is in the future.
