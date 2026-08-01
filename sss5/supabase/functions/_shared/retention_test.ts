@@ -1,5 +1,5 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { LADDERS, nextRung, REASONS, type CancelReason } from "./retention.ts";
+import { nextRung, REASONS, type CancelReason } from "./retention.ts";
 
 Deno.test("price objection leads with the discount", () => {
   assertEquals(nextRung("too_expensive", []), "discount");
@@ -52,17 +52,11 @@ Deno.test("an unrecognized reason falls back to cancel instead of throwing", () 
   assertEquals(nextRung("bogus" as CancelReason, []), "cancel");
 });
 
-Deno.test("REASONS cannot silently drift from the branch table it is derived from", () => {
-  // Task 5 validates HTTP bodies against REASONS and Task 8 renders reason
-  // buttons from it. If it ever stopped being derived from the same source
-  // as nextRung's routing, a reason could compile fine while being
-  // un-selectable in the UI and rejected by the API.
-  const ladderReasons = Object.keys(LADDERS);
-  assertEquals(new Set(REASONS).size, REASONS.length);
-  assertEquals(new Set(ladderReasons).size, ladderReasons.length);
-  assertEquals(
-    [...REASONS].sort(),
-    [...ladderReasons].sort(),
-    "REASONS and the branch table's keys must contain exactly the same members",
-  );
+Deno.test("REASONS matches the exact reasons and order the UI renders", () => {
+  // Deliberately a literal, not a re-derivation of REASONS's own source
+  // (e.g. Object.keys(LADDERS)) — an expectation that computes itself the
+  // same way the code does can never fail, so it isn't a test. This literal
+  // is the independent statement of what Task 8's reason buttons must render,
+  // in order; do not "simplify" it back into deriving from the branch table.
+  assertEquals([...REASONS], ["too_expensive", "not_using", "ran_out", "broken"]);
 });
