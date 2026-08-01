@@ -12,12 +12,10 @@
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 import { handlePreflight, jsonResponse } from "../_shared/cors.ts";
 import { adminClient } from "../_shared/db.ts";
+import { resolveAccess, hasAccess, storyLimitFor } from "../_shared/access.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-// Anti-abuse cap.
-const MONTHLY_STORY_LIMIT = 3;
 
 function startOfCurrentMonthISO(): string {
   const d = new Date();
@@ -69,14 +67,16 @@ Deno.serve(async (req: Request) => {
     .maybeSingle();
   if (profErr || !profile) return jsonResponse({ error: "User profile not found", detail: profErr?.message }, 404);
 
-  // Access gate: paid-through must be in the future.
-  const periodEnd = profile.current_period_end ? new Date(profile.current_period_end) : null;
-  if (!periodEnd || periodEnd < new Date()) {
+  // Access gate: lifetime holders always pass; otherwise paid-through must be
+  // in the future. Shared with submit-choice via _shared/access.ts.
+  const access = await resolveAccess(db, profile.id);
+  if (!hasAccess(access)) {
     return jsonResponse(
-      { error: "Active subscription required to start a new story", subscription_status: profile.subscription_status },
+      { error: "Active subscription required to start a new story", subscription_status: access.subStatus },
       403,
     );
   }
+  const storyLimit = storyLimitFor(access.planTier);
 
   const monthStart = startOfCurrentMonthISO();
   const { count: createdThisMonth, error: countErr } = await db
@@ -87,19 +87,19 @@ Deno.serve(async (req: Request) => {
   if (countErr) return jsonResponse({ error: "Couldn't check monthly quota", detail: countErr.message }, 500);
 
   const used = createdThisMonth ?? 0;
-  if (used >= MONTHLY_STORY_LIMIT) {
+  if (used >= storyLimit) {
     const resetIso = startOfNextMonthISO();
     await db.from("events").insert({
       user_id: profile.id,
       email: profile.email,
       event_type: "story_creation_blocked_monthly_cap",
-      metadata: { used, limit: MONTHLY_STORY_LIMIT, resets_at: resetIso },
+      metadata: { used, limit: storyLimit, resets_at: resetIso },
     });
     return jsonResponse({
-      error: `You've used all ${MONTHLY_STORY_LIMIT} of your stories this month`,
+      error: `You've used all ${storyLimit} of your stories this month`,
       detail: `Your quota resets at the start of next month.`,
       used,
-      limit: MONTHLY_STORY_LIMIT,
+      limit: storyLimit,
       resets_at: resetIso,
     }, 429);
   }
@@ -131,7 +131,7 @@ Deno.serve(async (req: Request) => {
     email: profile.email,
     event_type: "story_started_authenticated",
     story_id: story.id,
-    metadata: { source: "app_quiz", used_after: used + 1, monthly_limit: MONTHLY_STORY_LIMIT },
+    metadata: { source: "app_quiz", used_after: used + 1, monthly_limit: storyLimit },
   });
 
   const generateUrl = `${SUPABASE_URL}/functions/v1/generate-chapter`;
@@ -144,5 +144,5 @@ Deno.serve(async (req: Request) => {
   // @ts-ignore EdgeRuntime is a Supabase global
   (globalThis as any).EdgeRuntime?.waitUntil?.(fire);
 
-  return jsonResponse({ ok: true, story_id: story.id, quota: { used: used + 1, limit: MONTHLY_STORY_LIMIT } });
+  return jsonResponse({ ok: true, story_id: story.id, quota: { used: used + 1, limit: storyLimit } });
 });
