@@ -10,6 +10,7 @@
 //
 // Access rule: paid-through (users.current_period_end >= now).
 // Quota rule: 3 stories per user per calendar month (counts BOTH V1 + V2).
+// v5: setup_depth is optional and defaults to "quick" — the sweet-spice quiz path skips that step.
 
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 import { handlePreflight, jsonResponse } from "../_shared/cors.ts";
@@ -55,19 +56,22 @@ Deno.serve(async (req: Request) => {
   // uniform. See _shared/prompts_v2.ts + supabase/functions/submit-quiz2 for
   // the field contract.
   const p = body?.payload ?? {};
-  const required = ["in_story", "pairing", "world", "love_interest", "opening", "spicy", "mood", "setup_depth"];
+  // v5: setup_depth is optional — the sweet-spice quiz path skips that step. Defaults to "quick" below.
+  const required = ["in_story", "pairing", "world", "love_interest", "opening", "spicy", "mood"];
   for (const k of required) {
     const v = (p as Record<string, unknown>)[k];
     if (v == null || (Array.isArray(v) && v.length === 0) || v === "") {
       return jsonResponse({ error: `Missing required V2 answer: ${k}` }, 400);
     }
   }
-  if (p.age_confirmed !== true) return jsonResponse({ error: "Age confirmation required" }, 400);
+  // No age gate here: the in-app quiz serves users who already confirmed 18+ in the
+  // marketing funnel (Sss_test/quiz2/index.html) before paying. sss-app/quiz2.html
+  // deliberately does not send age_confirmed for this path.
 
   const db = adminClient();
   const { data: profile, error: profErr } = await db
     .from("users")
-    .select("id, email, subscription_status, current_period_end")
+    .select("id, email, display_name, subscription_status, current_period_end")
     .eq("id", user.id)
     .maybeSingle();
   if (profErr || !profile) return jsonResponse({ error: "User profile not found", detail: profErr?.message }, 404);
@@ -105,6 +109,16 @@ Deno.serve(async (req: Request) => {
     }, 429);
   }
 
+  // v5: sync display_name from q1b_you.name for accounts that don't have one yet.
+  // Editing the name on a subsequent quiz2 does NOT overwrite display_name — that's
+  // "this-story-only". Only the very first story fills the account name.
+  const yourName = (p.you && typeof p.you === "object" && typeof p.you.name === "string")
+    ? p.you.name.trim().slice(0, 40)
+    : "";
+  if (!profile.display_name && yourName) {
+    await db.from("users").update({ display_name: yourName }).eq("id", profile.id);
+  }
+
   const nowIso = new Date().toISOString();
 
   // Insert quiz2_sessions row: paid = true, plan = 'subscription' (marker for
@@ -116,7 +130,7 @@ Deno.serve(async (req: Request) => {
     funnel_version: "app_authenticated_v2",
     landing_page: p.landing_page ?? "https://app.stuffsosweet.com/quiz2.html",
     user_agent: p.user_agent ?? null,
-    q0_age_confirmed: !!p.age_confirmed,
+    q0_age_confirmed: true,   // see the age-gate note above — confirmed in the marketing funnel
     q1_in_story: p.in_story,
     q1b_you: p.you ?? null,
     q2_pairing: p.pairing,
@@ -126,7 +140,7 @@ Deno.serve(async (req: Request) => {
     q6_spicy: p.spicy,
     q7_mood: p.mood ?? [],
     q8_specifics: p.specifics ?? [],
-    q8b_setup_depth: p.setup_depth,
+    q8b_setup_depth: p.setup_depth || "quick",  // v5: default when the quiz path skipped the step
     q9_skip: p.skip ?? null,
     d_restraint: p.restraint ?? null,
     d_sensory: p.sensory ?? null,
