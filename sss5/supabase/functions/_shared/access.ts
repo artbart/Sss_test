@@ -10,6 +10,16 @@ import type { SupabaseClient } from "npm:@supabase/supabase-js@2.45.4";
 export interface AccessInfo {
   periodEnd: string | null;   // ISO timestamp of current_period_end, or null
   subStatus: string | null;   // subscription_status, for messaging/ops
+  lifetimeAt: string | null;  // ISO timestamp of the lifetime purchase, or null
+  planTier: string;           // 'standard' | 'lite' — drives the monthly story quota
+}
+
+// Monthly story quota per plan tier. Unknown tiers fall back to standard so a
+// bad value can never lock a paying user out.
+const STORY_LIMITS: Record<string, number> = { standard: 3, lite: 1 };
+
+export function storyLimitFor(planTier: string | null | undefined): number {
+  return STORY_LIMITS[planTier ?? ""] ?? STORY_LIMITS.standard;
 }
 
 export async function resolveAccess(
@@ -20,10 +30,15 @@ export async function resolveAccess(
   if (userId) {
     const { data } = await db
       .from("users")
-      .select("current_period_end, subscription_status")
+      .select("current_period_end, subscription_status, lifetime_at, plan_tier")
       .eq("id", userId)
       .maybeSingle();
-    if (data) return { periodEnd: data.current_period_end ?? null, subStatus: data.subscription_status ?? null };
+    if (data) return {
+      periodEnd: data.current_period_end ?? null,
+      subStatus: data.subscription_status ?? null,
+      lifetimeAt: data.lifetime_at ?? null,
+      planTier: data.plan_tier ?? "standard",
+    };
   }
 
   if (leadEmail) {
@@ -43,14 +58,16 @@ export async function resolveAccess(
     if (rows.length) {
       rows.sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
       const best = rows[0];
-      return { periodEnd: best.current_period_end ?? null, subStatus: best.subscription_status ?? null };
+      // Pre-signup leads cannot hold lifetime; they are always standard tier.
+      return { periodEnd: best.current_period_end ?? null, subStatus: best.subscription_status ?? null, lifetimeAt: null, planTier: "standard" };
     }
   }
 
-  return { periodEnd: null, subStatus: null };
+  return { periodEnd: null, subStatus: null, lifetimeAt: null, planTier: "standard" };
 }
 
-// True when the paid-through date is in the future.
+// True when the user holds lifetime, or the paid-through date is in the future.
 export function hasAccess(info: AccessInfo): boolean {
+  if (info.lifetimeAt) return true;
   return !!info.periodEnd && new Date(info.periodEnd) >= new Date();
 }
