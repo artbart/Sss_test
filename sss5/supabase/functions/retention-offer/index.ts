@@ -149,9 +149,48 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // DON'T OFFER A RUNG THE ACCEPT-TIME GUARDS WILL REFUSE.
+    //
+    // nextRung() knows only the reason and what was declined, so a user who
+    // already holds a 50%-off coupon was being shown "Stay for half price"
+    // again — and got a 409 the moment they clicked it. A dead-end tease, and
+    // it also fires a retention_offer_shown impression that can never convert,
+    // skewing the per-rung deflection rate this feature exists to measure.
+    //
+    // Feeding already-applied rungs in as pre-declined reuses the existing
+    // ladder mechanics instead of adding a parallel notion of availability:
+    // the ladder simply advances to the next thing they CAN take, and falls
+    // through to "cancel" when nothing is left.
+    //
+    // BEST EFFORT. Every lookup here is allowed to fail silently — if it does,
+    // we offer the full ladder and the accept-time state checks still refuse
+    // safely, which is exactly today's behaviour. The reason was already
+    // recorded above, so nothing here can cost us that.
+    const unavailable: Rung[] = [];
+    if (profile.stripe_subscription_id) {
+      try {
+        const sub = await stripe.subscriptions.retrieve(profile.stripe_subscription_id);
+        if ((sub.discounts ?? []).length > 0) unavailable.push("discount");
+        if (sub.pause_collection) unavailable.push("pause");
+        const litePriceId = Deno.env.get("STRIPE_PRICE_LITE");
+        if (litePriceId && (sub.items?.data ?? []).some((i) => i.price?.id === litePriceId)) {
+          unavailable.push("downgrade");
+        }
+      } catch (e) {
+        console.error("record_reason: could not read subscription state, offering full ladder:", e);
+      }
+
+      // A lifetime holder can take nothing — every rung either charges them
+      // again or downgrades what they already own outright. Left as a soft
+      // lookup so this never re-couples reason capture to the migration.
+      const { data: lt } = await db
+        .from("users").select("lifetime_at").eq("id", profile.id).maybeSingle();
+      if (lt?.lifetime_at) unavailable.push("discount", "lifetime", "pause", "downgrade");
+    }
+
     // Unchanged either way: the response contract does not depend on whether a
     // row was written. Only the write is deduped.
-    return jsonResponse({ ok: true, rung: nextRung(rawReason, declined) });
+    return jsonResponse({ ok: true, rung: nextRung(rawReason, [...declined, ...unavailable]) });
   }
 
   // Everything below actually changes the subscription, so it genuinely
