@@ -233,8 +233,10 @@ Deno.serve(async (req: Request) => {
           },
         }));
       } else if (u?.stripe_subscription_id) {
+        let cancelled = false;
         try {
           await stripe.subscriptions.cancel(u.stripe_subscription_id);
+          cancelled = true;
           subDisposition = `cancelled (${u.stripe_subscription_id})`;
           console.log(`lifetime granted for ${uid}; cancelled subscription ${u.stripe_subscription_id}`);
         } catch (e) {
@@ -265,6 +267,45 @@ Deno.serve(async (req: Request) => {
               "Action": "Cancel this subscription by hand",
             },
           }));
+        }
+
+        // Optimistic mirror for instant UI; the customer.subscription.deleted
+        // webhook also syncs this (and is the source of truth). Same pattern
+        // and same reasoning as cancel-subscription/index.ts:59.
+        //
+        // Needed because that event is a SEPARATE delivery arriving seconds
+        // later, while settings.html is already polling every 2s for
+        // lifetime_at and re-renders the instant it appears. Without this the
+        // buyer briefly has lifetime_at set AND subscription_status still
+        // "active", which is indistinguishable from the cancel-failed state —
+        // so Settings would tell a successful buyer "you also still have a
+        // paid subscription billing again on <date>", which is false, and the
+        // poll returns after the first success so the wrong copy would stick
+        // for that page view.
+        //
+        // SUCCESS PATH ONLY. The catch above leaves `cancelled` false, because
+        // there the subscription really IS still live and the warning copy is
+        // the correct thing to show.
+        if (cancelled) {
+          // Post-grant bookkeeping: log and carry on. supabase-js resolves
+          // { error } rather than throwing, but a transport-level failure can
+          // still reject — and nothing after the grant may throw, or the outer
+          // catch releases the idempotency claim and Stripe re-runs a grant
+          // that already succeeded. Hence the explicit try as well.
+          try {
+            const { error: mirrorErr } = await db.from("users")
+              .update({ subscription_status: "canceled", cancel_at_period_end: false })
+              .eq("id", uid);
+            if (mirrorErr) {
+              console.error(
+                `lifetime: optimistic subscription_status mirror failed for ${uid} ` +
+                `(cancel itself succeeded; customer.subscription.deleted will reconcile):`,
+                mirrorErr,
+              );
+            }
+          } catch (mirrorEx) {
+            console.error(`lifetime: optimistic subscription_status mirror threw for ${uid}:`, mirrorEx);
+          }
         }
       } else {
         console.log(`lifetime granted for ${uid}; no linked subscription to cancel`);
