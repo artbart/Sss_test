@@ -109,7 +109,15 @@ Deno.serve(async (req: Request) => {
       // non-SSS events. None of these is an error: other products' checkout
       // sessions legitimately arrive at this endpoint.
       if (cs.mode !== "payment") return ACK();               // a subscription checkout, fulfilled via invoice.paid
-      if ((cs.metadata?.app ?? "") !== "sss") return ACK();  // another product on this shared account
+      if ((cs.metadata?.app ?? "") !== "sss") {
+        // Almost always another product on this shared account, which is why
+        // this is an ACK and not an error. Logged anyway: if the marker is ever
+        // misplaced or the key typo'd on our side, the failure mode is a paid
+        // customer with no grant, and without this line it is undiagnosable.
+        // Volume is low — the mode === "payment" check already ran.
+        console.log(`checkout.session.completed ignored: session ${cs.id}, metadata.app=${JSON.stringify(cs.metadata?.app ?? null)}`);
+        return ACK();
+      }
       if (cs.payment_status !== "paid") {
         // Delayed payment method, or a session completed without funds. We do
         // not fulfil on credit, and checkout.session.async_payment_succeeded is
@@ -142,8 +150,24 @@ Deno.serve(async (req: Request) => {
       //   * BEFORE the entitlement lands, the only way to fail is to `throw`;
       //   * AFTER it lands, nothing may throw — a throw would release the claim
       //     and re-run a grant that already succeeded.
+      //
+      // A non-null error here is NOT proof of a duplicate. postgrest-js folds
+      // connection resets, timeouts, PostgREST 503s and Supabase restarts into
+      // the same `error` object, and answering any of those with "ok (dup)"
+      // would have Stripe mark the event delivered while the grant was never
+      // attempted — a paid customer, silently unfulfilled. stripe_events.id is
+      // a `text primary key`, so only 23505 (unique_violation) means the claim
+      // was already taken; everything else takes the throw path.
       const { error: dupErr } = await db.from("stripe_events").insert({ id: event.id, type: event.type });
-      if (dupErr) return new Response("ok (dup)", { status: 200 });
+      if (dupErr) {
+        if (dupErr.code !== "23505") {
+          console.error(`lifetime dedup claim failed for session ${cs.id} (event ${event.id}):`, dupErr);
+          // Safe even though the claim may never have been written: the catch's
+          // compensating delete is a no-op on a missing row.
+          throw new Error("dedup claim failed"); // -> release + 500, Stripe retries
+        }
+        return new Response("ok (dup)", { status: 200 });
+      }
 
       // ORDER IS LOAD-BEARING: grant the entitlement FIRST, cancel the live
       // subscription SECOND. A failure between the two leaves the customer with
