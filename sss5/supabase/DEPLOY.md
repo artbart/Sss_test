@@ -202,52 +202,47 @@ Note the `public` schema also holds `chat_conversations`, `chat_messages` and
 `chat_monthly_usage`, which are not Stuff So Sweet — this project is shared.
 `casp_notes`, named in older notes as the table to protect, no longer exists.
 
-### 3. Stripe objects + secrets (LIVE mode)
+### 3-5. DONE 2026-08-02 — applied, not pending
 
-The project uses a live `STRIPE_SECRET_KEY`, so test-mode ids will not work.
-Create in the Stripe dashboard:
+Steps 1, 3, 4 and 5 below were executed. Recorded here because the IDs are live.
 
-- Coupon, 50% off, **duration: once** → `STRIPE_COUPON_SAVE50`
-- Recurring price, **$9.99 / 4 weeks** → `STRIPE_PRICE_LITE`
-- One-time price, **$79.00** → `STRIPE_PRICE_LIFETIME`
+**Migration** — applied as `retention_lifetime_and_plan_tier`. NOT via
+`supabase db push`: the migrations dir is out of sync with the remote (17
+remote entries, none matching a local filename, because local files use
+8-digit dates instead of 14-digit timestamps). A push would have replayed
+three files containing `create or replace function` — including
+`handle_new_auth_user` — over newer live definitions. **`db push` remains
+unsafe in this repo; apply migrations individually.**
 
-```bash
-supabase secrets set --project-ref gmhbcxylqubhxozomhlt \
-  STRIPE_COUPON_SAVE50=<id> \
-  STRIPE_PRICE_LITE=<id> \
-  STRIPE_PRICE_LIFETIME=<id> \
-  APP_URL=https://app.stuffsosweet.com
-```
+**Stripe objects created in `acct_1TRcmOKD4axecwd4` (StuffSoSweet, live):**
 
-`APP_URL` must have **no trailing slash** (it is concatenated as
-`${APP_URL}/settings.html`).
+| Secret | Value | What |
+|---|---|---|
+| `STRIPE_COUPON_SAVE50` | `bxuG6R1e` | 50% off, duration `once` |
+| `STRIPE_PRICE_LITE` | `price_1TzyAYKD4axecwd4RbAbaZYX` | $9.99 / 4 weeks recurring |
+| `STRIPE_PRICE_LIFETIME` | `price_1TzyAhKD4axecwd4I6JWJ4AA` | $79.00 one-time |
+| `APP_URL` | `https://app.stuffsosweet.com` | no trailing slash |
 
-Until these are set the offer actions return 502 by design, and the frontend
-shows "that didn't go through" with choices — it does **not** cancel the user.
+All four set via `supabase secrets set`.
 
-### 4. Enable the webhook event
+**Webhook** — `checkout.session.completed` added to `we_1TiqqWKD4axecwd4wPUhfWEU`
+(`https://gmhbcxylqubhxozomhlt.supabase.co/functions/v1/stripe-webhook`),
+alongside the four pre-existing events, which were preserved.
 
-Add `checkout.session.completed` to the endpoint's enabled events.
+**Functions deployed:** `start-authenticated-story`, `start-authenticated-story-v2`,
+`submit-choice`, `retention-offer`, `stripe-webhook`. Remote was re-diffed
+immediately before deploying and had not moved.
 
-**This is the most likely first-deploy failure and the app cannot detect it.**
-Without it a customer pays $79, sees "Finalizing…" for ten minutes, and the
-page then renders as though nothing happened. The Slack alert added in this
-branch only fires on a grant that actually runs.
+**Cross-product note.** This Stripe account is shared with PhaseMap, whose
+endpoint (`ijdxedztqivumyibhxaa.supabase.co`) already subscribes to
+`checkout.session.completed`. SSS has never created a Checkout Session before,
+so PhaseMap's webhook will begin receiving SSS lifetime events. SSS's own
+handler guards on `cs.metadata.app === "sss"`; **whether PhaseMap's does is
+unverified.**
 
-### 5. Deploy
-
-```bash
-supabase functions deploy \
-  start-authenticated-story start-authenticated-story-v2 submit-choice \
-  retention-offer stripe-webhook --project-ref gmhbcxylqubhxozomhlt
-```
-
-Note `start-authenticated-story-v2` also ships a reconciliation with the
-deployed v5 — a production fix unrelated to this feature. The local copy had
-gone stale and would have rejected every in-app quiz2 submission with
-"Age confirmation required".
-
-Frontend (`sss-app`) deploys via its own GitHub Pages flow.
+**Still outstanding:** the `sss-app` frontend is merged to local `main` but NOT
+pushed, so GitHub Pages still serves the old Settings page and no user can
+reach the save-flow.
 
 ### 6. Verify end to end, live mode
 
