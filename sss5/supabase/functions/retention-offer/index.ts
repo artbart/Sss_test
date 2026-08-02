@@ -9,8 +9,9 @@
 // Deliberately does NOT handle plain cancellation — that stays in
 // cancel-subscription, so the path that works today cannot be destabilised.
 //
-// "lifetime_checkout" is added by Task 6 and is intentionally unhandled here
-// (falls through to the 400 "Unknown action" response).
+// "lifetime_checkout" (Task 6) creates a one-time $79 Checkout Session and
+// returns its URL; it does not itself charge or fulfil anything — Task 7's
+// webhook does that once the customer completes payment.
 
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 import { handlePreflight, jsonResponse } from "../_shared/cors.ts";
@@ -114,18 +115,24 @@ Deno.serve(async (req: Request) => {
   // analytics event, so a malformed value is dropped rather than rejected.
   const reason = isValidReason(rawReason) ? rawReason : undefined;
 
-  // Eligibility guard for the three offer actions: without this, any
+  // Eligibility guard for the four offer actions: without this, any
   // authenticated subscriber could POST an offer action on a loop. `pause`
   // resets resumes_at every call (indefinite free access via
   // pause_collection: void), and `discount` is otherwise re-appliable every
-  // cycle. Scope, as decided by the product owner: an offer is honoured only
-  // if this user recorded a reason within the window AND has not already
+  // cycle. `lifetime_checkout` is included too, even though creating a
+  // Checkout Session mutates nothing and charges nobody by itself
+  // (fulfilment happens later, in the webhook, only if the customer
+  // completes payment): the product intent is that $79 lifetime is offered
+  // ONLY behind a stated price objection, not a standing purchase link any
+  // subscriber can hit directly. Gating it here is what makes that true.
+  // Scope, as decided by the product owner: an offer is honoured only if
+  // this user recorded a reason within the window AND has not already
   // accepted an offer within that same window. Verifying the requested rung
   // matches what nextRung would have offered is deliberately NOT done here —
   // all offers are reachable through the UI by any subscriber anyway, and
   // mirroring the full ladder risks wedging a legitimate user on a
   // back-button or double-submit.
-  if (action === "pause" || action === "discount" || action === "downgrade") {
+  if (action === "pause" || action === "discount" || action === "downgrade" || action === "lifetime_checkout") {
     const windowStartIso = new Date(Date.now() - OFFER_WINDOW_MINUTES * 60 * 1000).toISOString();
     const { data: recentEvents, error: recentErr } = await db
       .from("events")
@@ -147,6 +154,19 @@ Deno.serve(async (req: Request) => {
 
   try {
     if (action === "pause") {
+      // Same STATE-check need as discount below, for the same reason: the
+      // TEMPORAL eligibility guard above rate-limits this to once per
+      // OFFER_WINDOW_MINUTES but does not close the hole — looping
+      // record_reason -> pause every window resets resumes_at to "now +
+      // PAUSE_WEEKS" each time, and behavior: "void" keeps the subscription
+      // active with current_period_end still advancing. That's indefinite
+      // free access, just slower. Check first; refuse to re-arm a pause
+      // that's already in effect.
+      const sub = await stripe.subscriptions.retrieve(profile.stripe_subscription_id);
+      if (sub.pause_collection) {
+        return jsonResponse({ error: "This offer is no longer available" }, 409);
+      }
+
       const resumesAt = Math.floor(Date.now() / 1000) + PAUSE_WEEKS * 7 * 24 * 3600;
       await stripe.subscriptions.update(profile.stripe_subscription_id, {
         pause_collection: { behavior: "void", resumes_at: resumesAt },
@@ -222,6 +242,57 @@ Deno.serve(async (req: Request) => {
       }
       await logOffer(db, profile, "downgrade", reason);
       return jsonResponse({ ok: true, message: "Switched to the lighter plan." });
+    }
+
+    if (action === "lifetime_checkout") {
+      if (!profile.stripe_customer_id) {
+        return jsonResponse({ error: "No Stripe customer on this account" }, 404);
+      }
+
+      // Same missing-secret hazard as STRIPE_COUPON_SAVE50 / STRIPE_PRICE_LITE
+      // above: `Deno.env.get(...)!` is erased at runtime, and Stripe's
+      // request serializer (qs) silently drops keys whose value is
+      // undefined — a missing price would build a checkout session with no
+      // line item, and a missing APP_URL would send a paying customer to a
+      // redirect of "undefined/settings.html...". Read both into consts and
+      // fail before calling Stripe. Since Task 6 ships before the human
+      // creates the Stripe price and sets these secrets, unset is the
+      // EXPECTED state on first deploy.
+      const lifetimePriceId = Deno.env.get("STRIPE_PRICE_LIFETIME");
+      const appUrl = Deno.env.get("APP_URL");
+      if (!lifetimePriceId || !appUrl) {
+        console.error("retention-offer: STRIPE_PRICE_LIFETIME or APP_URL is not set — refusing to start lifetime checkout");
+        return jsonResponse({ error: "Could not start checkout" }, 502);
+      }
+
+      const session = await stripe.checkout.sessions.create({
+        mode: "payment",
+        customer: profile.stripe_customer_id,
+        line_items: [{ price: lifetimePriceId, quantity: 1 }],
+        success_url: `${appUrl}/settings.html?lifetime=success`,
+        cancel_url: `${appUrl}/settings.html?lifetime=cancelled`,
+        // The Stripe account is shared with another product. These two keys
+        // are how the webhook recognises this payment as ours and knows who
+        // to credit — a one-time payment has no subscription for ours() to
+        // check.
+        metadata: { app: "sss", supabase_user_id: profile.id },
+      });
+
+      // The Checkout Session above has already been created — everything
+      // past this point is bookkeeping. supabase-js resolves { error }, it
+      // never throws, so this must be destructured and checked explicitly;
+      // a failure here must not be reported as a checkout failure (which
+      // would send the frontend to plain cancel on a session the user can
+      // still complete), so it's logged rather than returned as an error.
+      const { error: startedErr } = await db.from("events").insert({
+        user_id: profile.id, email: profile.email,
+        event_type: "lifetime_checkout_started",
+        metadata: { reason: reason ?? null, checkout_session_id: session.id },
+      });
+      if (startedErr) {
+        console.error(`retention-offer: failed to insert lifetime_checkout_started event for user ${profile.id}:`, startedErr);
+      }
+      return jsonResponse({ ok: true, checkout_url: session.url });
     }
   } catch (e) {
     console.error(`retention action ${action} failed:`, e);
