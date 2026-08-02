@@ -16,7 +16,7 @@
 
 import { adminClient } from "../_shared/db.ts";
 import { handlePreflight, jsonResponse } from "../_shared/cors.ts";
-import { resolveAccess } from "../_shared/access.ts";
+import { resolveAccess, hasAccess } from "../_shared/access.ts";
 import { getGenerateFunctionUrl, type QuizVersion } from "../_shared/version_router.ts";
 
 Deno.serve(async (req: Request) => {
@@ -73,13 +73,18 @@ Deno.serve(async (req: Request) => {
     .eq("id", storyId)
     .maybeSingle();
 
-  // --- Entitlement gate: generating new content requires paid-through access.
-  // Reading existing chapters is unaffected (client reads via RLS). We check
-  // BEFORE recording the choice so a lapsed user can retry after reactivating.
-  const { periodEnd, subStatus } = await resolveAccess(db, story?.user_id, story?.lead_email);
-  if (!periodEnd || new Date(periodEnd) < new Date()) {
+  // --- Entitlement gate: generating new content requires paid-through access
+  // (or lifetime). Reading existing chapters is unaffected (client reads via
+  // RLS). We check BEFORE recording the choice so a lapsed user can retry
+  // after reactivating.
+  const access = await resolveAccess(db, story?.user_id, story?.lead_email);
+  if (access.lookupFailed) {
+    console.error("submit-choice: access lookup failed for story", storyId);
+    return jsonResponse({ status: "error", message: "Couldn't verify subscription access" }, 500);
+  }
+  if (!hasAccess(access)) {
     return jsonResponse(
-      { status: "error", message: "Subscription required to continue", subscription_status: subStatus ?? "none" },
+      { status: "error", message: "Subscription required to continue", subscription_status: access.subStatus ?? "none" },
       402,
     );
   }

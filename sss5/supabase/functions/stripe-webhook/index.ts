@@ -9,9 +9,12 @@
 // and Stripe delivers account-wide events to every endpoint. We therefore
 // process ONLY Stuff So Sweet subscriptions — identified by metadata.session_id,
 // which create-subscription always sets. Everything else is ack'd and ignored.
+// The one-time lifetime payment has no subscription to carry that marker, so it
+// is identified by metadata.app === "sss" on the Checkout Session instead.
 //
 // Events: invoice.paid, invoice.payment_failed,
-//         customer.subscription.updated, customer.subscription.deleted
+//         customer.subscription.updated, customer.subscription.deleted,
+//         checkout.session.completed (one-time lifetime purchase)
 
 import { adminClient } from "../_shared/db.ts";
 import { stripe, cryptoProvider } from "../_shared/stripe.ts";
@@ -88,6 +91,278 @@ Deno.serve(async (req: Request) => {
     let sub: Stripe.Subscription | null = null;
     // deno-lint-ignore no-explicit-any
     let inv: any = null;
+
+    // ------------------------------------------------------------------
+    // One-time lifetime purchase ($79), created by retention-offer.
+    //
+    // Handled BEFORE the subscription routing below because that routing
+    // resolves a `sub` and calls ours(sub) — and a one-time payment has no
+    // subscription for ours() to inspect. On this shared Stripe account the
+    // payment is disambiguated by metadata.app instead, which the Checkout
+    // Session always carries.
+    // ------------------------------------------------------------------
+    if (event.type === "checkout.session.completed") {
+      const cs = event.data.object as Stripe.Checkout.Session;
+
+      // Ack-and-ignore anything that is not an SSS lifetime payment, BEFORE any
+      // DB write — exactly the rule the subscription branches follow for
+      // non-SSS events. None of these is an error: other products' checkout
+      // sessions legitimately arrive at this endpoint.
+      if (cs.mode !== "payment") return ACK();               // a subscription checkout, fulfilled via invoice.paid
+      if ((cs.metadata?.app ?? "") !== "sss") {
+        // Almost always another product on this shared account, which is why
+        // this is an ACK and not an error. Logged anyway: if the marker is ever
+        // misplaced or the key typo'd on our side, the failure mode is a paid
+        // customer with no grant, and without this line it is undiagnosable.
+        // Volume is low — the mode === "payment" check already ran.
+        console.log(`checkout.session.completed ignored: session ${cs.id}, metadata.app=${JSON.stringify(cs.metadata?.app ?? null)}`);
+        return ACK();
+      }
+      if (cs.payment_status !== "paid") {
+        // Delayed payment method, or a session completed without funds. We do
+        // not fulfil on credit, and checkout.session.async_payment_succeeded is
+        // not an enabled event, so make the drop visible instead of silent.
+        console.warn(
+          `sss lifetime checkout ${cs.id} completed with payment_status=` +
+          `${cs.payment_status}; NOT fulfilling`,
+        );
+        return ACK();
+      }
+      const uid = cs.metadata?.supabase_user_id;
+      if (!uid) {
+        console.error(
+          `sss lifetime checkout ${cs.id} carries no supabase_user_id; ` +
+          `cannot fulfil — MANUAL GRANT REQUIRED`,
+        );
+        return ACK();
+      }
+
+      // Idempotency: same table and same first-writer-wins rule as every other
+      // branch, because Stripe retries this event.
+      //
+      // FAILURE POLICY FOR EVERYTHING BELOW THIS LINE. This insert CLAIMS the
+      // event. The catch at the bottom of this try is what RELEASES the claim
+      // (it deletes the row) so a Stripe retry reprocesses. A bare `return`
+      // never reaches that catch: it would leave the claim in place, the retry
+      // would hit the duplicate and receive "ok (dup)", and the purchase would
+      // never be fulfilled while Stripe's dashboard showed a handled event.
+      // Therefore:
+      //   * BEFORE the entitlement lands, the only way to fail is to `throw`;
+      //   * AFTER it lands, nothing may throw — a throw would release the claim
+      //     and re-run a grant that already succeeded.
+      //
+      // A non-null error here is NOT proof of a duplicate. postgrest-js folds
+      // connection resets, timeouts, PostgREST 503s and Supabase restarts into
+      // the same `error` object, and answering any of those with "ok (dup)"
+      // would have Stripe mark the event delivered while the grant was never
+      // attempted — a paid customer, silently unfulfilled. stripe_events.id is
+      // a `text primary key`, so only 23505 (unique_violation) means the claim
+      // was already taken; everything else takes the throw path.
+      const { error: dupErr } = await db.from("stripe_events").insert({ id: event.id, type: event.type });
+      if (dupErr) {
+        if (dupErr.code !== "23505") {
+          console.error(`lifetime dedup claim failed for session ${cs.id} (event ${event.id}):`, dupErr);
+          // Safe even though the claim may never have been written: the catch's
+          // compensating delete is a no-op on a missing row.
+          throw new Error("dedup claim failed"); // -> release + 500, Stripe retries
+        }
+        return new Response("ok (dup)", { status: 200 });
+      }
+
+      // ORDER IS LOAD-BEARING: grant the entitlement FIRST, cancel the live
+      // subscription SECOND. A failure between the two leaves the customer with
+      // access they have paid for (at worst one more billing cycle). The
+      // reverse would strand a paying customer with nothing.
+      //
+      // .select("id") is not decoration: supabase-js never throws on a failed
+      // write, and an UPDATE matching zero rows resolves as error:null with an
+      // empty data array. Without checking the returned rows, a bad
+      // supabase_user_id would be indistinguishable from a successful grant.
+      //
+      // ⚠ plan_tier IS A ONE-WAY DOOR. This is the only writer of 'standard'
+      // (it lifts a previously-downgraded buyer back to the 3/month quota they
+      // just paid $79 for); the only writer of 'lite' is the downgrade rung in
+      // retention-offer. Nothing else resets it — not invoice.paid, not
+      // customer.subscription.updated, not a resubscribe. A lite user put back
+      // on a standard price by any route OTHER than this lifetime purchase
+      // keeps plan_tier='lite' and silently gets 1 story/month at full price.
+      // REVERSING A DOWNGRADE MEANS UPDATING THIS COLUMN TOO. Runbook and SQL:
+      // docs/superpowers/specs/2026-08-01-retention-save-flow-design.md,
+      // "Operational notes".
+      const { data: granted, error: grantErr } = await db.from("users")
+        .update({ lifetime_at: new Date().toISOString(), plan_tier: "standard" })
+        .eq("id", uid)
+        .select("id");
+      if (grantErr) {
+        console.error(`lifetime grant failed for user ${uid} (session ${cs.id}):`, grantErr);
+        throw new Error("lifetime grant failed"); // -> catch releases the claim, Stripe retries
+      }
+      if (!granted || granted.length === 0) {
+        console.error(`lifetime grant matched NO users row for ${uid} (session ${cs.id})`);
+        throw new Error("lifetime grant matched no user"); // -> catch releases the claim, Stripe retries
+      }
+
+      // --- Entitlement is live. Everything past here logs and never throws. ---
+
+      const { data: u, error: readErr } = await db.from("users")
+        .select("email, stripe_subscription_id").eq("id", uid).maybeSingle();
+      // "was the old subscription dealt with?" — drives the Slack copy below,
+      // because "lifetime granted, still billing" is a state that needs a human
+      // and "lifetime granted, nothing left to bill" is not.
+      let subDisposition = "none linked";
+      if (readErr) {
+        // Only feeds the cancel and the audit row, both of which are
+        // best-effort now that the grant has landed.
+        subDisposition = "UNKNOWN — follow-up read failed, NOT cancelled";
+        console.error(
+          `LIFETIME GRANTED for ${uid} but the follow-up read failed; the ` +
+          `subscription was NOT cancelled — CANCEL BY HAND:`,
+          readErr,
+        );
+        // Same reason as the cancel-failure branch below: a console line is
+        // invisible until someone goes looking, and this leaves a customer who
+        // may still be billed. Page a human.
+        bg(notifySlack({
+          kind: "lifetime_cancel_failed",
+          sessionId: cs.id,
+          customerId: typeof cs.customer === "string" ? cs.customer : null,
+          fields: {
+            "User id": uid,
+            "What happened": "Lifetime granted, but the users-row read failed so the subscription was never cancelled",
+            "Action": "Find this user's Stripe subscription and cancel it by hand",
+          },
+        }));
+      } else if (u?.stripe_subscription_id) {
+        let cancelled = false;
+        try {
+          await stripe.subscriptions.cancel(u.stripe_subscription_id);
+          cancelled = true;
+          subDisposition = `cancelled (${u.stripe_subscription_id})`;
+          console.log(`lifetime granted for ${uid}; cancelled subscription ${u.stripe_subscription_id}`);
+        } catch (e) {
+          // Deliberately NOT a throw, unlike the entitlement write above: the
+          // customer already holds what they paid for, and throwing here would
+          // roll back the claim and re-run the grant. This leaves a live
+          // subscription that a human must cancel.
+          subDisposition = `STILL LIVE — cancel failed (${u.stripe_subscription_id})`;
+          console.error(
+            `LIFETIME GRANTED for ${uid} BUT CANCEL FAILED for subscription ` +
+            `${u.stripe_subscription_id} — CANCEL BY HAND:`,
+            e,
+          );
+          // A console.error alone is not an alert. This branch leaves a
+          // customer holding lifetime AND a live billing subscription, so it
+          // has to reach a person. Settings now keeps the cancel button
+          // visible in that state too, but we must not rely on the customer
+          // noticing they are being double-charged.
+          bg(notifySlack({
+            kind: "lifetime_cancel_failed",
+            email: u?.email ?? null,
+            sessionId: cs.id,
+            customerId: typeof cs.customer === "string" ? cs.customer : null,
+            fields: {
+              "User id": uid,
+              "Subscription": u.stripe_subscription_id,
+              "What happened": "Lifetime granted, but stripe.subscriptions.cancel failed — the customer is still being billed",
+              "Action": "Cancel this subscription by hand",
+            },
+          }));
+        }
+
+        // Optimistic mirror for instant UI; the customer.subscription.deleted
+        // webhook also syncs this (and is the source of truth). Same pattern
+        // and same reasoning as cancel-subscription/index.ts:59.
+        //
+        // Needed because that event is a SEPARATE delivery arriving seconds
+        // later, while settings.html is already polling every 2s for
+        // lifetime_at and re-renders the instant it appears. Without this the
+        // buyer briefly has lifetime_at set AND subscription_status still
+        // "active", which is indistinguishable from the cancel-failed state —
+        // so Settings would tell a successful buyer "you also still have a
+        // paid subscription billing again on <date>", which is false, and the
+        // poll returns after the first success so the wrong copy would stick
+        // for that page view.
+        //
+        // SUCCESS PATH ONLY. The catch above leaves `cancelled` false, because
+        // there the subscription really IS still live and the warning copy is
+        // the correct thing to show.
+        if (cancelled) {
+          // Post-grant bookkeeping: log and carry on. supabase-js resolves
+          // { error } rather than throwing, but a transport-level failure can
+          // still reject — and nothing after the grant may throw, or the outer
+          // catch releases the idempotency claim and Stripe re-runs a grant
+          // that already succeeded. Hence the explicit try as well.
+          try {
+            const { error: mirrorErr } = await db.from("users")
+              .update({ subscription_status: "canceled", cancel_at_period_end: false })
+              .eq("id", uid);
+            if (mirrorErr) {
+              console.error(
+                `lifetime: optimistic subscription_status mirror failed for ${uid} ` +
+                `(cancel itself succeeded; customer.subscription.deleted will reconcile):`,
+                mirrorErr,
+              );
+            }
+          } catch (mirrorEx) {
+            console.error(`lifetime: optimistic subscription_status mirror threw for ${uid}:`, mirrorEx);
+          }
+        }
+      } else {
+        console.log(`lifetime granted for ${uid}; no linked subscription to cancel`);
+      }
+
+      const { error: evErr } = await db.from("events").insert({
+        user_id: uid,
+        email: u?.email ?? null,
+        event_type: "lifetime_purchased",
+        metadata: {
+          stripe_event_id: event.id,
+          checkout_session_id: cs.id,
+          amount_total: cs.amount_total,
+          currency: cs.currency,
+        },
+      });
+      if (evErr) console.error(`events lifetime_purchased insert failed for ${uid}:`, evErr);
+
+      // Same fire-and-forget treatment every other money event gets (see
+      // invoice.paid below): notifySlack/capturePosthog swallow their own
+      // errors, and bg() keeps them off the ACK path so neither can delay or
+      // fail the response to Stripe. Both run AFTER the grant, so by policy
+      // neither may throw — bg() guarantees that structurally.
+      bg(notifySlack({
+        kind: "lifetime_purchase",
+        email: u?.email ?? null,
+        amount: (cs.amount_total ?? 0) / 100,
+        currency: cs.currency,
+        sessionId: cs.id,
+        customerId: typeof cs.customer === "string" ? cs.customer : null,
+        fields: { "User id": uid, "Old subscription": subDisposition },
+      }));
+
+      // Fired as `retention_offer_accepted` with rung "lifetime" ON PURPOSE.
+      // The client deliberately does not fire it for this rung (nobody has paid
+      // at the point the browser hands off to Stripe), which left the funnel as
+      // retention_offer_shown{rung:lifetime} -> nothing, making the spec's
+      // "deflection rate per rung" unmeasurable for the one rung that brings in
+      // the most money. This closes the funnel from the only place that knows
+      // the payment actually completed. `reason` is not knowable here — the
+      // stated reason lives on the earlier lifetime_checkout_started row in
+      // `events`, joinable by checkout_session_id.
+      bg(capturePosthog({
+        event: "retention_offer_accepted",
+        distinctId: (u?.email ?? "").toLowerCase() || uid,
+        properties: {
+          rung: "lifetime",
+          amount: (cs.amount_total ?? 0) / 100,
+          currency: (cs.currency ?? "usd").toUpperCase(),
+          checkout_session_id: cs.id,
+          stripe_customer_id: typeof cs.customer === "string" ? cs.customer : null,
+          subscription_disposition: subDisposition,
+        },
+      }));
+
+      return ACK();
+    }
 
     if (event.type === "invoice.paid" || event.type === "invoice.payment_failed") {
       inv = event.data.object;
@@ -422,7 +697,21 @@ Deno.serve(async (req: Request) => {
   } catch (e) {
     console.error("webhook handler error:", e);
     // Allow Stripe to retry; remove the idempotency row so the retry reprocesses.
-    try { await db.from("stripe_events").delete().eq("id", event.id); } catch (_) { /* ignore */ }
+    // If this compensating delete itself fails the claim is stuck and the retry
+    // will short-circuit on "ok (dup)", so make that visible — supabase-js
+    // reports it in `error` rather than throwing, hence both checks.
+    try {
+      const { error: relErr } = await db.from("stripe_events").delete().eq("id", event.id);
+      if (relErr) {
+        console.error(
+          `FAILED TO RELEASE idempotency claim for event ${event.id}; the Stripe ` +
+          `retry will be deduped and this event will never be reprocessed:`,
+          relErr,
+        );
+      }
+    } catch (relEx) {
+      console.error(`FAILED TO RELEASE idempotency claim for event ${event.id}:`, relEx);
+    }
     return new Response("handler error", { status: 500 });
   }
 

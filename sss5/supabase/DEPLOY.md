@@ -153,3 +153,138 @@ Until you do this, only your account email gets emails.
    BOTH the 👤 Slack alert AND that a `public.users` row exists for it — the
    trigger fires inside the signup path, so this check protects against a
    repeat of the 2026-07-08 incident class.
+
+---
+
+## Retention save-flow + lifetime offer (2026-08-02)
+
+Branch `feat/retention-save-flow`, spanning BOTH repos: `Sss_test` (migration +
+edge functions) and `sss-app` (frontend). Nothing below has been executed —
+the whole branch is reviewed, not tested.
+
+**Run these in order. The ordering is load-bearing.**
+
+### 1. Migration FIRST
+
+```bash
+supabase db push --project-ref gmhbcxylqubhxozomhlt
+```
+
+Adds `users.lifetime_at timestamptz` and `users.plan_tier text not null
+default 'standard'` (CHECK: `standard` | `lite`). Strictly additive.
+
+**Deploying the functions before this is a hard outage.** `resolveAccess`
+selects the new columns; if they don't exist, the query errors, `lookupFailed`
+is set, and all three story/chapter gates return 500 for every subscriber.
+That's correct fail-closed behaviour, but it's total.
+
+### 2. Verify two columns that could not be checked locally
+
+`public.events` isn't in any migration (it was created directly in the
+project), and the CLI isn't linked for `db` commands here, so these are
+unverified assumptions in the code:
+
+```sql
+select column_name, data_type from information_schema.columns
+ where table_schema = 'public' and table_name = 'events'
+   and column_name in ('created_at', 'metadata');
+```
+
+- `created_at` — the offer-eligibility guard filters on it. If missing, the
+  guard 500s and every offer accept shows "That didn't go through" while
+  reason capture keeps working normally. Fails closed, but silently disables
+  the offers. **If offers look dead but reasons are landing, check this first.**
+- `metadata` should be `jsonb` — the reason-dedup reads `metadata->>'reason'`.
+  If it's `text`, the dedup silently no-ops and `cancel_reason_selected` rows
+  over-count again. Fails safe.
+
+### 3. Stripe objects + secrets (LIVE mode)
+
+The project uses a live `STRIPE_SECRET_KEY`, so test-mode ids will not work.
+Create in the Stripe dashboard:
+
+- Coupon, 50% off, **duration: once** → `STRIPE_COUPON_SAVE50`
+- Recurring price, **$9.99 / 4 weeks** → `STRIPE_PRICE_LITE`
+- One-time price, **$79.00** → `STRIPE_PRICE_LIFETIME`
+
+```bash
+supabase secrets set --project-ref gmhbcxylqubhxozomhlt \
+  STRIPE_COUPON_SAVE50=<id> \
+  STRIPE_PRICE_LITE=<id> \
+  STRIPE_PRICE_LIFETIME=<id> \
+  APP_URL=https://app.stuffsosweet.com
+```
+
+`APP_URL` must have **no trailing slash** (it is concatenated as
+`${APP_URL}/settings.html`).
+
+Until these are set the offer actions return 502 by design, and the frontend
+shows "that didn't go through" with choices — it does **not** cancel the user.
+
+### 4. Enable the webhook event
+
+Add `checkout.session.completed` to the endpoint's enabled events.
+
+**This is the most likely first-deploy failure and the app cannot detect it.**
+Without it a customer pays $79, sees "Finalizing…" for ten minutes, and the
+page then renders as though nothing happened. The Slack alert added in this
+branch only fires on a grant that actually runs.
+
+### 5. Deploy
+
+```bash
+supabase functions deploy \
+  start-authenticated-story start-authenticated-story-v2 submit-choice \
+  retention-offer stripe-webhook --project-ref gmhbcxylqubhxozomhlt
+```
+
+Note `start-authenticated-story-v2` also ships a reconciliation with the
+deployed v5 — a production fix unrelated to this feature. The local copy had
+gone stale and would have rejected every in-app quiz2 submission with
+"Age confirmation required".
+
+Frontend (`sss-app`) deploys via its own GitHub Pages flow.
+
+### 6. Verify end to end, live mode
+
+Walk all four branches with a real subscriber, then refund:
+
+1. **too_expensive → discount** — Stripe shows the 50%-off coupon on the sub.
+2. **too_expensive → decline → lifetime** — pay $79 with a real card.
+   Confirm: `users.lifetime_at` set, subscription cancelled, Slack ping
+   received, story creation still works, Settings shows the clean
+   "Lifetime access — nothing to cancel" state. **Then refund.**
+3. **not_using → pause** — `pause_collection.resumes_at` ~4 weeks out.
+4. **not_using → decline → downgrade** — item on the $9.99 price and
+   `users.plan_tier = 'lite'`.
+
+Then build the PostHog funnel (project SSS, 207201):
+`cancel_reason_selected` → `retention_offer_shown` → `retention_offer_accepted`,
+broken down by `reason`.
+
+### Operational notes — things with no automatic recovery
+
+- **`plan_tier` has no reverse path.** Only the downgrade writes `'lite'`;
+  only the lifetime grant writes `'standard'`. If you move someone off Lite in
+  Stripe you MUST also update the column, or they keep 1 story/month at full
+  price:
+  ```sql
+  update public.users set plan_tier = 'standard' where id = '<uuid>';
+  ```
+- **`pause` uses `behavior: "void"`** — a paused user keeps full access free
+  for 4 weeks, and nothing is recorded in `users`. Support cannot see a pause
+  without opening Stripe.
+- **Three log-only failure paths on the money flow.** Grep the function logs
+  for `CANCEL BY HAND`, `MANUAL GRANT REQUIRED`, and `FAILED TO RELEASE`.
+  The first two now also page Slack; the third does not.
+- **Reconciliation query** for a lifetime purchase that took money but never
+  fulfilled:
+  ```sql
+  select * from public.events e
+   where e.event_type = 'lifetime_checkout_started'
+     and not exists (
+       select 1 from public.events f
+        where f.user_id = e.user_id and f.event_type = 'lifetime_purchased'
+          and f.created_at > e.created_at)
+     and e.created_at < now() - interval '1 hour';
+  ```

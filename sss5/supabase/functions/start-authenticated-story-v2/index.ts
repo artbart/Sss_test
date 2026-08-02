@@ -8,16 +8,22 @@
 // V1 equivalent: start-authenticated-story. Same semantics, different quiz
 // schema + different generate-chapter target.
 //
-// Access rule: paid-through (users.current_period_end >= now).
-// Quota rule: 3 stories per user per calendar month (counts BOTH V1 + V2).
+// Access rule: lifetime OR paid-through — users.lifetime_at set grants permanent
+// access; otherwise users.current_period_end >= now. The single decision lives in
+// _shared/access.ts (resolveAccess + hasAccess); this file must never re-derive
+// it inline.
+// Quota rule: tier-dependent, via storyLimitFor(planTier) — 3 stories per user
+// per calendar month on 'standard', 1 on 'lite' (counts BOTH V1 + V2). Lifetime
+// does NOT lift the cap.
+// v5: setup_depth is optional and defaults to "quick" — the sweet-spice quiz path skips that step.
 
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 import { handlePreflight, jsonResponse } from "../_shared/cors.ts";
 import { adminClient } from "../_shared/db.ts";
+import { resolveAccess, hasAccess, storyLimitFor } from "../_shared/access.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const MONTHLY_STORY_LIMIT = 3;
 
 function startOfCurrentMonthISO(): string {
   const d = new Date();
@@ -55,31 +61,39 @@ Deno.serve(async (req: Request) => {
   // uniform. See _shared/prompts_v2.ts + supabase/functions/submit-quiz2 for
   // the field contract.
   const p = body?.payload ?? {};
-  const required = ["in_story", "pairing", "world", "love_interest", "opening", "spicy", "mood", "setup_depth"];
+  // v5: setup_depth is optional — the sweet-spice quiz path skips that step. Defaults to "quick" below.
+  const required = ["in_story", "pairing", "world", "love_interest", "opening", "spicy", "mood"];
   for (const k of required) {
     const v = (p as Record<string, unknown>)[k];
     if (v == null || (Array.isArray(v) && v.length === 0) || v === "") {
       return jsonResponse({ error: `Missing required V2 answer: ${k}` }, 400);
     }
   }
-  if (p.age_confirmed !== true) return jsonResponse({ error: "Age confirmation required" }, 400);
+  // No age gate here: the in-app quiz serves users who already confirmed 18+ in the
+  // marketing funnel (Sss_test/quiz2/index.html) before paying. sss-app/quiz2.html
+  // deliberately does not send age_confirmed for this path.
 
   const db = adminClient();
   const { data: profile, error: profErr } = await db
     .from("users")
-    .select("id, email, subscription_status, current_period_end")
+    .select("id, email, display_name, subscription_status, current_period_end")
     .eq("id", user.id)
     .maybeSingle();
   if (profErr || !profile) return jsonResponse({ error: "User profile not found", detail: profErr?.message }, 404);
 
-  // Access gate: paid-through must be in the future.
-  const periodEnd = profile.current_period_end ? new Date(profile.current_period_end) : null;
-  if (!periodEnd || periodEnd < new Date()) {
+  // Access gate: lifetime holders always pass; otherwise paid-through must be
+  // in the future. Shared with submit-choice via _shared/access.ts.
+  const access = await resolveAccess(db, profile.id);
+  if (access.lookupFailed) {
+    return jsonResponse({ error: "Couldn't verify subscription access", detail: "access lookup failed, please retry" }, 500);
+  }
+  if (!hasAccess(access)) {
     return jsonResponse(
-      { error: "Active subscription required to start a new story", subscription_status: profile.subscription_status },
+      { error: "Active subscription required to start a new story", subscription_status: access.subStatus },
       403,
     );
   }
+  const storyLimit = storyLimitFor(access.planTier);
 
   // Monthly quota — counts V1 + V2 combined (all stories.user_id rows).
   const monthStart = startOfCurrentMonthISO();
@@ -91,18 +105,28 @@ Deno.serve(async (req: Request) => {
   if (countErr) return jsonResponse({ error: "Couldn't check monthly quota", detail: countErr.message }, 500);
 
   const used = createdThisMonth ?? 0;
-  if (used >= MONTHLY_STORY_LIMIT) {
+  if (used >= storyLimit) {
     const resetIso = startOfNextMonthISO();
     await db.from("events").insert({
       user_id: profile.id, email: profile.email,
       event_type: "story_creation_blocked_monthly_cap",
-      metadata: { used, limit: MONTHLY_STORY_LIMIT, resets_at: resetIso, quiz_version: 2 },
+      metadata: { used, limit: storyLimit, resets_at: resetIso, quiz_version: 2 },
     });
     return jsonResponse({
-      error: `You've used all ${MONTHLY_STORY_LIMIT} of your stories this month`,
+      error: `You've used all ${storyLimit} of your stories this month`,
       detail: `Your quota resets at the start of next month.`,
-      used, limit: MONTHLY_STORY_LIMIT, resets_at: resetIso,
+      used, limit: storyLimit, resets_at: resetIso,
     }, 429);
+  }
+
+  // v5: sync display_name from q1b_you.name for accounts that don't have one yet.
+  // Editing the name on a subsequent quiz2 does NOT overwrite display_name — that's
+  // "this-story-only". Only the very first story fills the account name.
+  const yourName = (p.you && typeof p.you === "object" && typeof p.you.name === "string")
+    ? p.you.name.trim().slice(0, 40)
+    : "";
+  if (!profile.display_name && yourName) {
+    await db.from("users").update({ display_name: yourName }).eq("id", profile.id);
   }
 
   const nowIso = new Date().toISOString();
@@ -116,7 +140,7 @@ Deno.serve(async (req: Request) => {
     funnel_version: "app_authenticated_v2",
     landing_page: p.landing_page ?? "https://app.stuffsosweet.com/quiz2.html",
     user_agent: p.user_agent ?? null,
-    q0_age_confirmed: !!p.age_confirmed,
+    q0_age_confirmed: true,   // see the age-gate note above — confirmed in the marketing funnel
     q1_in_story: p.in_story,
     q1b_you: p.you ?? null,
     q2_pairing: p.pairing,
@@ -126,7 +150,7 @@ Deno.serve(async (req: Request) => {
     q6_spicy: p.spicy,
     q7_mood: p.mood ?? [],
     q8_specifics: p.specifics ?? [],
-    q8b_setup_depth: p.setup_depth,
+    q8b_setup_depth: p.setup_depth || "quick",  // v5: default when the quiz path skipped the step
     q9_skip: p.skip ?? null,
     d_restraint: p.restraint ?? null,
     d_sensory: p.sensory ?? null,
@@ -163,7 +187,7 @@ Deno.serve(async (req: Request) => {
   await db.from("events").insert({
     user_id: profile.id, email: profile.email,
     event_type: "story_started_authenticated", story_id: story.id,
-    metadata: { source: "app_quiz2", quiz_version: 2, used_after: used + 1, monthly_limit: MONTHLY_STORY_LIMIT },
+    metadata: { source: "app_quiz2", quiz_version: 2, used_after: used + 1, monthly_limit: storyLimit },
   });
 
   // Trigger generate-chapter-v2 in the background (edge function has ~6-min
@@ -186,6 +210,6 @@ Deno.serve(async (req: Request) => {
     ok: true,
     story_id: story.id,
     quiz2_session_id: session.id,
-    quota: { used: used + 1, limit: MONTHLY_STORY_LIMIT },
+    quota: { used: used + 1, limit: storyLimit },
   });
 });
