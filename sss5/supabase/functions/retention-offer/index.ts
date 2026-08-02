@@ -119,19 +119,31 @@ Deno.serve(async (req: Request) => {
   // authenticated subscriber could POST an offer action on a loop. `pause`
   // resets resumes_at every call (indefinite free access via
   // pause_collection: void), and `discount` is otherwise re-appliable every
-  // cycle. `lifetime_checkout` is included too, even though creating a
-  // Checkout Session mutates nothing and charges nobody by itself
-  // (fulfilment happens later, in the webhook, only if the customer
-  // completes payment): the product intent is that $79 lifetime is offered
-  // ONLY behind a stated price objection, not a standing purchase link any
-  // subscriber can hit directly. Gating it here is what makes that true.
-  // Scope, as decided by the product owner: an offer is honoured only if
-  // this user recorded a reason within the window AND has not already
-  // accepted an offer within that same window. Verifying the requested rung
-  // matches what nextRung would have offered is deliberately NOT done here —
-  // all offers are reachable through the UI by any subscriber anyway, and
-  // mirroring the full ladder risks wedging a legitimate user on a
-  // back-button or double-submit.
+  // cycle. All four actions require a cancel reason recorded within the
+  // window — that half is what keeps `lifetime_checkout` from being a
+  // standing purchase link any subscriber can hit directly; the product
+  // intent is that $79 lifetime is offered only behind a stated price
+  // objection.
+  //
+  // The SECOND half — no offer already accepted within the window — is the
+  // anti-stacking rule, and it applies only to pause/discount/downgrade.
+  // (Separately: verifying the requested rung matches what nextRung would
+  // have offered is deliberately NOT done here — all offers are reachable
+  // through the UI by any subscriber anyway, and mirroring the full ladder
+  // risks wedging a legitimate user on a back-button or double-submit.)
+  //
+  // `lifetime_checkout` is deliberately EXEMPT from the anti-stacking half.
+  // Creating a Checkout Session mutates nothing and charges nobody by
+  // itself (fulfilment happens later, in the webhook, only if the customer
+  // completes payment), so it cannot participate in "stacking" in the first
+  // place — and a user who just accepted pause/discount/downgrade and then
+  // decides within the same window that they'd rather pay $79 outright is
+  // handing over more revenue, not exploiting the ladder. Blocking that with
+  // a rule meant to stop stacking would enforce the guard past its purpose.
+  // (`lifetime_checkout_started` is intentionally not one of the event types
+  // counted below, for the same reason it doesn't count as "accepted": a
+  // user who abandons Stripe's hosted page and comes back must get a fresh
+  // session, not a 409.)
   if (action === "pause" || action === "discount" || action === "downgrade" || action === "lifetime_checkout") {
     const windowStartIso = new Date(Date.now() - OFFER_WINDOW_MINUTES * 60 * 1000).toISOString();
     const { data: recentEvents, error: recentErr } = await db
@@ -147,7 +159,10 @@ Deno.serve(async (req: Request) => {
     const events = (recentEvents ?? []) as Array<{ event_type: string }>;
     const hasRecentReason = events.some((e) => e.event_type === "cancel_reason_selected");
     const hasRecentAcceptedOffer = events.some((e) => e.event_type === "retention_offer_accepted");
-    if (!hasRecentReason || hasRecentAcceptedOffer) {
+    const ineligible = action === "lifetime_checkout"
+      ? !hasRecentReason
+      : (!hasRecentReason || hasRecentAcceptedOffer);
+    if (ineligible) {
       return jsonResponse({ error: "This offer is no longer available" }, 409);
     }
   }
