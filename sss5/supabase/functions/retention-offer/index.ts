@@ -194,6 +194,59 @@ Deno.serve(async (req: Request) => {
   // user who abandons Stripe's hosted page and comes back must get a fresh
   // session, not a 409.)
   if (action === "pause" || action === "discount" || action === "downgrade" || action === "lifetime_checkout") {
+    // LIFETIME HOLDERS GET NO OFFERS — all four, not just lifetime_checkout.
+    //
+    // A lifetime holder can only reach this flow in one state: the grant
+    // landed but stripe.subscriptions.cancel() failed in the webhook (which
+    // deliberately tolerates that failure rather than throwing after the
+    // grant), leaving them holding lifetime AND a live billing subscription.
+    // Settings now keeps the cancel button visible in exactly that state, so
+    // the flow behind it is reachable where it previously was not.
+    //
+    // Every rung is wrong for them, each for its own reason:
+    //   lifetime_checkout — charges $79 for a perpetual licence they already
+    //     own. A straight money defect.
+    //   downgrade — the worst of the four. It writes plan_tier='lite', which
+    //     cuts a lifetime holder from 3 stories/month to 1 while still
+    //     billing them $9.99 for a subscription they do not need. It degrades
+    //     an entitlement they have already paid for in full.
+    //   discount — halves a charge that should be zero, and books a
+    //     "save" against a subscription that was never going to be kept.
+    //   pause — voids collection for four weeks and then resumes billing,
+    //     so it hides the problem and re-bills them a month later while the
+    //     user believes it is dealt with.
+    // Plain cancellation is the only coherent outcome, and it stays fully
+    // available: a 409 lands the frontend on the "That offer isn't available"
+    // screen, which shows this message and offers "Cancel my subscription"
+    // alongside "Show me another option" and "keep my subscription". Nothing
+    // here traps them, and `record_reason` is deliberately NOT gated, so
+    // their stated reason is still captured.
+    //
+    // Queried SEPARATELY rather than added to the profile select above, on
+    // purpose. That select was just stripped back to pre-feature columns so
+    // that `record_reason` — the most valuable output of this flow — cannot
+    // be killed by deploying the functions before the migration. `lifetime_at`
+    // ships in that same migration, so putting it back there would re-create
+    // exactly the coupling that removal was for. The offer actions may depend
+    // on the migration (downgrade already writes plan_tier, and the rungs are
+    // inert without it); reason capture may not.
+    const { data: entitlement, error: entitlementErr } = await db
+      .from("users").select("lifetime_at").eq("id", profile.id).maybeSingle();
+    if (entitlementErr) {
+      // Fail CLOSED, same as the eligibility check below: we cannot rule out
+      // that this is a lifetime holder, and the cost of guessing wrong is
+      // charging them again. A 500 on the accept path shows "That didn't go
+      // through" — it never cancels on the user's behalf.
+      console.error("retention-offer: lifetime lookup failed:", entitlementErr);
+      return jsonResponse({ error: "Could not verify offer eligibility" }, 500);
+    }
+    if (entitlement?.lifetime_at) {
+      return jsonResponse({
+        error: "You already have lifetime access, so there's nothing here to add to it. " +
+          "This leftover subscription can be cancelled without affecting it.",
+      }, 409);
+    }
+
     const windowStartIso = new Date(Date.now() - OFFER_WINDOW_MINUTES * 60 * 1000).toISOString();
     const { data: recentEvents, error: recentErr } = await db
       .from("events")
