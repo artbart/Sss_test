@@ -9,9 +9,12 @@
 // and Stripe delivers account-wide events to every endpoint. We therefore
 // process ONLY Stuff So Sweet subscriptions — identified by metadata.session_id,
 // which create-subscription always sets. Everything else is ack'd and ignored.
+// The one-time lifetime payment has no subscription to carry that marker, so it
+// is identified by metadata.app === "sss" on the Checkout Session instead.
 //
 // Events: invoice.paid, invoice.payment_failed,
-//         customer.subscription.updated, customer.subscription.deleted
+//         customer.subscription.updated, customer.subscription.deleted,
+//         checkout.session.completed (one-time lifetime purchase)
 
 import { adminClient } from "../_shared/db.ts";
 import { stripe, cryptoProvider } from "../_shared/stripe.ts";
@@ -88,6 +91,128 @@ Deno.serve(async (req: Request) => {
     let sub: Stripe.Subscription | null = null;
     // deno-lint-ignore no-explicit-any
     let inv: any = null;
+
+    // ------------------------------------------------------------------
+    // One-time lifetime purchase ($79), created by retention-offer.
+    //
+    // Handled BEFORE the subscription routing below because that routing
+    // resolves a `sub` and calls ours(sub) — and a one-time payment has no
+    // subscription for ours() to inspect. On this shared Stripe account the
+    // payment is disambiguated by metadata.app instead, which the Checkout
+    // Session always carries.
+    // ------------------------------------------------------------------
+    if (event.type === "checkout.session.completed") {
+      const cs = event.data.object as Stripe.Checkout.Session;
+
+      // Ack-and-ignore anything that is not an SSS lifetime payment, BEFORE any
+      // DB write — exactly the rule the subscription branches follow for
+      // non-SSS events. None of these is an error: other products' checkout
+      // sessions legitimately arrive at this endpoint.
+      if (cs.mode !== "payment") return ACK();               // a subscription checkout, fulfilled via invoice.paid
+      if ((cs.metadata?.app ?? "") !== "sss") return ACK();  // another product on this shared account
+      if (cs.payment_status !== "paid") {
+        // Delayed payment method, or a session completed without funds. We do
+        // not fulfil on credit, and checkout.session.async_payment_succeeded is
+        // not an enabled event, so make the drop visible instead of silent.
+        console.warn(
+          `sss lifetime checkout ${cs.id} completed with payment_status=` +
+          `${cs.payment_status}; NOT fulfilling`,
+        );
+        return ACK();
+      }
+      const uid = cs.metadata?.supabase_user_id;
+      if (!uid) {
+        console.error(
+          `sss lifetime checkout ${cs.id} carries no supabase_user_id; ` +
+          `cannot fulfil — MANUAL GRANT REQUIRED`,
+        );
+        return ACK();
+      }
+
+      // Idempotency: same table and same first-writer-wins rule as every other
+      // branch, because Stripe retries this event.
+      //
+      // FAILURE POLICY FOR EVERYTHING BELOW THIS LINE. This insert CLAIMS the
+      // event. The catch at the bottom of this try is what RELEASES the claim
+      // (it deletes the row) so a Stripe retry reprocesses. A bare `return`
+      // never reaches that catch: it would leave the claim in place, the retry
+      // would hit the duplicate and receive "ok (dup)", and the purchase would
+      // never be fulfilled while Stripe's dashboard showed a handled event.
+      // Therefore:
+      //   * BEFORE the entitlement lands, the only way to fail is to `throw`;
+      //   * AFTER it lands, nothing may throw — a throw would release the claim
+      //     and re-run a grant that already succeeded.
+      const { error: dupErr } = await db.from("stripe_events").insert({ id: event.id, type: event.type });
+      if (dupErr) return new Response("ok (dup)", { status: 200 });
+
+      // ORDER IS LOAD-BEARING: grant the entitlement FIRST, cancel the live
+      // subscription SECOND. A failure between the two leaves the customer with
+      // access they have paid for (at worst one more billing cycle). The
+      // reverse would strand a paying customer with nothing.
+      //
+      // .select("id") is not decoration: supabase-js never throws on a failed
+      // write, and an UPDATE matching zero rows resolves as error:null with an
+      // empty data array. Without checking the returned rows, a bad
+      // supabase_user_id would be indistinguishable from a successful grant.
+      const { data: granted, error: grantErr } = await db.from("users")
+        .update({ lifetime_at: new Date().toISOString(), plan_tier: "standard" })
+        .eq("id", uid)
+        .select("id");
+      if (grantErr) {
+        console.error(`lifetime grant failed for user ${uid} (session ${cs.id}):`, grantErr);
+        throw new Error("lifetime grant failed"); // -> catch releases the claim, Stripe retries
+      }
+      if (!granted || granted.length === 0) {
+        console.error(`lifetime grant matched NO users row for ${uid} (session ${cs.id})`);
+        throw new Error("lifetime grant matched no user"); // -> catch releases the claim, Stripe retries
+      }
+
+      // --- Entitlement is live. Everything past here logs and never throws. ---
+
+      const { data: u, error: readErr } = await db.from("users")
+        .select("email, stripe_subscription_id").eq("id", uid).maybeSingle();
+      if (readErr) {
+        // Only feeds the cancel and the audit row, both of which are
+        // best-effort now that the grant has landed.
+        console.error(
+          `LIFETIME GRANTED for ${uid} but the follow-up read failed; the ` +
+          `subscription was NOT cancelled — CANCEL BY HAND:`,
+          readErr,
+        );
+      } else if (u?.stripe_subscription_id) {
+        try {
+          await stripe.subscriptions.cancel(u.stripe_subscription_id);
+          console.log(`lifetime granted for ${uid}; cancelled subscription ${u.stripe_subscription_id}`);
+        } catch (e) {
+          // Deliberately NOT a throw, unlike the entitlement write above: the
+          // customer already holds what they paid for, and throwing here would
+          // roll back the claim and re-run the grant. This leaves a live
+          // subscription that a human must cancel.
+          console.error(
+            `LIFETIME GRANTED for ${uid} BUT CANCEL FAILED for subscription ` +
+            `${u.stripe_subscription_id} — CANCEL BY HAND:`,
+            e,
+          );
+        }
+      } else {
+        console.log(`lifetime granted for ${uid}; no linked subscription to cancel`);
+      }
+
+      const { error: evErr } = await db.from("events").insert({
+        user_id: uid,
+        email: u?.email ?? null,
+        event_type: "lifetime_purchased",
+        metadata: {
+          stripe_event_id: event.id,
+          checkout_session_id: cs.id,
+          amount_total: cs.amount_total,
+          currency: cs.currency,
+        },
+      });
+      if (evErr) console.error(`events lifetime_purchased insert failed for ${uid}:`, evErr);
+
+      return ACK();
+    }
 
     if (event.type === "invoice.paid" || event.type === "invoice.payment_failed") {
       inv = event.data.object;
@@ -422,7 +547,21 @@ Deno.serve(async (req: Request) => {
   } catch (e) {
     console.error("webhook handler error:", e);
     // Allow Stripe to retry; remove the idempotency row so the retry reprocesses.
-    try { await db.from("stripe_events").delete().eq("id", event.id); } catch (_) { /* ignore */ }
+    // If this compensating delete itself fails the claim is stuck and the retry
+    // will short-circuit on "ok (dup)", so make that visible — supabase-js
+    // reports it in `error` rather than throwing, hence both checks.
+    try {
+      const { error: relErr } = await db.from("stripe_events").delete().eq("id", event.id);
+      if (relErr) {
+        console.error(
+          `FAILED TO RELEASE idempotency claim for event ${event.id}; the Stripe ` +
+          `retry will be deduped and this event will never be reprocessed:`,
+          relErr,
+        );
+      }
+    } catch (relEx) {
+      console.error(`FAILED TO RELEASE idempotency claim for event ${event.id}:`, relEx);
+    }
     return new Response("handler error", { status: 500 });
   }
 
