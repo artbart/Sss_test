@@ -178,25 +178,29 @@ selects the new columns; if they don't exist, the query errors, `lookupFailed`
 is set, and all three story/chapter gates return 500 for every subscriber.
 That's correct fail-closed behaviour, but it's total.
 
-### 2. Verify two columns that could not be checked locally
+### 2. Schema prerequisites — VERIFIED 2026-08-02, nothing to do
 
-`public.events` isn't in any migration (it was created directly in the
-project), and the CLI isn't linked for `db` commands here, so these are
-unverified assumptions in the code:
+Checked directly against the project (`supabase link --project-ref
+gmhbcxylqubhxozomhlt --yes` then `supabase db query --linked`):
 
-```sql
-select column_name, data_type from information_schema.columns
- where table_schema = 'public' and table_name = 'events'
-   and column_name in ('created_at', 'metadata');
-```
+- `events.created_at` — exists, `timestamp with time zone`. The offer
+  eligibility guard filters on it. OK.
+- `events.metadata` — `jsonb`. The reason-dedup reads `metadata->>'reason'`. OK.
+- `events_user_id_created_idx` on `(user_id, created_at DESC)` — **already
+  exists**, so the eligibility guard's extra SELECT is indexed. No index needed.
+- `users.lifetime_at` / `users.plan_tier` — **not present**, so step 1 above is
+  genuinely still pending.
+- No row has `stripe_subscription_id` set with `stripe_customer_id` null, so
+  the signup-before-pay defect does not currently affect any subscriber.
 
-- `created_at` — the offer-eligibility guard filters on it. If missing, the
-  guard 500s and every offer accept shows "That didn't go through" while
-  reason capture keeps working normally. Fails closed, but silently disables
-  the offers. **If offers look dead but reasons are landing, check this first.**
-- `metadata` should be `jsonb` — the reason-dedup reads `metadata->>'reason'`.
-  If it's `text`, the dedup silently no-ops and `cancel_reason_selected` rows
-  over-count again. Fails safe.
+Scale at time of writing: 183 user rows, 122 with a subscription id, of which
+**103 `active` and all paid-through**, 15 `canceled`, 1 `past_due` still in
+period. (An earlier estimate of ~97 came from counting PostHog
+`subscription_started` events and undercounted.)
+
+Note the `public` schema also holds `chat_conversations`, `chat_messages` and
+`chat_monthly_usage`, which are not Stuff So Sweet — this project is shared.
+`casp_notes`, named in older notes as the table to protect, no longer exists.
 
 ### 3. Stripe objects + secrets (LIVE mode)
 
