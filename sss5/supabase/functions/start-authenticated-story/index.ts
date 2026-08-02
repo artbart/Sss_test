@@ -5,9 +5,14 @@
 // enforces access + the monthly quota, creates the quiz_session + story rows,
 // and triggers chapter-1 generation.
 //
-// Access rule: paid-through (users.current_period_end >= now) — NOT status —
-// so a cancel-at-period-end user keeps access until the period ends. Matches
-// submit-choice and the funnel gate.
+// Access rule: lifetime OR paid-through — a user with users.lifetime_at set has
+// permanent access; otherwise users.current_period_end >= now, NOT status, so a
+// cancel-at-period-end user keeps access until the period ends. The single
+// decision lives in _shared/access.ts (resolveAccess + hasAccess); this file
+// must never re-derive it inline. Matches submit-choice and the funnel gate.
+//
+// Quota rule: tier-dependent, via storyLimitFor(planTier) — 3 stories per
+// calendar month on 'standard', 1 on 'lite'. Lifetime does NOT lift the cap.
 
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 import { handlePreflight, jsonResponse } from "../_shared/cors.ts";

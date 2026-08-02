@@ -239,6 +239,61 @@ writes already performed by the edge functions.
 - Within roughly one week, enough reason data to decide whether the day-0 leak is a pricing
   problem (→ reprice the renewal cliff) or a value problem (→ the save-flow is the fix).
 
+## Operational notes
+
+### `plan_tier` has no automatic reverse path — reversing a downgrade is a MANUAL step
+
+`users.plan_tier` is written in exactly two places:
+
+- `retention-offer/index.ts` — the downgrade rung writes `'lite'` after Stripe accepts the price
+  change.
+- `stripe-webhook/index.ts` — the lifetime grant writes `'standard'`.
+
+Nothing else ever resets it. There is no `invoice.paid` handler for it, no
+`customer.subscription.updated` handler for it, and no resubscribe path that clears it. This is
+deliberate: the correct trigger is ambiguous (a lite subscriber's renewal invoice looks identical
+to a standard one at the point the webhook sees it), and guessing wrong would silently restore
+3 stories/month to a legitimate lite subscriber paying the lite price.
+
+**Consequence.** Any route back to a standard price that is not a lifetime purchase leaves the row
+at `'lite'`. The user then gets **1 story per month while paying the full standard price**, and
+every surface agrees with the wrong number — Settings, `stories.html`, `story.html`, and the
+server-side quota in `start-authenticated-story{,-v2}` all read the same column. The two realistic
+routes are:
+
+1. The user resubscribes after cancelling.
+2. You change their price back in the Stripe dashboard after a support email.
+
+**Runbook — whenever you move a `lite` user back onto a standard price, in the same sitting:**
+
+```sql
+-- 1. Confirm who is on the lighter plan and what they are actually paying.
+select id, email, plan_tier, subscription_status, stripe_subscription_id, current_period_end
+  from public.users
+ where plan_tier = 'lite'
+ order by current_period_end desc nulls last;
+
+-- 2. Reverse the downgrade for one user (by email — identity is email-keyed here).
+update public.users
+   set plan_tier = 'standard'
+ where email = 'customer@example.com'
+   and plan_tier = 'lite'
+returning id, email, plan_tier;
+--    `returning` is not optional in spirit: an UPDATE matching zero rows reports success.
+--    If it returns no row, the email was wrong or they were never 'lite' — check before assuming.
+
+-- 3. Optional audit trail so the change is visible next to the flow's own rows.
+insert into public.events (user_id, email, event_type, metadata)
+select id, email, 'plan_tier_restored_manually',
+       jsonb_build_object('from', 'lite', 'to', 'standard', 'by', 'support')
+  from public.users
+ where email = 'customer@example.com';
+```
+
+Do the Stripe price change and step 2 together. A price change without step 2 is the silent
+1-story-at-full-price failure; step 2 without the price change gives away 3 stories at the lite
+price.
+
 ## Open decisions deferred to data
 
 - Whether $79 is the right lifetime price, or whether take-rate favours a lower anchor.

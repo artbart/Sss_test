@@ -77,9 +77,15 @@ Deno.serve(async (req: Request) => {
   const declined = sanitizeDeclined(body.declined);
 
   const db = adminClient();
+  // Deliberately does NOT select plan_tier: nothing here reads it, and selecting
+  // it would make every request — including `record_reason`, which must survive
+  // anything — depend on the retention migration having already been applied. If
+  // the functions are deployed before `supabase db push`, PostgREST errors on the
+  // unknown column and reason capture (the most valuable output of this flow)
+  // dies with it. Keep this select to columns that predate the feature.
   const { data: profile, error: profileErr } = await db
     .from("users")
-    .select("id, email, stripe_subscription_id, stripe_customer_id, plan_tier")
+    .select("id, email, stripe_subscription_id, stripe_customer_id")
     .eq("id", user.id)
     .maybeSingle();
   if (profileErr) return jsonResponse({ error: "Could not load account" }, 500);
@@ -93,15 +99,58 @@ Deno.serve(async (req: Request) => {
   // whose reason must not be lost to a 404.
   if (action === "record_reason") {
     if (!isValidReason(rawReason)) return jsonResponse({ error: "reason required" }, 400);
-    const { error: insertErr } = await db.from("events").insert({
-      user_id: profile.id, email: profile.email,
-      event_type: "cancel_reason_selected",
-      metadata: { reason: rawReason },
-    });
-    if (insertErr) {
-      console.error("record_reason: failed to insert cancel_reason_selected event:", insertErr);
-      return jsonResponse({ error: "Could not record reason" }, 500);
+
+    // ONE CANCELLATION MUST PRODUCE ONE ROW.
+    //
+    // The frontend calls this endpoint again on every decline and on every
+    // "show me another option", so a single `too_expensive` walk down the
+    // ladder used to write three identical rows and `broken` two. That
+    // over-counts NON-UNIFORMLY — most for the users who went deepest — and
+    // this table is the churn-reason evidence the repricing decision rests on.
+    //
+    // Deduped on (user, same reason, inside OFFER_WINDOW_MINUTES) — the same
+    // window the eligibility guard below uses, so skipping the insert always
+    // leaves a row that guard can still see. A DIFFERENT reason inside the
+    // window still inserts: that is a genuine second data point (the user
+    // changed their stated reason), not a repeat of the same one.
+    //
+    // FAIL OPEN. If this lookup errors we insert anyway. A duplicate row is a
+    // counting nuisance; zero rows would make the user ineligible for every
+    // offer AND lose their reason entirely, which is strictly worse.
+    //
+    // Residual, accepted: a user who idles ~29 minutes mid-flow and then
+    // declines can have their only row age out of the guard's window shortly
+    // after this call skipped the refresh, yielding a 409 on the next offer.
+    // The frontend treats 409 as "that offer is unavailable" (never as
+    // cancel), and the reason is already captured, so the flow degrades safely.
+    const dedupWindowIso = new Date(Date.now() - OFFER_WINDOW_MINUTES * 60 * 1000).toISOString();
+    const { data: priorReasons, error: priorErr } = await db
+      .from("events")
+      .select("metadata")
+      .eq("user_id", profile.id)
+      .eq("event_type", "cancel_reason_selected")
+      .gte("created_at", dedupWindowIso);
+    if (priorErr) {
+      console.error("record_reason: duplicate check failed, inserting anyway:", priorErr);
     }
+    const alreadyRecorded = !priorErr && (priorReasons ?? []).some(
+      (e: { metadata?: { reason?: unknown } | null }) => e?.metadata?.reason === rawReason,
+    );
+
+    if (!alreadyRecorded) {
+      const { error: insertErr } = await db.from("events").insert({
+        user_id: profile.id, email: profile.email,
+        event_type: "cancel_reason_selected",
+        metadata: { reason: rawReason },
+      });
+      if (insertErr) {
+        console.error("record_reason: failed to insert cancel_reason_selected event:", insertErr);
+        return jsonResponse({ error: "Could not record reason" }, 500);
+      }
+    }
+
+    // Unchanged either way: the response contract does not depend on whether a
+    // row was written. Only the write is deduped.
     return jsonResponse({ ok: true, rung: nextRung(rawReason, declined) });
   }
 
@@ -251,6 +300,18 @@ Deno.serve(async (req: Request) => {
       // offer failure (which would send the frontend to plain cancel,
       // cancelling a subscription that was just successfully downgraded), so
       // it's logged rather than thrown/returned as an error.
+      //
+      // ⚠ plan_tier IS A ONE-WAY DOOR. This is the only writer of 'lite', and
+      // the only writer of 'standard' is the lifetime grant in
+      // stripe-webhook. Nothing resets it: not invoice.paid, not
+      // customer.subscription.updated, not a resubscribe. So if this user is
+      // ever moved back onto a standard price — by resubscribing, or by you
+      // editing their price in the Stripe dashboard after a support email —
+      // they keep plan_tier='lite' and silently get 1 story/month at full
+      // price, with the UI confidently agreeing with the wrong number.
+      // REVERSING A DOWNGRADE MEANS UPDATING THIS COLUMN TOO. Runbook and SQL:
+      // docs/superpowers/specs/2026-08-01-retention-save-flow-design.md,
+      // "Operational notes".
       const { error: planTierErr } = await db.from("users").update({ plan_tier: "lite" }).eq("id", profile.id);
       if (planTierErr) {
         console.error(`retention-offer: plan_tier update to 'lite' failed for user ${profile.id} after Stripe price change succeeded:`, planTierErr);

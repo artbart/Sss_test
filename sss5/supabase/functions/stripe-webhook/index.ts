@@ -178,6 +178,17 @@ Deno.serve(async (req: Request) => {
       // write, and an UPDATE matching zero rows resolves as error:null with an
       // empty data array. Without checking the returned rows, a bad
       // supabase_user_id would be indistinguishable from a successful grant.
+      //
+      // ⚠ plan_tier IS A ONE-WAY DOOR. This is the only writer of 'standard'
+      // (it lifts a previously-downgraded buyer back to the 3/month quota they
+      // just paid $79 for); the only writer of 'lite' is the downgrade rung in
+      // retention-offer. Nothing else resets it — not invoice.paid, not
+      // customer.subscription.updated, not a resubscribe. A lite user put back
+      // on a standard price by any route OTHER than this lifetime purchase
+      // keeps plan_tier='lite' and silently gets 1 story/month at full price.
+      // REVERSING A DOWNGRADE MEANS UPDATING THIS COLUMN TOO. Runbook and SQL:
+      // docs/superpowers/specs/2026-08-01-retention-save-flow-design.md,
+      // "Operational notes".
       const { data: granted, error: grantErr } = await db.from("users")
         .update({ lifetime_at: new Date().toISOString(), plan_tier: "standard" })
         .eq("id", uid)
@@ -195,28 +206,65 @@ Deno.serve(async (req: Request) => {
 
       const { data: u, error: readErr } = await db.from("users")
         .select("email, stripe_subscription_id").eq("id", uid).maybeSingle();
+      // "was the old subscription dealt with?" — drives the Slack copy below,
+      // because "lifetime granted, still billing" is a state that needs a human
+      // and "lifetime granted, nothing left to bill" is not.
+      let subDisposition = "none linked";
       if (readErr) {
         // Only feeds the cancel and the audit row, both of which are
         // best-effort now that the grant has landed.
+        subDisposition = "UNKNOWN — follow-up read failed, NOT cancelled";
         console.error(
           `LIFETIME GRANTED for ${uid} but the follow-up read failed; the ` +
           `subscription was NOT cancelled — CANCEL BY HAND:`,
           readErr,
         );
+        // Same reason as the cancel-failure branch below: a console line is
+        // invisible until someone goes looking, and this leaves a customer who
+        // may still be billed. Page a human.
+        bg(notifySlack({
+          kind: "lifetime_cancel_failed",
+          sessionId: cs.id,
+          customerId: typeof cs.customer === "string" ? cs.customer : null,
+          fields: {
+            "User id": uid,
+            "What happened": "Lifetime granted, but the users-row read failed so the subscription was never cancelled",
+            "Action": "Find this user's Stripe subscription and cancel it by hand",
+          },
+        }));
       } else if (u?.stripe_subscription_id) {
         try {
           await stripe.subscriptions.cancel(u.stripe_subscription_id);
+          subDisposition = `cancelled (${u.stripe_subscription_id})`;
           console.log(`lifetime granted for ${uid}; cancelled subscription ${u.stripe_subscription_id}`);
         } catch (e) {
           // Deliberately NOT a throw, unlike the entitlement write above: the
           // customer already holds what they paid for, and throwing here would
           // roll back the claim and re-run the grant. This leaves a live
           // subscription that a human must cancel.
+          subDisposition = `STILL LIVE — cancel failed (${u.stripe_subscription_id})`;
           console.error(
             `LIFETIME GRANTED for ${uid} BUT CANCEL FAILED for subscription ` +
             `${u.stripe_subscription_id} — CANCEL BY HAND:`,
             e,
           );
+          // A console.error alone is not an alert. This branch leaves a
+          // customer holding lifetime AND a live billing subscription, so it
+          // has to reach a person. Settings now keeps the cancel button
+          // visible in that state too, but we must not rely on the customer
+          // noticing they are being double-charged.
+          bg(notifySlack({
+            kind: "lifetime_cancel_failed",
+            email: u?.email ?? null,
+            sessionId: cs.id,
+            customerId: typeof cs.customer === "string" ? cs.customer : null,
+            fields: {
+              "User id": uid,
+              "Subscription": u.stripe_subscription_id,
+              "What happened": "Lifetime granted, but stripe.subscriptions.cancel failed — the customer is still being billed",
+              "Action": "Cancel this subscription by hand",
+            },
+          }));
         }
       } else {
         console.log(`lifetime granted for ${uid}; no linked subscription to cancel`);
@@ -234,6 +282,43 @@ Deno.serve(async (req: Request) => {
         },
       });
       if (evErr) console.error(`events lifetime_purchased insert failed for ${uid}:`, evErr);
+
+      // Same fire-and-forget treatment every other money event gets (see
+      // invoice.paid below): notifySlack/capturePosthog swallow their own
+      // errors, and bg() keeps them off the ACK path so neither can delay or
+      // fail the response to Stripe. Both run AFTER the grant, so by policy
+      // neither may throw — bg() guarantees that structurally.
+      bg(notifySlack({
+        kind: "lifetime_purchase",
+        email: u?.email ?? null,
+        amount: (cs.amount_total ?? 0) / 100,
+        currency: cs.currency,
+        sessionId: cs.id,
+        customerId: typeof cs.customer === "string" ? cs.customer : null,
+        fields: { "User id": uid, "Old subscription": subDisposition },
+      }));
+
+      // Fired as `retention_offer_accepted` with rung "lifetime" ON PURPOSE.
+      // The client deliberately does not fire it for this rung (nobody has paid
+      // at the point the browser hands off to Stripe), which left the funnel as
+      // retention_offer_shown{rung:lifetime} -> nothing, making the spec's
+      // "deflection rate per rung" unmeasurable for the one rung that brings in
+      // the most money. This closes the funnel from the only place that knows
+      // the payment actually completed. `reason` is not knowable here — the
+      // stated reason lives on the earlier lifetime_checkout_started row in
+      // `events`, joinable by checkout_session_id.
+      bg(capturePosthog({
+        event: "retention_offer_accepted",
+        distinctId: (u?.email ?? "").toLowerCase() || uid,
+        properties: {
+          rung: "lifetime",
+          amount: (cs.amount_total ?? 0) / 100,
+          currency: (cs.currency ?? "usd").toUpperCase(),
+          checkout_session_id: cs.id,
+          stripe_customer_id: typeof cs.customer === "string" ? cs.customer : null,
+          subscription_disposition: subDisposition,
+        },
+      }));
 
       return ACK();
     }

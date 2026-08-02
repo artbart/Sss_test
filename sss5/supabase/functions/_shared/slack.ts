@@ -17,7 +17,9 @@ type SlackEventKind =
   | "payment_failed"
   | "cancellation"
   | "cancel_scheduled"
-  | "account_created";
+  | "account_created"
+  | "lifetime_purchase"
+  | "lifetime_cancel_failed";
 
 const META: Record<SlackEventKind, { icon: string; title: string }> = {
   purchase: { icon: "🎉", title: "New purchase" },
@@ -26,6 +28,14 @@ const META: Record<SlackEventKind, { icon: string; title: string }> = {
   cancellation: { icon: "👋", title: "Subscription canceled" },
   cancel_scheduled: { icon: "🚨", title: "Cancel scheduled" },
   account_created: { icon: "👤", title: "Account created" },
+  // Largest single transaction on the account. Also the only way to notice
+  // that lifetime fulfilment is working at all: if
+  // checkout.session.completed is never enabled on the Stripe endpoint, the
+  // absence of this message is the signal.
+  lifetime_purchase: { icon: "💎", title: "Lifetime purchased" },
+  // Grant landed but the old subscription could not be cancelled — the
+  // customer holds lifetime AND is still being billed. Needs a human.
+  lifetime_cancel_failed: { icon: "🚨", title: "Lifetime granted — CANCEL SUBSCRIPTION BY HAND" },
 };
 
 export interface SlackNotifyInput {

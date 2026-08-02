@@ -8,8 +8,13 @@
 // V1 equivalent: start-authenticated-story. Same semantics, different quiz
 // schema + different generate-chapter target.
 //
-// Access rule: paid-through (users.current_period_end >= now).
-// Quota rule: 3 stories per user per calendar month (counts BOTH V1 + V2).
+// Access rule: lifetime OR paid-through — users.lifetime_at set grants permanent
+// access; otherwise users.current_period_end >= now. The single decision lives in
+// _shared/access.ts (resolveAccess + hasAccess); this file must never re-derive
+// it inline.
+// Quota rule: tier-dependent, via storyLimitFor(planTier) — 3 stories per user
+// per calendar month on 'standard', 1 on 'lite' (counts BOTH V1 + V2). Lifetime
+// does NOT lift the cap.
 // v5: setup_depth is optional and defaults to "quick" — the sweet-spice quiz path skips that step.
 
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
