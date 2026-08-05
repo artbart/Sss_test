@@ -109,8 +109,12 @@ const OPENING_STYLES: Record<string, string> = {
 
 const HEAT_LEVEL_DIRECTIVES: Record<string, string> = {
   sweet: "SWEET — no explicit sexual content. Deep emotional/romantic weight is welcome. Physical intimacy stays off-page or closed-door.",
-  spicy: "SPICY — explicit sexual content appears on the page in key scenes. Direct and sensory but not the constant focus. 1-2 substantial explicit scenes per chapter arc.",
-  very_spicy: "VERY SPICY — very explicit sexual content throughout. Direct language, sensory detail, character-driven. Multiple explicit scenes per chapter are expected when the story calls for them.",
+  spicy: `SPICY — explicit sexual content appears on the page in key scenes. Direct and sensory but not the constant focus. 1-2 substantial explicit scenes per chapter arc.
+
+VOCABULARY (SPICY): body parts are named directly at the moment of intimacy — cock, breasts, nipples, clit, ass, wet, hard, come — not exclusively through euphemism (hardness, length, member, heat, core, center, sex, entrance). Some literary phrasing is fine between the direct words; the direct words must appear. Fluids and orgasm are named ("she came", "he came", not only "she shattered" or "he found release").`,
+  very_spicy: `VERY SPICY — very explicit sexual content throughout. Multiple explicit scenes per chapter arc when the story calls for them.
+
+VOCABULARY (VERY SPICY — MANDATORY): body parts named with common, direct, vulgar words during intimate scenes: cock, cunt, pussy, ass, asshole, clit, tits, nipples, thighs, hole. Fluids and acts named directly: cum, come, come inside, wet, soaking, hard, thick, load, fuck, fucking. Do NOT default to euphemism (hardness, length, member, sex, entrance, heat, center, core, folds, essence, arousal, release, climax alone). Some literary sentences between the vulgar words are fine — the goal is that the reader who asked for "very spicy" reads WORDS like cock and cunt in the prose, not only elegant abstractions. If a scene has a body doing something, use the vulgar noun once every 3-4 sentences at minimum during that scene. This is a contract with the reader; sanitising into pure metaphor is a failure of the brief.`,
 };
 
 // Mood chips → parameter bundles + prose directives.
@@ -158,11 +162,11 @@ const SPECIFICS_DIRECTIVES: Record<string, string> = {
   marking: "Include physical marking — bruises, hickeys, bites, or visible evidence of intensity that lingers.",
   slow_denial: "Feature edging, orgasm denial, extended anticipation as a scene structure.",
   public_watched: "Include public or being-watched scenarios (see voyeur drill for direction).",
-  explicit_oral: "Explicit oral sex is on-page and detailed.",
-  explicit_anal: "Explicit anal is on-page and part of the scene work.",
+  explicit_oral: "Explicit oral sex is on-page and detailed. Name the acts and body parts directly (mouth on cock, tongue on clit, sucking, licking) — not exclusively through euphemism.",
+  explicit_anal: "Explicit anal is on-page and part of the scene work. Name it directly in the prose — ass, asshole, anal, in her ass, opening her — not 'from behind' or 'the other place'. The reader chose this on purpose; write it explicitly.",
   size_diff: "Physical size difference is a featured element (see size drill).",
-  breeding: "Breeding kink / creampie themes — the fantasy of one partner marking the other internally, sometimes with dynasty or possession subtext.",
-  filthy_talk: "Explicit, direct, filthy dirty talk. Match the register the reader picked — do not sanitize.",
+  breeding: "Breeding kink / creampie themes — one partner marking the other internally, sometimes with dynasty or possession subtext. Name the act in the prose: come inside her, cum inside, fill her, breed her, load, seed. The act of finishing inside is spoken and named, not only implied through afterglow.",
+  filthy_talk: "Explicit, direct, filthy dirty talk in dialogue during intimate scenes. Match the register the reader picked — do not sanitize.",
 };
 
 const BDSM_RESTRAINT_LEVELS: Record<string, string> = {
