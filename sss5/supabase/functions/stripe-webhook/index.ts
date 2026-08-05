@@ -109,6 +109,125 @@ Deno.serve(async (req: Request) => {
       // non-SSS events. None of these is an error: other products' checkout
       // sessions legitimately arrive at this endpoint.
       if (cs.mode !== "payment") return ACK();               // a subscription checkout, fulfilled via invoice.paid
+
+      // ────────────────────────────────────────────────────────────
+      // BRANCH: story pack top-up ($4.99 = 3 extra story credits).
+      // Created by create-story-pack-checkout; identified by
+      // metadata.type === "story_pack_3". Fulfilment: increment
+      // users.extra_story_credits by 3. Unlimited stacking — a user
+      // may buy any number of packs. Handled before the lifetime
+      // branch below because it's a different product on the SAME
+      // shared Stripe account; would otherwise be swallowed by the
+      // "not sss lifetime" ack-and-ignore path.
+      // ────────────────────────────────────────────────────────────
+      if (cs.metadata?.type === "story_pack_3") {
+        if (cs.payment_status !== "paid") {
+          console.warn(`story_pack_3 checkout ${cs.id} completed with payment_status=${cs.payment_status}; NOT fulfilling`);
+          return ACK();
+        }
+        const packUid = cs.metadata?.user_id;
+        if (!packUid) {
+          console.error(`story_pack_3 checkout ${cs.id} carries no user_id; MANUAL GRANT REQUIRED`);
+          return ACK();
+        }
+        // Server-authoritative amount — do NOT trust cs.metadata.credits.
+        // A tampered metadata value can't grant more than the constant.
+        const PACK_CREDITS = 3;
+
+        // Claim the event first (dedup). Same discipline as every other branch:
+        // 23505 = already handled; anything else means retry.
+        const { error: dupErr } = await db.from("stripe_events").insert({ id: event.id, type: event.type });
+        if (dupErr) {
+          if (dupErr.code !== "23505") {
+            console.error(`story_pack_3 dedup claim failed for session ${cs.id} (event ${event.id}):`, dupErr);
+            throw new Error("story_pack dedup claim failed");
+          }
+          return new Response("ok (dup)", { status: 200 });
+        }
+
+        // Grant credits atomically. RPC via raw SQL would be cleaner if we had
+        // one; using .update with computed column works because supabase-js
+        // sends this as a single UPDATE and Postgres serializes concurrent
+        // updates on the same row.
+        // We fetch → add → write. The unique event dedup above prevents this
+        // running twice for the same purchase.
+        const { data: userRow, error: readErr } = await db.from("users")
+          .select("email, display_name, extra_story_credits").eq("id", packUid).maybeSingle();
+        if (readErr || !userRow) {
+          console.error(`story_pack_3 grant failed to read user ${packUid} (session ${cs.id}):`, readErr);
+          throw new Error("story_pack user read failed");
+        }
+        const newCredits = (userRow.extra_story_credits ?? 0) + PACK_CREDITS;
+
+        const { data: updated, error: updErr } = await db.from("users")
+          .update({ extra_story_credits: newCredits })
+          .eq("id", packUid)
+          .select("id, extra_story_credits");
+        if (updErr) {
+          console.error(`story_pack_3 credit grant failed for user ${packUid} (session ${cs.id}):`, updErr);
+          throw new Error("story_pack credit grant failed");
+        }
+        if (!updated || updated.length === 0) {
+          console.error(`story_pack_3 grant matched NO users row for ${packUid} (session ${cs.id})`);
+          throw new Error("story_pack grant matched no user");
+        }
+
+        // --- Grant is live. Everything past here logs and never throws. ---
+
+        try {
+          await db.from("events").insert({
+            user_id: packUid,
+            email: userRow.email ?? null,
+            event_type: "story_pack_purchased",
+            metadata: {
+              checkout_session_id: cs.id,
+              payment_intent: cs.payment_intent ?? null,
+              amount_total: cs.amount_total ?? null,
+              currency: cs.currency ?? null,
+              credits_added: PACK_CREDITS,
+              extra_story_credits_after: newCredits,
+            },
+          });
+        } catch (e) {
+          console.warn(`[story_pack_3] event log failed (grant already applied):`, (e as Error)?.message);
+        }
+
+        // Best-effort confirmation email. Never throws — grant is already live.
+        try {
+          const resendKey = Deno.env.get("RESEND_API_KEY") ?? "";
+          const fromAddr = Deno.env.get("RESEND_FROM") ?? "Stuff So Sweet <hello@stuffsosweet.com>";
+          if (resendKey && userRow.email) {
+            const name = (userRow.display_name || "").trim() || "there";
+            await fetch("https://api.resend.com/emails", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${resendKey}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                from: fromAddr,
+                to: [userRow.email],
+                subject: "3 more stories unlocked",
+                html: `<div style="font-family:Georgia,serif;color:#111;line-height:1.6;max-width:520px">
+                  <p>Hi ${name},</p>
+                  <p>Your story-pack purchase went through — <strong>3 extra stories</strong> have been added to your account.</p>
+                  <p>Total credits now: <strong>${newCredits}</strong>. They never expire, and they stack on top of your monthly quota.</p>
+                  <p><a href="https://app.stuffsosweet.com/quiz2.html" style="color:#c11a2b;font-weight:600">Start your next story →</a></p>
+                  <p style="color:#666;font-size:13px">Stuff So Sweet · <a href="https://app.stuffsosweet.com/settings.html" style="color:#666">Manage account</a></p>
+                </div>`,
+              }),
+            });
+          }
+        } catch (e) {
+          console.warn(`[story_pack_3] confirmation email failed (grant already applied):`, (e as Error)?.message);
+        }
+
+        console.log(`story_pack_3 fulfilled: user=${packUid} session=${cs.id} +${PACK_CREDITS} credits → ${newCredits}`);
+        return ACK();
+      }
+
+      // ─── falls through to existing SSS lifetime branch below ───
+
       if ((cs.metadata?.app ?? "") !== "sss") {
         // Almost always another product on this shared account, which is why
         // this is an ACK and not an error. Logged anyway: if the marker is ever

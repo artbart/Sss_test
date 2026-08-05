@@ -76,7 +76,7 @@ Deno.serve(async (req: Request) => {
   const db = adminClient();
   const { data: profile, error: profErr } = await db
     .from("users")
-    .select("id, email, display_name, subscription_status, current_period_end")
+    .select("id, email, display_name, subscription_status, current_period_end, extra_story_credits")
     .eq("id", user.id)
     .maybeSingle();
   if (profErr || !profile) return jsonResponse({ error: "User profile not found", detail: profErr?.message }, 404);
@@ -94,6 +94,12 @@ Deno.serve(async (req: Request) => {
     );
   }
   const storyLimit = storyLimitFor(access.planTier);
+  // Lifetime credits from $4.99 story packs — added by stripe-webhook on
+  // checkout.session.completed with metadata.type=story_pack_3. Extend the
+  // monthly quota; consumed one-at-a-time when a user creates a story past
+  // the plan's base_limit (see decrement below, after the story insert).
+  const extraCredits = Number(profile.extra_story_credits ?? 0) || 0;
+  const effectiveLimit = storyLimit + extraCredits;
 
   // Monthly quota — counts V1 + V2 combined (all stories.user_id rows).
   const monthStart = startOfCurrentMonthISO();
@@ -105,19 +111,30 @@ Deno.serve(async (req: Request) => {
   if (countErr) return jsonResponse({ error: "Couldn't check monthly quota", detail: countErr.message }, 500);
 
   const used = createdThisMonth ?? 0;
-  if (used >= storyLimit) {
+  if (used >= effectiveLimit) {
+    // Blocked. Return `reason: "quota"` so the quiz frontend can offer the
+    // top-up modal inline instead of dumping the user out with an error.
     const resetIso = startOfNextMonthISO();
     await db.from("events").insert({
       user_id: profile.id, email: profile.email,
       event_type: "story_creation_blocked_monthly_cap",
-      metadata: { used, limit: storyLimit, resets_at: resetIso, quiz_version: 2 },
+      metadata: {
+        used, limit: storyLimit, extra_credits: extraCredits, effective_limit: effectiveLimit,
+        resets_at: resetIso, quiz_version: 2,
+      },
     });
     return jsonResponse({
-      error: `You've used all ${storyLimit} of your stories this month`,
-      detail: `Your quota resets at the start of next month.`,
-      used, limit: storyLimit, resets_at: resetIso,
+      error: `You've used all ${effectiveLimit} of your stories this month`,
+      detail: `Buy a story pack to keep going, or wait for the monthly reset.`,
+      reason: "quota",
+      used, limit: storyLimit, extra_credits: extraCredits, effective_limit: effectiveLimit,
+      resets_at: resetIso,
     }, 429);
   }
+  // If we're only allowed past the base_limit because credits exist, we owe
+  // Stripe a decrement AFTER the story insert lands (below). Flag now so the
+  // late code path doesn't have to re-derive the math.
+  const consumesCredit = used >= storyLimit && extraCredits > 0;
 
   // v5: sync display_name from q1b_you.name for accounts that don't have one yet.
   // Editing the name on a subsequent quiz2 does NOT overwrite display_name — that's
@@ -184,10 +201,42 @@ Deno.serve(async (req: Request) => {
     .select("id").single();
   if (storyErr) return jsonResponse({ error: "Couldn't create V2 story", detail: storyErr.message, code: storyErr.code ?? null }, 500);
 
+  // Consume one credit if this story is past the base monthly limit. The
+  // .gt("extra_story_credits", 0) guard makes it a no-op if a concurrent
+  // request already zeroed the pool — better a phantom-free story than a
+  // negative credit balance. The CHECK constraint on the column also blocks
+  // negatives at the DB layer as belt-and-braces.
+  let creditsAfter: number | null = null;
+  if (consumesCredit) {
+    // Read-then-write so we can return the post-decrement value to the
+    // client (for the "N credits left" hint). Same row, same request —
+    // race window is negligible in practice.
+    const { data: fresh } = await db.from("users")
+      .select("extra_story_credits").eq("id", profile.id).maybeSingle();
+    const current = Number(fresh?.extra_story_credits ?? 0) || 0;
+    if (current > 0) {
+      const next = current - 1;
+      const { data: dec, error: decErr } = await db.from("users")
+        .update({ extra_story_credits: next })
+        .eq("id", profile.id)
+        .gt("extra_story_credits", 0)
+        .select("extra_story_credits");
+      if (decErr) {
+        console.error(`credit decrement failed for user ${profile.id} story ${story.id}:`, decErr);
+      } else if (dec && dec.length) {
+        creditsAfter = Number(dec[0].extra_story_credits ?? 0);
+      }
+    }
+  }
+
   await db.from("events").insert({
     user_id: profile.id, email: profile.email,
     event_type: "story_started_authenticated", story_id: story.id,
-    metadata: { source: "app_quiz2", quiz_version: 2, used_after: used + 1, monthly_limit: storyLimit },
+    metadata: {
+      source: "app_quiz2", quiz_version: 2,
+      used_after: used + 1, monthly_limit: storyLimit,
+      credit_consumed: consumesCredit, extra_credits_after: creditsAfter,
+    },
   });
 
   // Trigger generate-chapter-v2 in the background (edge function has ~6-min
@@ -210,6 +259,11 @@ Deno.serve(async (req: Request) => {
     ok: true,
     story_id: story.id,
     quiz2_session_id: session.id,
-    quota: { used: used + 1, limit: storyLimit },
+    quota: {
+      used: used + 1,
+      limit: storyLimit,
+      extra_credits: creditsAfter ?? extraCredits,
+      credit_consumed: consumesCredit,
+    },
   });
 });
