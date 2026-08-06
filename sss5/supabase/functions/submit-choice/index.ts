@@ -19,6 +19,21 @@ import { handlePreflight, jsonResponse } from "../_shared/cors.ts";
 import { resolveAccess, hasAccess } from "../_shared/access.ts";
 import { getGenerateFunctionUrl, type QuizVersion } from "../_shared/version_router.ts";
 
+// Sanitize a single modifier string. Same principle as sanitizeFeedbackText
+// on chapter_ratings: strip HTML/XML tags, drop control chars (keep tab/LF),
+// cap length. Belt-and-braces defense — the model-generated modifiers
+// shouldn't contain anything nasty, but never trust client input.
+function sanitizeModifier(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  let s = raw;
+  s = s.replace(/<[^>]*>/g, "");
+  s = s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "");
+  s = s.trim();
+  if (s.length < 3) return null;
+  if (s.length > 80) s = s.slice(0, 80);
+  return s;
+}
+
 Deno.serve(async (req: Request) => {
   const pre = handlePreflight(req);
   if (pre) return pre;
@@ -27,7 +42,12 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ status: "error", message: "Method not allowed" }, 405);
   }
 
-  let body: { story_id?: string; chapter_number?: number | string; option?: number | string };
+  let body: {
+    story_id?: string;
+    chapter_number?: number | string;
+    option?: number | string;
+    modifiers?: unknown;   // IDEA #3 — reader-checked modifier chips (optional)
+  };
   try {
     body = await req.json();
   } catch (_) {
@@ -45,12 +65,24 @@ Deno.serve(async (req: Request) => {
     );
   }
 
+  // Validate + sanitize modifiers (optional).
+  let cleanModifiers: string[] | null = null;
+  if (Array.isArray(body.modifiers)) {
+    const cleaned = body.modifiers
+      .map(sanitizeModifier)
+      .filter((s): s is string => s !== null)
+      .slice(0, 10);   // safety cap on count
+    if (cleaned.length > 0) cleanModifiers = cleaned;
+  }
+
   const db = adminClient();
 
   // Load the chapter to check duplicate state and confirm the row exists.
+  // Also read next_options_modifiers so we can suppress writes on V1/legacy
+  // chapters (no modifiers were rendered → shouldn't be recording any).
   const { data: chapter, error: chErr } = await db
     .from("chapters")
-    .select("id, chosen_option")
+    .select("id, chosen_option, next_options_modifiers")
     .eq("story_id", storyId)
     .eq("chapter_number", chapterNumber)
     .maybeSingle();
@@ -89,13 +121,25 @@ Deno.serve(async (req: Request) => {
     );
   }
 
-  // Record the choice.
+  // Record the choice. Only persist modifiers if this chapter actually had
+  // modifier options rendered (guards V1 stories + edge cases where the
+  // client sends a modifiers array on a legacy chapter — DB shouldn't fill
+  // up with orphan writes).
+  const hadModifiers = chapter.next_options_modifiers != null
+    && typeof chapter.next_options_modifiers === "object"
+    && Object.keys(chapter.next_options_modifiers).length > 0;
+
+  const updatePayload: Record<string, unknown> = {
+    chosen_option: option,
+    chosen_at: new Date().toISOString(),
+  };
+  if (hadModifiers && cleanModifiers && cleanModifiers.length > 0) {
+    updatePayload.chosen_modifiers = cleanModifiers;
+  }
+
   const { error: upErr } = await db
     .from("chapters")
-    .update({
-      chosen_option: option,
-      chosen_at: new Date().toISOString(),
-    })
+    .update(updatePayload)
     .eq("id", chapter.id);
 
   if (upErr) {

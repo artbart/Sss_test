@@ -229,7 +229,7 @@ const OMEGAVERSE_TAGS: Record<string, string> = {
 // Q9 filter — removes conflicting picks before the prompt is built
 // ═══════════════════════════════════════════════════════════════════════════════
 
-interface ResolvedFilters {
+export interface ResolvedFilters {
   ban_kink: boolean;       // strip all BDSM specifics + drill data
   ban_dark: boolean;       // strip dark_obsessive/forbidden mood + dark drills
   ban_multi_partner: boolean;
@@ -238,7 +238,7 @@ interface ResolvedFilters {
   free_text_skips: string; // raw user text, injected as HIGHEST PRIORITY
 }
 
-function resolveQ9Filters(q9?: Quiz2Context["q9_skip"]): ResolvedFilters {
+export function resolveQ9Filters(q9?: Quiz2Context["q9_skip"]): ResolvedFilters {
   const base: ResolvedFilters = {
     ban_kink: false,
     ban_dark: false,
@@ -731,6 +731,12 @@ export interface ChapterNContextV2 {
   nextIntent: {
     goal?: string; arcPosition?: string; toneHint?: string; stakesLevel?: string;
   };
+  // Per-chapter tuning: reader-checked modifier chips from prev chapter's
+  // options (IDEA #3, "Shape this option"). Only populated when the reader
+  // actually checked one or more boxes. Prompt block is rendered only when
+  // this is non-empty; omitted otherwise so the model gets no signal that
+  // anything special is happening. See CHAPTER_TUNING_PLAN.md.
+  chosenModifiers?: string[];
 }
 
 export function chapterNPromptV2(ctx: ChapterNContextV2): string {
@@ -812,7 +818,17 @@ Closure hook: ${v(ctx.prevChapter.closureHook)}
 ═══ USER'S CHOICE (must clearly influence this chapter) ═══
 
 ${ctx.userChoiceText}
+${(ctx.chosenModifiers && ctx.chosenModifiers.length > 0) ? `
+═══ READER'S REQUESTED MODIFICATIONS ═══
 
+The reader also asked to include these specific beats in this chapter:
+${ctx.chosenModifiers.map(m => `- ${m}`).join("\n")}
+
+Weave them in naturally as part of the chosen option. Do not derail the
+option or the arc to accommodate them — treat them as flavor + emphasis
+on top of the base scene. If a modifier cannot fit organically, skip it
+rather than force it. Never violate the HARD LIMITS above.
+` : ""}
 ═══ NEXT CHAPTER INTENT ═══
 
 Goal: ${v(ctx.nextIntent.goal)}
@@ -870,9 +886,37 @@ NEXT_CHAPTER_STAKES_LEVEL:
 NEXT_OPTIONS_1:
 [option 1]
 
+NEXT_OPTIONS_1_MODIFIERS:
+[3-5 modifiers for option 1, one per line, see rules below]
+
 NEXT_OPTIONS_2:
 [option 2]
 
+NEXT_OPTIONS_2_MODIFIERS:
+[3-5 modifiers for option 2, one per line]
+
 NEXT_OPTIONS_3:
-[option 3]`;
+[option 3]
+
+NEXT_OPTIONS_3_MODIFIERS:
+[3-5 modifiers for option 3, one per line]
+
+═══ MODIFIERS RULES (for the _MODIFIERS sections above) ═══
+
+For each of the 3 next options, generate 3-5 SHORT modifiers the reader can
+optionally check to shape how that option plays out. Requirements:
+
+- Each modifier is a single specific beat, 3-6 words. Sensory, physical,
+  or dynamic. NOT abstract ("make it hotter" = bad; "held wrists above
+  head" = good).
+- Modifiers must fit the OPTION they're attached to. Bedroom modifiers
+  don't go on outdoor-confrontation options.
+- Never contradict the HARD LIMITS block above. Never introduce content
+  that violates the reader's heat_level ceiling from the quiz.
+- Range is wider than "sex." Include dynamic beats (dominance, tension,
+  power shifts), sensory beats (weight, breath, eye contact, scent), or
+  scene colour (setting details, small physical actions).
+- Additive only. Never negation ("less physical" = bad).
+- Output exactly one modifier per line under each NEXT_OPTIONS_N_MODIFIERS
+  label. No numbering, no bullets, no punctuation at end. Just the phrase.`;
 }
