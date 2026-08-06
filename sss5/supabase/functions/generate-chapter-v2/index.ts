@@ -34,94 +34,10 @@ import {
   type VarietyContext, type PriorStorySnapshot,
 } from "../_shared/variety.ts";
 import { generateChapterWithRetry } from "../_shared/generate_with_retry.ts";
+import { buildNextOptionsModifiersJson } from "../_shared/modifiers.ts";
 
 const CHAPTER_URL_BASE =
   Deno.env.get("CHAPTER_URL_BASE") ?? "https://stuffsosweet.com/chapter_update.html";
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Per-option modifiers (IDEA #3, "Shape this option")
-// Parse the NEXT_OPTIONS_N_MODIFIERS blocks the model produced, filter against
-// the reader's hard limits, return the {"1":[...],"2":[...],"3":[...]} shape
-// the frontend consumes. Best-effort throughout — never fails a chapter save.
-// See CHAPTER_TUNING_PLAN.md.
-// ═══════════════════════════════════════════════════════════════════════════════
-function parseModifierBlock(raw: string | undefined | null): string[] {
-  if (!raw) return [];
-  return raw
-    .split(/\n+/)
-    .map((line) => line.trim()
-      // Strip leading bullets / numbering (defense against model wrapping)
-      .replace(/^[-*•]\s*/, "")
-      .replace(/^\d+[\.\):-]\s*/, "")
-      // Strip trailing punctuation
-      .replace(/[\s.,;:]+$/, "")
-      .trim()
-    )
-    .filter((s) => s.length >= 3 && s.length <= 80)
-    .slice(0, 6);   // cap at 6 per option — the prompt asks for 3-5
-}
-
-// Keyword blacklists keyed off resolveQ9Filters output. Best-effort — the
-// prompt already tells the model to respect HARD LIMITS; this is defense in
-// depth for the checkbox-visible modifier chips. Case-insensitive substring.
-const FILTER_KEYWORDS = {
-  ban_kink:     ["bondage", "bound", "restraint", "restrained", "tied", "wrists held", "wrists above", "handcuff", "collar", "leash", "spank", "flog", "gag", "whip", "impact", "praise-kink", "praise kink", "begging"],
-  ban_dark:     ["threat", "captor", "captive", "kidnap", "stalker", "mafia", "villain", "possessive", "possession"],
-  ban_multi_partner: ["two men", "two women", "third", "another partner", "watching them", "watching us", "join", "threesome", "group"],
-  ban_voyeur:   ["voyeur", "watch", "watching", "audience", "public sex", "in front of", "mirror"],
-  cnc:          ["force", "forced", "no-safe-word", "cnc", "dubcon", "consensual-non-consent"],
-};
-
-function filterModifiersAgainstLimits(
-  modifiers: string[],
-  filters: {
-    ban_kink?: boolean; ban_dark?: boolean;
-    ban_multi_partner?: boolean; ban_voyeur?: boolean;
-    enforce_enthusiastic_consent?: boolean;
-    free_text_skips?: string;
-  },
-): string[] {
-  const banned: string[] = [];
-  if (filters.ban_kink)     banned.push(...FILTER_KEYWORDS.ban_kink);
-  if (filters.ban_dark)     banned.push(...FILTER_KEYWORDS.ban_dark);
-  if (filters.ban_multi_partner) banned.push(...FILTER_KEYWORDS.ban_multi_partner);
-  if (filters.ban_voyeur)   banned.push(...FILTER_KEYWORDS.ban_voyeur);
-  if (filters.enforce_enthusiastic_consent) banned.push(...FILTER_KEYWORDS.cnc);
-  // free_text_skips: split into rough tokens, filter modifiers that mention any
-  const freeTokens = (filters.free_text_skips ?? "")
-    .toLowerCase()
-    .split(/[\s,;.\n]+/)
-    .filter((t) => t.length >= 4);   // skip trivial words
-  banned.push(...freeTokens);
-
-  const kept = modifiers.filter((m) => {
-    const lower = m.toLowerCase();
-    return !banned.some((k) => lower.includes(k.toLowerCase()));
-  });
-  // If filtering left only 1 modifier for an option, better to show none —
-  // a lonely single checkbox looks weird. Caller decides on this per-list.
-  return kept;
-}
-
-// Build the {"1":[...],"2":[...],"3":[...]} JSONB payload for the chapters row.
-// Returns null if all three lists end up empty (frontend renders no checkboxes
-// at all in that case — clean fallback).
-function buildNextOptionsModifiersJson(
-  rawFields: Record<string, string>,
-  q9: { ban_kink?: boolean; ban_dark?: boolean; ban_multi_partner?: boolean; ban_voyeur?: boolean; enforce_enthusiastic_consent?: boolean; free_text_skips?: string },
-): { [k: string]: string[] } | null {
-  const out: { [k: string]: string[] } = {};
-  for (const n of [1, 2, 3]) {
-    const raw = rawFields[`NEXT_OPTIONS_${n}_MODIFIERS`];
-    const parsed = parseModifierBlock(raw);
-    const filtered = filterModifiersAgainstLimits(parsed, q9);
-    // Only surface a list if it has ≥2 modifiers — a lone checkbox is
-    // worse than none. Also protects against edge cases where the filter
-    // gutted the list.
-    if (filtered.length >= 2) out[String(n)] = filtered;
-  }
-  return Object.keys(out).length ? out : null;
-}
 
 Deno.serve(async (req: Request) => {
   const pre = handlePreflight(req);

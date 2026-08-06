@@ -25,6 +25,7 @@ import {
   chapter1Prompt, chapterNPrompt,
   type QuizContext, type ChapterNContext,
 } from "../_shared/prompts.ts";
+import { buildNextOptionsModifiersJson } from "../_shared/modifiers.ts";
 import {
   pickRandomBucket, pickRandomSeed,
   type VarietyContext, type PriorStorySnapshot,
@@ -175,6 +176,12 @@ async function generateChapterOne(db: ReturnType<typeof adminClient>, story: any
     last_error:              null,
   }).eq("id", story.id);
 
+  // Per-option modifier chips for chapter 2's options (IDEA #3).
+  // V1 has no q9_skip equivalent, so filters are empty — modifiers pass
+  // through as generated. The prompt already tells the model to respect
+  // the story's heat_level, so this is fine for legacy stories.
+  const modifiersCh1 = buildNextOptionsModifiersJson(f, {});
+
   // Insert chapter 1 row.
   await db.from("chapters").insert({
     story_id:                  story.id,
@@ -191,6 +198,7 @@ async function generateChapterOne(db: ReturnType<typeof adminClient>, story: any
     option_1:                  f.NEXT_OPTIONS_1,
     option_2:                  f.NEXT_OPTIONS_2,
     option_3:                  f.NEXT_OPTIONS_3,
+    next_options_modifiers:    modifiersCh1,
   });
 
   // Send email.
@@ -251,6 +259,8 @@ async function generateChapterN(db: ReturnType<typeof adminClient>, story: any, 
       toneHint:     prev.next_chapter_tone_hint    ?? undefined,
       stakesLevel:  prev.next_chapter_stakes_level ?? undefined,
     },
+    // IDEA #3 — modifiers the reader checked on the previous chapter's option
+    chosenModifiers: (prev.chosen_modifiers as string[] | null) ?? undefined,
   };
 
   const prompt = chapterNPrompt(ctx);
@@ -282,6 +292,8 @@ async function generateChapterN(db: ReturnType<typeof adminClient>, story: any, 
     last_error: null,
   }).eq("id", story.id);
 
+  const modifiersChN = buildNextOptionsModifiersJson(f, {});
+
   await db.from("chapters").insert({
     story_id:                  story.id,
     chapter_number:            n,
@@ -297,6 +309,7 @@ async function generateChapterN(db: ReturnType<typeof adminClient>, story: any, 
     option_1:                  f.NEXT_OPTIONS_1,
     option_2:                  f.NEXT_OPTIONS_2,
     option_3:                  f.NEXT_OPTIONS_3,
+    next_options_modifiers:    modifiersChN,
   });
 
   await sendChapterEmail(db, story.id, n, story.lead_email, story.title ?? "Your story",
