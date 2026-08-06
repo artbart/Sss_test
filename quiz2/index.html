@@ -2897,7 +2897,7 @@ function renderSuccess(){
   // is reached, which only happens after a real Stripe payment.
   // ============================================================
   //
-  // Important: cold-visiting /quiz/a.html?status=paid does NOT trigger
+  // Important: cold-visiting /quiz/a?status=paid does NOT trigger
   // anything. The URL is just a label. The events below fire only inside
   // renderSuccess, which is only reached via the Stripe Payment Element
   // confirmation path. There is no Stripe charge, no story creation, no
@@ -2911,7 +2911,7 @@ function renderSuccess(){
   try {
     const emailRaw = state.email || "";
     const emailForUrl = emailRaw.replace(/\+/g, "%2B").replace(/&/g, "%26");
-    const successUrl = "/quiz/a.html?status=paid" +
+    const successUrl = "/quiz/a?status=paid" +
       (emailRaw ? "&email=" + emailForUrl : "");
     window.history.replaceState(null, "", successUrl);
   } catch (_) { /* ignore */ }

@@ -1,2 +1,5 @@
 .DS_Store
 .tokens.md
+
+# Cloudflare Pages build output (cf-build.sh)
+_site/
