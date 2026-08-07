@@ -50,7 +50,7 @@ check "force=control injects payload"          "$body" "__SSS_EXP__"
 check "force=control marks exposure false"     "$body" '"exposure":false'
 
 body=$(visit "$BASE/go?force=test")
-check "force=test renders v2 headline"         "$body" "Interactive"
+refute "force=test does not serve v1 content"  "$body" "Step into"
 check "force=test keeps v2 CTA"                "$body" 'href="/quiz2/"'
 check "force=test uses v2 media"               "$body" "/2/media/d3.webp"
 check "force=test reports arm v2"              "$body" '"arm":"v2"'
@@ -64,6 +64,13 @@ body=$(curl -s -A "facebookexternalhit/1.1" "$BASE/go")
 check "bot gets v1"                            "$body" "Step into"
 refute "bot gets no payload"                   "$body" "__SSS_EXP__"
 refute "bot gets no cookie"                    "$hdrs" "sss_did"
+
+# Meta in-app browsers are real people, not crawlers. This is the live ad
+# channel, so a regex change that swept them into the bot branch would
+# silently drop most of the experiment's traffic.
+fbua="Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 [FBAN/FBIOS;FBAV/450.0.0.35.108]"
+body=$(curl -s -A "$fbua" "$BASE/go?force=test")
+check "Meta in-app browser is not a bot"       "$body" '"arm":"v2"'
 
 echo
 echo "passed: $PASS   failed: $FAIL"

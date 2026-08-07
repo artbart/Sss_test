@@ -23,8 +23,14 @@ const ARMS = {
 // Crawlers and link-preview scrapers always get control and never enter the
 // sample. Without this the Facebook ad preview card would flip between v1's
 // and v2's og:image on every scrape.
+//
+// Entries are deliberately crawler-specific. Bare app names like
+// "pinterest" or "telegram" also appear in those apps' IN-APP BROWSER
+// user-agents, which are real people tapping a link — matching those would
+// permanently force real ad visitors into control and silently drop them
+// from the sample.
 const BOT_RE =
-  /bot|crawler|spider|facebookexternalhit|twitterbot|slackbot|whatsapp|telegram|discord|embedly|pinterest|headlesschrome|lighthouse|preview|curl\/|wget/i;
+  /bot|crawler|spider|facebookexternalhit|twitterbot|slackbot|whatsapp\/|telegrambot|discordbot|embedly|pinterestbot|headlesschrome|lighthouse|curl\/|wget/i;
 
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
@@ -86,5 +92,5 @@ async function render(env, url, variant, exp, setCookieId) {
     );
   }
 
-  return new Response(html, { status: 200, headers });
+  return new Response(html, { status: res.ok ? 200 : res.status, headers });
 }
