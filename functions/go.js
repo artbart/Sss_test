@@ -32,6 +32,11 @@ const ARMS = {
 const BOT_RE =
   /bot|crawler|spider|facebookexternalhit|twitterbot|slackbot|whatsapp\/|telegrambot|discordbot|embedly|pinterestbot|headlesschrome|lighthouse|curl\/|wget/i;
 
+const FLAGS_TIMEOUT_MS = 600;
+
+// posthog-js writes its identity here (persistence: "localStorage+cookie").
+const PH_COOKIE = `ph_${POSTHOG_KEY}_posthog`;
+
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
 
@@ -46,7 +51,79 @@ export async function onRequestGet({ request, env }) {
     return render(env, url, forced, payload(forced, null, false), null);
   }
 
-  return render(env, url, "control", null, null); // Task 3 replaces this line
+  // The edge and the browser MUST agree on distinct_id. If they diverge, the
+  // edge renders v2 while posthog-js independently buckets the same person
+  // into control, and the experiment quietly measures noise.
+  const known = readDistinctId(request);
+  const distinctId = known || crypto.randomUUID();
+
+  const variant = await evaluateFlag(env, distinctId);
+
+  // PostHog unreachable, or the flag returned something unexpected: serve
+  // control and record NO exposure. The visitor is excluded from the
+  // experiment rather than silently stuffed into one arm, which keeps the
+  // remaining sample unbiased.
+  if (!variant) return render(env, url, "control", null, known ? null : distinctId);
+
+  return render(
+    env,
+    url,
+    variant,
+    payload(variant, distinctId, true),
+    known ? null : distinctId
+  );
+}
+
+function readDistinctId(request) {
+  const jar = parseCookies(request.headers.get("cookie") || "");
+
+  // Prefer the identity posthog-js already uses. Minting our own for a
+  // returning visitor would fork them into a second PostHog person and split
+  // their funnel across two distinct_ids.
+  const ph = jar[PH_COOKIE];
+  if (ph) {
+    try {
+      const id = JSON.parse(decodeURIComponent(ph)).distinct_id;
+      if (typeof id === "string" && id) return id;
+    } catch {
+      // Malformed cookie — fall through to sss_did.
+    }
+  }
+
+  return jar.sss_did || null;
+}
+
+function parseCookies(header) {
+  const jar = {};
+  for (const part of header.split(";")) {
+    const eq = part.indexOf("=");
+    if (eq < 0) continue;
+    jar[part.slice(0, eq).trim()] = part.slice(eq + 1).trim();
+  }
+  return jar;
+}
+
+async function evaluateFlag(env, distinctId) {
+  const host = env.POSTHOG_HOST || "https://eu.i.posthog.com";
+  try {
+    const res = await fetch(`${host}/flags?v=2`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ api_key: POSTHOG_KEY, distinct_id: distinctId }),
+      signal: AbortSignal.timeout(FLAGS_TIMEOUT_MS),
+    });
+    if (!res.ok) return null;
+
+    const json = await res.json();
+    // v2 envelope, confirmed against the live endpoint:
+    //   { errorsWhileComputingFlags, flags: { "landing-go": { variant, … } }, … }
+    // The featureFlags fallback covers the older v1 shape.
+    const v = json?.flags?.[FLAG_KEY]?.variant ?? json?.featureFlags?.[FLAG_KEY];
+    return v === "control" || v === "test" ? v : null;
+  } catch {
+    // Timeout, DNS failure, PostHog 5xx — all excluded rather than defaulted.
+    return null;
+  }
 }
 
 function payload(variant, distinctId, exposure) {

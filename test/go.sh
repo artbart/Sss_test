@@ -73,5 +73,41 @@ body=$(curl -s -A "$fbua" "$BASE/go?force=test")
 check "Meta in-app browser is not a bot"       "$body" '"arm":"v2"'
 
 echo
+echo "== live flag evaluation =="
+
+hdrs=$(curl -sD - -o /tmp/go-body.html "$BASE/go" -A "$UA")
+body=$(cat /tmp/go-body.html)
+check "real visitor gets a payload"            "$body" "__SSS_EXP__"
+check "real visitor is exposed"                "$body" '"exposure":true'
+check "new visitor gets an id cookie"          "$hdrs" "sss_did="
+check "cookie is locked down"                  "$hdrs" "SameSite=Lax"
+
+# Stickiness: the same id must produce the same arm, and must not be reissued.
+did="sticky-test-11111111"
+one=$(visit -b "sss_did=$did" "$BASE/go" | grep -o '"variant":"[a-z]*"' | head -1)
+two=$(visit -b "sss_did=$did" "$BASE/go" | grep -o '"variant":"[a-z]*"' | head -1)
+if [ -n "$one" ] && [ "$one" = "$two" ]; then ok "arm is sticky per distinct_id ($one)"
+else bad "arm is sticky per distinct_id ('$one' vs '$two')"; fi
+
+hdrs=$(curl -sD - -o /dev/null -b "sss_did=$did" -A "$UA" "$BASE/go")
+refute "known visitor is not re-cookied"       "$hdrs" "sss_did="
+
+# A posthog-js cookie must win over sss_did, so returning visitors are not
+# forked into a second PostHog person.
+phc=$(printf '%%7B%%22distinct_id%%22%%3A%%22ph-owned-id-42%%22%%7D')
+body=$(visit -b "ph_phc_BzHnof4mQ7dmxTetogNVJF4aEynfmgDP4uHs5LBQZrFu_posthog=$phc" "$BASE/go")
+check "posthog-js identity is reused"          "$body" '"distinctId":"ph-owned-id-42"'
+
+stop_dev
+
+echo
+echo "== PostHog unreachable =="
+start_dev --binding POSTHOG_HOST=http://127.0.0.1:9
+
+body=$(visit "$BASE/go")
+check "falls back to v1"                       "$body" "Step into"
+refute "excluded from experiment"              "$body" "__SSS_EXP__"
+
+echo
 echo "passed: $PASS   failed: $FAIL"
 [ "$FAIL" -eq 0 ]
