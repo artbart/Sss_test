@@ -21,6 +21,11 @@ trap 'rm -rf "$STAGE"' EXIT
 cp -a . "$STAGE/"
 
 # Static site only — exclude docs, edge functions, local tooling.
+#
+# functions/ must be pruned but NOT deleted from the repo: Cloudflare compiles
+# Pages Functions from the project root, not from the build output directory.
+# Copying it into _site would additionally publish go.js as a downloadable
+# static file at /functions/go.js.
 rm -rf \
   "$STAGE/.git" \
   "$STAGE/.github" \
@@ -29,6 +34,8 @@ rm -rf \
   "$STAGE/docs" \
   "$STAGE/sss5" \
   "$STAGE/supabase" \
+  "$STAGE/functions" \
+  "$STAGE/test" \
   "$STAGE/$OUT"
 rm -f \
   "$STAGE/.gitignore" \
