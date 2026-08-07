@@ -81,6 +81,7 @@ check "real visitor gets a payload"            "$body" "__SSS_EXP__"
 check "real visitor is exposed"                "$body" '"exposure":true'
 check "new visitor gets an id cookie"          "$hdrs" "sss_did="
 check "cookie is locked down"                  "$hdrs" "SameSite=Lax"
+check "cookie is not readable by scripts"      "$hdrs" "HttpOnly"
 
 # Stickiness: the same id must produce the same arm, and must not be reissued.
 did="sticky-test-11111111"
@@ -92,11 +93,18 @@ else bad "arm is sticky per distinct_id ('$one' vs '$two')"; fi
 hdrs=$(curl -sD - -o /dev/null -b "sss_did=$did" -A "$UA" "$BASE/go")
 refute "known visitor is not re-cookied"       "$hdrs" "sss_did="
 
-# A posthog-js cookie must win over sss_did, so returning visitors are not
-# forked into a second PostHog person.
-phc=$(printf '%%7B%%22distinct_id%%22%%3A%%22ph-owned-id-42%%22%%7D')
-body=$(visit -b "ph_phc_BzHnof4mQ7dmxTetogNVJF4aEynfmgDP4uHs5LBQZrFu_posthog=$phc" "$BASE/go")
-check "posthog-js identity is reused"          "$body" '"distinctId":"ph-owned-id-42"'
+# Precedence, not just presence: when BOTH cookies are present the
+# posthog-js identity must win, otherwise a returning visitor gets forked
+# into a second PostHog person and their funnel splits across two ids.
+phc='%7B%22distinct_id%22%3A%22ph-owned-id-42%22%7D'
+body=$(visit -b "ph_phc_BzHnof4mQ7dmxTetogNVJF4aEynfmgDP4uHs5LBQZrFu_posthog=$phc; sss_did=sss-owned-id-99" "$BASE/go")
+check "posthog-js identity beats sss_did"      "$body" '"distinctId":"ph-owned-id-42"'
+refute "sss_did does not win"                  "$body" "sss-owned-id-99"
+
+# A truncated or malformed posthog cookie must fall through to sss_did,
+# not throw and not mint a fresh identity.
+body=$(visit -b "ph_phc_BzHnof4mQ7dmxTetogNVJF4aEynfmgDP4uHs5LBQZrFu_posthog=%7Bnot-json; sss_did=fallback-id-77" "$BASE/go")
+check "malformed ph cookie falls back to sss_did" "$body" '"distinctId":"fallback-id-77"'
 
 stop_dev
 

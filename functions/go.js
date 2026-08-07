@@ -165,7 +165,7 @@ async function render(env, url, variant, exp, setCookieId) {
   if (setCookieId) {
     headers.append(
       "set-cookie",
-      `sss_did=${setCookieId}; Max-Age=31536000; Path=/; Secure; SameSite=Lax`
+      `sss_did=${setCookieId}; Max-Age=31536000; Path=/; Secure; HttpOnly; SameSite=Lax`
     );
   }
 
