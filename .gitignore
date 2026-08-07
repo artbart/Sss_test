@@ -3,3 +3,6 @@
 
 # Cloudflare Pages build output (cf-build.sh)
 _site/
+
+# wrangler pages dev local state
+.wrangler/

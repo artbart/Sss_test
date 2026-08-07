@@ -8,7 +8,15 @@ PROJECT="sss-home"
 STAGE=$(mktemp -d)
 trap 'rm -rf "$STAGE"' EXIT
 
-# Static site only — exclude docs, edge functions, local tooling
+# Static site only — exclude docs, edge functions, local tooling.
+#
+# functions/ is excluded because Cloudflare compiles Pages Functions from the
+# project root, not from a deployed asset directory. Whether `wrangler pages
+# deploy` picks them up from a staged directory at all is UNRESOLVED — the Git
+# integration (cf-build.sh) is the verified path and the one in use. If you ever
+# need this script to ship /go, verify first that the Function actually runs on
+# the resulting deployment; if it does not, pre-compile with
+# `wrangler pages functions build --outfile=_worker.js`.
 rsync -a \
   --exclude='.git' \
   --exclude='.gitignore' \
@@ -17,6 +25,11 @@ rsync -a \
   --exclude='supabase' \
   --exclude='.superpowers' \
   --exclude='deploy-cf.sh' \
+  --exclude='functions' \
+  --exclude='test' \
+  --exclude='cf-build.sh' \
+  --exclude='_site' \
+  --exclude='.wrangler' \
   ./ "$STAGE/"
 
 COMMIT_HASH=$(git rev-parse HEAD 2>/dev/null || echo "unknown")

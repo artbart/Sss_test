@@ -6,7 +6,14 @@
 //
 // The key below is a PUBLIC (publishable) PostHog key; it is meant to ship in
 // client-side code. Keep it identical to POSTHOG_KEY in sss-app/assets/lib.js.
-import posthog from "https://esm.sh/posthog-js@1";
+//
+// Pinned deliberately. This file depends on posthog-js internals that are not
+// part of its public contract — that bootstrap.featureFlags marks flags as
+// loaded so getFeatureFlag() emits rather than early-returning, and that
+// bootstrap.distinctID without isIdentifiedID takes the anonymous branch. A
+// silent 1.x bump could zero the experiment's participant count with no test
+// noticing. Bump deliberately, and re-verify the /go exposure when you do.
+import posthog from "https://esm.sh/posthog-js@1.414.0";
 
 const POSTHOG_KEY = "phc_BzHnof4mQ7dmxTetogNVJF4aEynfmgDP4uHs5LBQZrFu";
 const POSTHOG_HOST = "https://eu.i.posthog.com";
@@ -24,7 +31,42 @@ const ready = POSTHOG_KEY.startsWith("phc_") && !POSTHOG_KEY.includes("REPLACE")
 //
 // Path-derived rather than stored, so it stays correct through the whole
 // marketing-site journey without depending on localStorage surviving.
-const FUNNEL_VARIANT = /^\/(2|quiz2)(\/|$)/.test(location.pathname) ? "v2" : "v1";
+//
+// On /go the arm is decided at the edge by functions/go.js and injected as
+// window.__SSS_EXP__ before this module runs. Everywhere else it is still
+// derived from the path, which stays correct for direct visits to / and /2/.
+const EXP = window.__SSS_EXP__ || null;
+
+// Validated against "v1"/"v2" rather than trusted blindly: an EXP payload
+// missing arm would otherwise produce funnel_variant: undefined, which
+// JSON.stringify drops entirely — silently untagging every event on /go, the
+// exact failure this task exists to prevent. functions/go.js always sets arm
+// today; this is hardening, not a known gap.
+const FUNNEL_VARIANT =
+  EXP && (EXP.arm === "v1" || EXP.arm === "v2")
+    ? EXP.arm
+    : /^\/(2|quiz2)(\/|$)/.test(location.pathname)
+      ? "v2"
+      : "v1";
+
+// True when posthog-js already holds an identity of its own. BOTH stores must
+// be checked: persistence is "localStorage+cookie" and localStorage is the
+// authoritative copy — the cookie is only a partial mirror, and Safari expires
+// script-written cookies on a different clock than it purges storage. Reading
+// only the cookie would report "no identity" for a returning visitor who has
+// one, and we would bootstrap over it.
+const PH_STORE_KEY = `ph_${POSTHOG_KEY}_posthog`;
+
+const hasPhIdentity = (() => {
+  try {
+    if (window.localStorage && window.localStorage.getItem(PH_STORE_KEY)) return true;
+  } catch (_) {
+    // localStorage can throw in private mode / when storage is blocked.
+  }
+  return document.cookie
+    .split(";")
+    .some((c) => c.trim().startsWith(`${PH_STORE_KEY}=`));
+})();
 
 if (ready) {
   posthog.init(POSTHOG_KEY, {
@@ -38,9 +80,32 @@ if (ready) {
       maskAllInputs: true, // mask every form input (email, card fields, etc.) in replays
     },
     persistence: "localStorage+cookie",
+    // Adopt the edge's decision verbatim, or posthog-js would roll its own dice
+    // and disagree with the page it is looking at about half the time.
+    //
+    // distinctID is bootstrapped ONLY when posthog-js has no identity of its
+    // own. Passing one when it does drives posthog-js's anonymous branch, which
+    // resets $user_state to "anonymous" and overwrites $device_id — and since
+    // functions/go.js prefers the id posthog-js already holds, for an
+    // identified person that id is their email. Nothing is lost by skipping it:
+    // the edge read that id FROM posthog-js, so the two already agree.
+    bootstrap: EXP
+      ? {
+          featureFlags: { [EXP.flag]: EXP.variant },
+          ...(EXP.distinctId && !hasPhIdentity
+            ? { distinctID: EXP.distinctId }
+            : {}),
+        }
+      : undefined,
   });
   // Tag every event from this site, including which A/B arm it came from.
   posthog.register({ surface: "marketing", funnel_variant: FUNNEL_VARIANT });
+
+  // PostHog counts a user as participating in the experiment only when it
+  // receives $feature_flag_called. Bootstrapping alone does not emit it — so
+  // without this line the test renders perfectly and records zero
+  // participants. Skipped for ?force= QA traffic.
+  if (EXP && EXP.exposure) posthog.getFeatureFlag(EXP.flag);
 
   // Mirror the quiz's funnel steps into PostHog.
   //

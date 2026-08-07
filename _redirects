@@ -1,0 +1,8 @@
+# Cloudflare Pages redirects.
+#
+# Safety net only. Under `wrangler pages dev` the Function at functions/go.js
+# claims /go/ directly (verified: 200 with the injected payload), so this rule
+# never fires locally. It is kept in case production Pages routing does not
+# normalise the trailing slash to the Function, which would otherwise 404 a
+# URL people plausibly type. Query strings are preserved by default.
+/go/ /go 308
