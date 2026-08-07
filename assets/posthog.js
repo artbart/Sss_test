@@ -24,23 +24,56 @@ const ready = POSTHOG_KEY.startsWith("phc_") && !POSTHOG_KEY.includes("REPLACE")
 //
 // Path-derived rather than stored, so it stays correct through the whole
 // marketing-site journey without depending on localStorage surviving.
-const FUNNEL_VARIANT = /^\/(2|quiz2)(\/|$)/.test(location.pathname) ? "v2" : "v1";
+//
+// On /go the arm is decided at the edge by functions/go.js and injected as
+// window.__SSS_EXP__ before this module runs. Everywhere else it is still
+// derived from the path, which stays correct for direct visits to / and /2/.
+const EXP = (typeof window !== "undefined" && window.__SSS_EXP__) || null;
+
+const FUNNEL_VARIANT = EXP
+  ? EXP.arm
+  : /^\/(2|quiz2)(\/|$)/.test(location.pathname)
+    ? "v2"
+    : "v1";
 
 if (ready) {
   posthog.init(POSTHOG_KEY, {
     api_host: POSTHOG_HOST,
     ui_host: "https://eu.posthog.com",
     person_profiles: "identified_only", // anonymous visitors still tracked; merged on signup
-    capture_pageview: true,
+    // Captured manually below instead, so register() has already run and the
+    // first pageview carries funnel_variant. Previously init() fired $pageview
+    // before register(), leaving ~60% of marketing events untagged.
+    capture_pageview: false,
     capture_pageleave: true,
     autocapture: true,
     session_recording: {
       maskAllInputs: true, // mask every form input (email, card fields, etc.) in replays
     },
     persistence: "localStorage+cookie",
+    // Adopt the edge's decision verbatim. Without this posthog-js would roll
+    // its own dice and disagree with the page it is looking at about half the
+    // time. distinctID must match what the edge used, or the two are separate
+    // people. Absent on QA (?force=) requests, which carry no distinctId.
+    bootstrap: EXP && EXP.distinctId
+      ? {
+          distinctID: EXP.distinctId,
+          featureFlags: { [EXP.flag]: EXP.variant },
+        }
+      : undefined,
   });
   // Tag every event from this site, including which A/B arm it came from.
   posthog.register({ surface: "marketing", funnel_variant: FUNNEL_VARIANT });
+
+  // Now that the super properties are registered, the first pageview carries
+  // them. (This is the fix for the untagged-events gap described above.)
+  posthog.capture("$pageview");
+
+  // PostHog counts a user as participating in the experiment only when it
+  // receives $feature_flag_called. Bootstrapping alone does not emit it — so
+  // without this line the test renders perfectly and records zero
+  // participants. Skipped for ?force= QA traffic.
+  if (EXP && EXP.exposure) posthog.getFeatureFlag(EXP.flag);
 
   // Mirror the quiz's funnel steps into PostHog.
   //
