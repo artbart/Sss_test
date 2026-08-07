@@ -6,7 +6,14 @@
 //
 // The key below is a PUBLIC (publishable) PostHog key; it is meant to ship in
 // client-side code. Keep it identical to POSTHOG_KEY in sss-app/assets/lib.js.
-import posthog from "https://esm.sh/posthog-js@1";
+//
+// Pinned deliberately. This file depends on posthog-js internals that are not
+// part of its public contract — that bootstrap.featureFlags marks flags as
+// loaded so getFeatureFlag() emits rather than early-returning, and that
+// bootstrap.distinctID without isIdentifiedID takes the anonymous branch. A
+// silent 1.x bump could zero the experiment's participant count with no test
+// noticing. Bump deliberately, and re-verify the /go exposure when you do.
+import posthog from "https://esm.sh/posthog-js@1.414.0";
 
 const POSTHOG_KEY = "phc_BzHnof4mQ7dmxTetogNVJF4aEynfmgDP4uHs5LBQZrFu";
 const POSTHOG_HOST = "https://eu.i.posthog.com";
@@ -42,12 +49,24 @@ const FUNNEL_VARIANT =
       ? "v2"
       : "v1";
 
-// True when posthog-js already holds an identity of its own (its persistence
-// cookie exists). Used below to decide whether it is safe to bootstrap
-// distinctID without clobbering an existing identified person.
-const hasPhIdentity =
-  typeof document !== "undefined" &&
-  document.cookie.indexOf(`ph_${POSTHOG_KEY}_posthog=`) !== -1;
+// True when posthog-js already holds an identity of its own. BOTH stores must
+// be checked: persistence is "localStorage+cookie" and localStorage is the
+// authoritative copy — the cookie is only a partial mirror, and Safari expires
+// script-written cookies on a different clock than it purges storage. Reading
+// only the cookie would report "no identity" for a returning visitor who has
+// one, and we would bootstrap over it.
+const PH_STORE_KEY = `ph_${POSTHOG_KEY}_posthog`;
+
+const hasPhIdentity = (() => {
+  try {
+    if (window.localStorage && window.localStorage.getItem(PH_STORE_KEY)) return true;
+  } catch (_) {
+    // localStorage can throw in private mode / when storage is blocked.
+  }
+  return document.cookie
+    .split(";")
+    .some((c) => c.trim().startsWith(`${PH_STORE_KEY}=`));
+})();
 
 if (ready) {
   posthog.init(POSTHOG_KEY, {

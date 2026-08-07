@@ -168,10 +168,10 @@ check "/go/ has noindex"                   "$hdrs" "noindex"
 echo
 echo "== client wiring =="
 js=$(curl -s "$BASE/assets/posthog.js")
-check "reads the injected payload"             "$js" "__SSS_EXP__"
-check "bootstraps posthog-js"                  "$js" "bootstrap"
-check "emits the exposure event"               "$js" "getFeatureFlag"
-check "does not overwrite an existing identity" "$js" "hasPhIdentity"
+check "reads the injected payload"              "$js" "window.__SSS_EXP__ ||"
+check "bootstraps posthog-js"                   "$js" "bootstrap:"
+check "emits the exposure event"                "$js" "posthog.getFeatureFlag("
+check "does not overwrite an existing identity" "$js" "!hasPhIdentity"
 
 echo
 echo "passed: $PASS   failed: $FAIL"

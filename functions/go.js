@@ -145,9 +145,18 @@ async function render(env, url, variant, exp, setCookieId) {
     // A plain inline script. /assets/posthog.js is type="module" and therefore
     // deferred, so this always executes first regardless of where in <head> it
     // lands — which is what lets posthog-js bootstrap from it.
+    //
+    // The replacement is a FUNCTION, not a string: String.replace honours $&,
+    // $`, $' and $$ in a string replacement, and distinctId is unvalidated
+    // cookie input. A distinct_id containing one of those would corrupt the
+    // JSON, the inline script would throw, and posthog.js would fall back to
+    // its path regex — recording a v2 visitor as v1 with no exposure.
+    // Escaping "<" additionally stops a distinct_id containing "</script>"
+    // from breaking out of the element; JSON.stringify does not escape "/".
+    const json = JSON.stringify(exp).replace(/</g, "\\u003c");
     html = html.replace(
       "</head>",
-      `<script>window.__SSS_EXP__=${JSON.stringify(exp)};</script></head>`
+      () => `<script>window.__SSS_EXP__=${json};</script></head>`
     );
   }
 
