@@ -18,18 +18,18 @@ This has three problems:
 1. **Assignment lives outside the analytics tool.** Meta decides the split; PostHog cannot
    report significance, cannot change the ratio, and cannot ship a winner.
 2. **Two ad destinations means two sets of creative, budget, and reporting** to keep in sync.
-3. **The reporting is only ~40% complete.** Measured over 14 days on `stuffsosweet.com`:
-
-   | Path | Untagged `$pageview` | Tagged `$pageview` |
-   |---|---|---|
-   | `/` | 1,775 | 1,044 |
-   | `/quiz/a.html` | 1,500 | 709 |
-   | `/2/` | 52 | 133 |
-   | `/quiz2/` | 69 | 75 |
-
-   Every path shows the same pattern because `posthog.init({capture_pageview: true})` fires the
-   first `$pageview` *during* init, before `posthog.register({funnel_variant})` runs on the next
-   line. The current Meta A/B read is on a partial sample.
+3. ~~**The reporting is only ~40% complete**, due to an init/register ordering race.~~
+   **Corrected 2026-08-07 (Task 5 fix round 1): this was never true.** The original ~60%
+   untagged figure aggregated pageviews from before and after 2026-07-31, the date
+   `funnel_variant` first shipped — every event before that date lacks the property because it
+   did not exist yet, not because of any race. Verified by SQL: 0% tagged before 2026-08-01,
+   ~99% tagged from 2026-08-01 onward, with the residual gap decaying 63 → 10 → 8 → 1 as stale
+   cached copies of the old script expire. It is also disproven directly: 100% of the untagged
+   events still carry `surface`, the sibling property set by the *same* `register()` call — an
+   ordering race would have dropped both or neither. posthog-js has deferred its init pageview
+   by a macrotask (`setTimeout(…, 1)`) since ~1.130, and `register()` runs synchronously before
+   that macrotask fires, so there was never a race to begin with. See the corrected §9 below;
+   the `capture_pageview: false` change this section originally justified has been reverted.
 
 ## Goal
 
@@ -135,19 +135,24 @@ historical Meta-split data.
 ```js
 const EXP = window.__SSS_EXP__ || null;               // present only on /go
 
-const FUNNEL_VARIANT = EXP ? EXP.arm
+const FUNNEL_VARIANT = EXP && (EXP.arm === "v1" || EXP.arm === "v2") ? EXP.arm
   : (/^\/(2|quiz2)(\/|$)/.test(location.pathname) ? "v2" : "v1");
+
+// True only when posthog-js already holds an identity of its own.
+const hasPhIdentity = document.cookie.indexOf(`ph_${POSTHOG_KEY}_posthog=`) !== -1;
 
 posthog.init(POSTHOG_KEY, {
   …existing options…,
-  capture_pageview: false,                            // §9 fix — see below
-  bootstrap: EXP ? { distinctID: EXP.distinctId,
-                     featureFlags: { [EXP.flag]: EXP.variant } } : undefined,
+  capture_pageview: true,                             // unchanged — see corrected §9 below
+  bootstrap: EXP ? {
+    featureFlags: { [EXP.flag]: EXP.variant },
+    // distinctID only when posthog-js has no identity of its own — see corrected §9.
+    ...(EXP.distinctId && !hasPhIdentity ? { distinctID: EXP.distinctId } : {}),
+  } : undefined,
 });
 
 posthog.register({ surface: "marketing", funnel_variant: FUNNEL_VARIANT });
-posthog.capture("$pageview");                         // §9 fix — now carries the super props
-if (EXP) posthog.getFeatureFlag(EXP.flag);            // fires $feature_flag_called = exposure
+if (EXP && EXP.exposure) posthog.getFeatureFlag(EXP.flag); // fires $feature_flag_called = exposure
 ```
 
 `getFeatureFlag()` is load-bearing. PostHog counts a user as *in* the experiment only on
@@ -155,8 +160,16 @@ receipt of `$feature_flag_called` carrying `$feature_flag` and `$feature_flag_re
 bootstrapping alone does not emit it.
 
 Once a flag value is known, posthog-js also stamps `$feature/landing-go` onto **every**
-subsequent event automatically. Because bootstrap makes it known at init time, that tagging does
-not inherit the ordering race described in the Problem section.
+subsequent event automatically. Because bootstrap makes it known at init time, and
+`getFeatureFlag()` runs synchronously while the init `$pageview` fires on a deferred macrotask,
+exposure precedes that pageview — the correct order for PostHog experiment analysis.
+
+`distinctID` is deliberately bootstrapped only when posthog-js has no stored identity of its
+own (checked via its persistence cookie). `functions/go.js` prefers whatever id posthog-js
+already holds, so for a returning identified visitor that id is their **email address**.
+Passing it into `bootstrap.distinctID` unconditionally would drive posthog-js's anonymous
+branch, resetting `$user_state` to `"anonymous"` and overwriting `$device_id` with that email,
+cross-subdomain — silently de-identifying paying customers. See corrected §9.
 
 ### Downstream — unchanged
 
@@ -242,8 +255,8 @@ Verification checklist:
 7. With posthog blocked by an ad-blocker, `/go` still renders a complete page.
 8. Response carries `Cache-Control: no-store` and `X-Robots-Tag: noindex`.
 9. `/go/` redirects to `/go` with the query string intact.
-10. After the §9 fix, `$pageview` on `/`, `/2/`, and `/go` carries `funnel_variant` — verify the
-    untagged share drops toward zero.
+10. ~~After the §9 fix, `$pageview` on `/`, `/2/`, and `/go` carries `funnel_variant`.~~
+    Superseded — see corrected §9. No pageview-ordering fix was needed or shipped.
 
 ## What this experiment can and cannot resolve
 
@@ -261,15 +274,50 @@ Purchase is the correct business metric and stays primary. At this traffic it ca
 ~21% baseline and should reach significance in about two weeks; treat it as the early read.
 These timelines compress proportionally if `/go` carries more ad spend than `/` and `/2/` did.
 
-## §9 — folded-in fix: `funnel_variant` tagging race
+## §9 — corrected 2026-08-07: no `funnel_variant` tagging race, and a real identity bug found instead
 
-Approved as part of this change. In `assets/posthog.js`, set `capture_pageview: false` in
-`init()`, then `register()`, then `posthog.capture("$pageview")`.
+**This section originally proposed, and Task 5 shipped, `capture_pageview: false` in `init()`
+followed by `register()` then a manual `posthog.capture("$pageview")`, to fix a supposed
+init/register ordering race. That fix has been reverted. The race did not exist.**
 
-This affects every marketing page, not just `/go`. It is in scope because the same race would
-leave `/go`'s pageview untagged 60% of the time.
+What actually happened: `funnel_variant` first shipped on 2026-07-31. The ~60% "untagged"
+figure quoted in the Problem section aggregated pageviews from both before and after that date
+— events before 2026-07-31 lack `funnel_variant` because the property did not exist yet, full
+stop. SQL confirms: 0% tagged before 2026-08-01, ~99% tagged from 2026-08-01 onward, residual
+gap decaying 63 → 10 → 8 → 1 as stale cached copies of the pre-fix script expired from browsers
+and CDN edges. Independently, 100% of the untagged events carry `surface` — the sibling
+property set by the exact same `register()` call — which an ordering race would also have
+dropped. posthog-js has deferred its `init()` pageview by a macrotask (`setTimeout(…, 1)`)
+since roughly version 1.130; `register()` runs synchronously and always completes first. There
+was never a race.
 
-Historical data keeps the gap; only events after deploy are corrected.
+The reverted fix was also not behaviour-neutral: a bare `posthog.capture("$pageview")` loses
+posthog-js's built-in `visibilityState` gating, so prerendered and background-tab loads across
+all nine pages of the site would have started emitting `$pageview`, inflating that metric with a
+step change dated to this deploy — a regression the original fix would have introduced while
+"fixing" a bug that didn't exist.
+
+`capture_pageview: true` is restored, unchanged from before this task. No pageview-ordering
+change shipped.
+
+**A related but real bug was found and fixed while reviewing this:** `bootstrap.distinctID` was
+being set unconditionally whenever the edge (`functions/go.js`) supplied a `distinctId`. In
+posthog-js, passing `distinctID` into `bootstrap` drives its anonymous-identity branch — it sets
+`$user_state` to `"anonymous"` and calls `register({ distinct_id, $device_id })`, overwriting
+`$device_id` with whatever id was passed. `functions/go.js` deliberately prefers the id
+posthog-js already holds in its own cookie, and for an already-identified visitor that id is
+their **email address**. So a returning, identified customer landing on `/go` would be flipped
+to anonymous, with their email permanently overwriting `$device_id` — and because both keys are
+cookie-mirrored with `cross_subdomain_cookie` defaulting true, written to `.stuffsosweet.com`
+and carried to `app.stuffsosweet.com`. With `person_profiles: "identified_only"`, that
+visitor's subsequent events then stop updating their person profile. Measured exposure: 259
+distinct email-keyed identities produced 1,876 events on the marketing site in the trailing 30
+days — the paying users, and precisely who Meta retargeting sends to `/go`.
+
+Fix shipped: `featureFlags` is always bootstrapped (that's what makes the client agree with the
+page it renders, and it touches no identity); `distinctID` is bootstrapped only when posthog-js
+has no stored identity of its own, checked via presence of its `ph_<key>_posthog` cookie. See
+the corrected code block above.
 
 ## Files touched
 
@@ -277,7 +325,7 @@ Historical data keeps the gap; only events after deploy are corrected.
 |---|---|
 | `functions/go.js` | New — the Pages Function |
 | `_redirects` | New — `/go/` → `/go` |
-| `assets/posthog.js` | Bootstrap, exposure call, `arm` handling, §9 pageview fix |
+| `assets/posthog.js` | Bootstrap (flags always, distinctID only when no existing identity), exposure call, `arm` validation — no pageview-ordering change (see corrected §9) |
 | `cf-build.sh` | Add `functions` to the prune list |
 | `deploy-cf.sh` | Adjust after preview-deploy verification |
 | PostHog project 207201 | New `landing-go` flag + Experiment |

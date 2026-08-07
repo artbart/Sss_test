@@ -171,7 +171,7 @@ js=$(curl -s "$BASE/assets/posthog.js")
 check "reads the injected payload"             "$js" "__SSS_EXP__"
 check "bootstraps posthog-js"                  "$js" "bootstrap"
 check "emits the exposure event"               "$js" "getFeatureFlag"
-check "pageview is captured after register"    "$js" "capture_pageview: false"
+check "does not overwrite an existing identity" "$js" "hasPhIdentity"
 
 echo
 echo "passed: $PASS   failed: $FAIL"
