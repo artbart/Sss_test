@@ -93,6 +93,23 @@ else bad "arm is sticky per distinct_id ('$one' vs '$two')"; fi
 hdrs=$(curl -sD - -o /dev/null -b "sss_did=$did" -A "$UA" "$BASE/go")
 refute "known visitor is not re-cookied"       "$hdrs" "sss_did="
 
+# The injected payload must describe the page that was actually served. If
+# render() ever fetched one arm's asset while injecting the other arm's
+# payload, every result in the experiment would be wrong and every other
+# assertion here would still pass.
+for id in agree-a agree-b agree-c agree-d; do
+  b=$(visit -b "sss_did=$id" "$BASE/go")
+  if printf '%s' "$b" | grep -qF '"arm":"v2"'; then
+    if printf '%s' "$b" | grep -qF 'href="/quiz2/"'; then ok "payload v2 matches served page ($id)"
+    else bad "payload says v2 but page is v1 ($id)"; fi
+  elif printf '%s' "$b" | grep -qF '"arm":"v1"'; then
+    if printf '%s' "$b" | grep -qF 'href="/quiz/a"'; then ok "payload v1 matches served page ($id)"
+    else bad "payload says v1 but page is v2 ($id)"; fi
+  else
+    bad "no arm in payload ($id)"
+  fi
+done
+
 # Precedence, not just presence: when BOTH cookies are present the
 # posthog-js identity must win, otherwise a returning visitor gets forked
 # into a second PostHog person and their funnel splits across two ids.
@@ -115,6 +132,30 @@ start_dev --binding POSTHOG_HOST=http://127.0.0.1:9
 body=$(visit "$BASE/go")
 check "falls back to v1"                       "$body" "Step into"
 refute "excluded from experiment"              "$body" "__SSS_EXP__"
+
+echo
+echo "== trailing slash =="
+# The Function claims /go/ directly under wrangler pages dev — no redirect is
+# involved, so assert the OUTCOME (the slash form reaches the experiment with
+# its query string intact) rather than the mechanism, which differs between
+# local dev and production Pages.
+#
+# fbclid does not actually appear anywhere in the raw HTML body: the only
+# occurrence of the literal word "fbclid" is inside a client-side JS comment
+# ("Forward ?fbclid / ?promo / etc. to the quiz link"), present verbatim in
+# every response regardless of the request's actual query string — the real
+# forwarding happens in the browser via location.search, which curl never
+# executes. So instead of asserting a query-string value that cannot show up
+# server-side, assert that /go/ is a direct, fully-rendered Function response
+# (not a redirect stub) — force=test sets exposure:false by design (see
+# payload() in functions/go.js), so that's the value to check for here.
+body=$(visit "$BASE/go/?fbclid=abc123&force=test")
+check "/go/ reaches the experiment"        "$body" "__SSS_EXP__"
+check "/go/ serves the chosen arm"         "$body" '"arm":"v2"'
+check "/go/ is served, not redirected"     "$body" '"exposure":false'
+
+hdrs=$(visith "$BASE/go/?force=control")
+check "/go/ is not cacheable"              "$hdrs" "no-store"
 
 echo
 echo "passed: $PASS   failed: $FAIL"
