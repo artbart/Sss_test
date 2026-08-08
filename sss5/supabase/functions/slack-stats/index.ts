@@ -108,12 +108,21 @@ function monthlyCents(item: any): number {
 
 // ---------- windows / formatting ----------
 
-type Win = { d7: number; prev7: number; d30: number; prev30: number };
-const newWin = (): Win => ({ d7: 0, prev7: 0, d30: 0, prev30: 0 });
+type Win = {
+  d1: number;
+  prev1: number;
+  d7: number;
+  prev7: number;
+  d30: number;
+  prev30: number;
+};
+const newWin = (): Win => ({ d1: 0, prev1: 0, d7: 0, prev7: 0, d30: 0, prev30: 0 });
 
 function addToWindows(w: Win, tsSec: number, nowSec: number, amount = 1): void {
   const age = nowSec - tsSec;
   if (age < 0) return;
+  if (age <= 1 * DAY) w.d1 += amount;
+  else if (age <= 2 * DAY) w.prev1 += amount;
   if (age <= 7 * DAY) w.d7 += amount;
   else if (age <= 14 * DAY) w.prev7 += amount;
   if (age <= 30 * DAY) w.d30 += amount;
@@ -242,7 +251,8 @@ async function gatherStatsText(): Promise<string> {
     addToWindows(revenue, inv.created, nowSec, inv.amount_paid ?? 0);
   }
 
-  // ---- failed payments (7d): open/uncollectible with attempts ----
+  // ---- failed payments (24h + 7d): open/uncollectible with attempts ----
+  let failed1 = 0;
   let failed7 = 0;
   for (const status of ["open", "uncollectible"] as const) {
     for await (const inv of stripe.invoices.list({
@@ -253,6 +263,7 @@ async function gatherStatsText(): Promise<string> {
       if ((inv.attempt_count ?? 0) === 0) continue;
       if (!(await subIsOurs(invoiceSubId(inv)))) continue;
       failed7++;
+      if (inv.created >= nowSec - 1 * DAY) failed1++;
     }
   }
 
@@ -267,7 +278,9 @@ async function gatherStatsText(): Promise<string> {
 
   // ---- leads (Supabase quiz_sessions) ----
   const iso = (sec: number) => new Date(sec * 1000).toISOString();
-  const [leads7, leadsPrev7, leads30, leadsPrev30] = await Promise.all([
+  const [leads1, leadsPrev1, leads7, leadsPrev7, leads30, leadsPrev30] = await Promise.all([
+    leadCount(db, iso(nowSec - 1 * DAY), iso(nowSec + 60)),
+    leadCount(db, iso(nowSec - 2 * DAY), iso(nowSec - 1 * DAY)),
     leadCount(db, iso(nowSec - 7 * DAY), iso(nowSec + 60)),
     leadCount(db, iso(nowSec - 14 * DAY), iso(nowSec - 7 * DAY)),
     leadCount(db, iso(nowSec - 30 * DAY), iso(nowSec + 60)),
@@ -284,6 +297,10 @@ async function gatherStatsText(): Promise<string> {
   return [
     `*📊 Stuff So Sweet — right now*`,
     `Active: *${activeCount}*${trialingCount ? ` (+${trialingCount} trialing)` : ""} · MRR: *${usd(mrrCents)}* · Plans: ${mix}`,
+    ``,
+    `*Last 24 hours* (vs prev 24h)`,
+    `New subs *${newSubs.d1}* (${pct(newSubs.d1, newSubs.prev1)}) · Cancels ${cancels.d1} (${pct(cancels.d1, cancels.prev1)}) · Revenue *${usd(revenue.d1)}* (${pct(revenue.d1, revenue.prev1)}) · Refunds ${usd(refunds.d1)} · Leads ${leads1} (${pct(leads1, leadsPrev1)})`,
+    `Failed payments (24h): ${failed1}`,
     ``,
     `*Last 7 days* (vs prev 7d)`,
     `New subs *${newSubs.d7}* (${pct(newSubs.d7, newSubs.prev7)}) · Cancels ${cancels.d7} (${pct(cancels.d7, cancels.prev7)}) · Revenue *${usd(revenue.d7)}* (${pct(revenue.d7, revenue.prev7)}) · Refunds ${usd(refunds.d7)} · Leads ${leads7} (${pct(leads7, leadsPrev7)})`,
