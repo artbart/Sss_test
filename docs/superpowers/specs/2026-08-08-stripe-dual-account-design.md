@@ -188,8 +188,45 @@ Swap `STRIPE_PUBLISHABLE_KEY` to astronaut's `pk_live_` in `quiz/a.html` and
 new-customer-only surfaces, so no dual handling is needed. `retention-offer`
 and `create-story-pack-checkout` use hosted Checkout and need no client key.
 
-**Still required from the user:** astronaut's `pk_live_` publishable key, its
-secret key, and its webhook signing secret once the endpoint is registered.
+Astronaut's `pk_live_` is
+`pk_live_51U287eKdnhowNC0W2El5F5tnREZd1h6gJpNquWoYH3qE1dXxIN5hgLXlJquMjCZaAPJTVjagfTTrxjotd6KCqYws00c5Em8gEd`.
+**Not yet applied** — the funnel key swap is cutover step 4, deliberately last.
+
+## Infrastructure — DONE 2026-08-08
+
+- Astronaut secret key verified: `acct_1U287eKdnhowNC0W`, `charges_enabled`
+  and `payouts_enabled` both true.
+- Webhook endpoint registered on astronaut: `we_1U2B26KdnhowNC0Wkb3tDiCn`,
+  same URL as leadoni, subscribing to the identical five events
+  (`invoice.paid`, `invoice.payment_failed`,
+  `customer.subscription.updated`, `customer.subscription.deleted`,
+  `checkout.session.completed`). `checkout.session.completed` is what drives
+  lifetime fulfilment — its absence is silent, so parity here matters.
+- Nine `STRIPE_ASTRONAUT_*` secrets set on `gmhbcxylqubhxozomhlt`: secret key,
+  webhook secret, and the seven price ids. No existing `STRIPE_*` secret was
+  touched.
+
+Note the webhook endpoint is live *before* the code understands its signing
+secret. Harmless: astronaut has no customers, so no events will fire until
+cutover step 4. If that step is delayed by weeks, re-check the endpoint hasn't
+been auto-disabled by Stripe for sustained delivery failures.
+
+## Open business question: settlement currency
+
+Leadoni settles in **USD** (its balance is USD). Astronaut is registered in
+**Lithuania with EUR as its default currency**, while every price on it is
+**USD** — matching leadoni, as intended for price parity.
+
+Charges are unaffected: customers pay the same USD amounts either way. But
+astronaut will accumulate a USD balance that Stripe converts to EUR at payout,
+typically around a 2% currency-conversion fee. That is a margin cost which
+would show up as an unexplained gap between reported revenue and money
+received, with nothing in the codebase to point at.
+
+This is a business decision, not a code one, and it is **not resolved**.
+Options: accept the conversion cost; attach a USD bank account to astronaut if
+available for an LT entity; or price astronaut in EUR, which breaks parity with
+leadoni and changes what customers see in the funnel.
 
 ## Cutover order
 
