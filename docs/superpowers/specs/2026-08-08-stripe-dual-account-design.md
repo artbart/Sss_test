@@ -223,10 +223,28 @@ typically around a 2% currency-conversion fee. That is a margin cost which
 would show up as an unexplained gap between reported revenue and money
 received, with nothing in the codebase to point at.
 
-This is a business decision, not a code one, and it is **not resolved**.
-Options: accept the conversion cost; attach a USD bank account to astronaut if
-available for an LT entity; or price astronaut in EUR, which breaks parity with
-leadoni and changes what customers see in the funnel.
+**DEFERRED 2026-08-08** — not a blocker, revisit when convenient.
+
+Researched so it does not need re-doing. Stripe's `country_specs/LT` lists
+`usd` among `supported_bank_account_currencies` (bank held in `LT` or `US`), so
+**a Lithuanian account can pay out USD directly** — attaching a
+USD-denominated bank account and making it the default for USD removes the
+conversion entirely. Country (`LT`) and `default_currency` (`eur`) themselves
+are fixed at account creation and cannot be changed; a USD-native account would
+require a new Stripe account under a US entity.
+
+Note Stripe holds balances per presentment currency — leadoni's balance is
+`usd`, not converted EUR — so astronaut will accumulate USD too. The FX cost
+applies only at payout, and only while no USD payout destination exists.
+
+The catch is practical: it must be a genuinely USD-denominated account (Wise
+Business, Revolut Business, Payoneer, or a bank USD sub-account). A standard
+Lithuanian EUR IBAN will not do.
+
+Pricing astronaut in EUR was considered and rejected: it breaks price parity
+with leadoni, changes what customers see in the funnel, and would make
+`/stats-sss` sum two currencies as though they were one — a customer-visible
+change to solve a back-office problem.
 
 ## Cutover order
 
