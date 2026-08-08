@@ -8,12 +8,22 @@
 // EdgeRuntime.waitUntil -> POST the report to response_url (Slack accepts it
 // for up to 30 minutes). On failure, POST an ephemeral error instead.
 //
-// SHARED STRIPE ACCOUNT: this account also hosts other products. Only
-// subscriptions carrying metadata.session_id count (ours() — same ownership
-// rule as stripe-webhook); invoices/refunds are attributed via their
-// subscription through subCache.
+// TWO STRIPE ACCOUNTS: figures are gathered from leadoni and astronaut and
+// summed into one combined report. leadoni is shared with PhaseMap, so only
+// subscriptions carrying metadata.session_id count there (ours() — same
+// ownership rule as stripe-webhook); astronaut is SSS-dedicated, so
+// everything on it counts. Invoices/refunds are attributed via their
+// subscription through a PER-ACCOUNT subCache — a sub_... id is only
+// meaningful on the account that issued it.
 
-import { stripe } from "../_shared/stripe.ts";
+import {
+  stripeFor,
+  STRIPE_ACCOUNTS,
+  requiresOwnershipMarker,
+  priceFor,
+  envKeyFor,
+  type StripeAccount,
+} from "../_shared/stripe.ts";
 import { adminClient } from "../_shared/db.ts";
 
 const SIGNING_SECRET = Deno.env.get("SLACK_SIGNING_SECRET");
@@ -21,14 +31,14 @@ const enc = new TextEncoder();
 const DAY = 86_400;
 
 // Map Stripe price ids -> funnel plan labels for the plan-mix line.
+// Both accounts' price ids map to the SAME label, so "8w" aggregates across
+// leadoni and astronaut into one plan-mix entry rather than splitting in two.
 const PLAN_LABELS: Record<string, string> = {};
-for (const [envKey, label] of [
-  ["STRIPE_PRICE_1W", "1w"],
-  ["STRIPE_PRICE_4W", "4w"],
-  ["STRIPE_PRICE_8W", "8w"],
-] as const) {
-  const id = Deno.env.get(envKey);
-  if (id) PLAN_LABELS[id] = label;
+for (const account of STRIPE_ACCOUNTS) {
+  for (const key of ["1W", "4W", "8W"] as const) {
+    const id = priceFor(account, key);
+    if (id) PLAN_LABELS[id] = key.toLowerCase();
+  }
 }
 
 // ---------- Slack signature (auth) ----------
@@ -62,8 +72,13 @@ async function validSignature(req: Request, rawBody: string): Promise<boolean> {
 
 // ---------- SSS ownership + Basil helpers (same rules as stripe-webhook) ----------
 
+// leadoni is shared with PhaseMap, so SSS subs are identified by
+// metadata.session_id. astronaut is SSS-dedicated — everything on it counts,
+// including subscriptions created by hand in the dashboard, which the marker
+// would otherwise hide.
 // deno-lint-ignore no-explicit-any
-function ours(sub: any): boolean {
+function ours(sub: any, account: StripeAccount): boolean {
+  if (!requiresOwnershipMarker(account)) return true;
   return !!sub?.metadata?.session_id;
 }
 
@@ -88,9 +103,13 @@ function isFullyDiscounted(sub: any): boolean {
 // Subscriptions on a TEST price are ours and pay real (tiny) money, so neither
 // ours() nor isFullyDiscounted() catches them — they were silently inflating
 // active count, MRR and plan mix. Excluded from ALL stats.
-const TEST_PRICE_IDS = new Set(
-  [Deno.env.get("STRIPE_PRICE_TEST")].filter((v): v is string => !!v),
-);
+// Built from BOTH accounts: astronaut has its own TEST price, and leaving it
+// out would reintroduce the same distortion on the new account.
+const TEST_PRICE_IDS = new Set<string>();
+for (const account of STRIPE_ACCOUNTS) {
+  const id = priceFor(account, "TEST");
+  if (id) TEST_PRICE_IDS.add(id);
+}
 
 // deno-lint-ignore no-explicit-any
 function isTestSub(sub: any): boolean {
@@ -177,118 +196,134 @@ async function gatherStatsText(): Promise<string> {
   const nowSec = Math.floor(Date.now() / 1000);
   const db = adminClient();
 
-  // subId -> is it an SSS subscription. Seeded by every sub we page through;
-  // lazy retrieve for invoice/refund subs we haven't seen (bounded to one
-  // lookup per distinct sub per invocation — matters on the shared account).
-  const subCache = new Map<string, boolean>();
-  // deno-lint-ignore no-explicit-any
-  const cacheSub = (s: any) => subCache.set(s.id, ours(s) && !isTestSub(s));
-  async function subIsOurs(subId: string | null): Promise<boolean> {
-    if (!subId) return false;
-    const hit = subCache.get(subId);
-    if (hit !== undefined) return hit;
-    let val = false;
-    try {
-      val = ours(await stripe.subscriptions.retrieve(subId));
-    } catch (e) {
-      console.warn("subscriptions.retrieve failed:", subId, e);
-    }
-    subCache.set(subId, val);
-    return val;
-  }
-
-  // ---- right now: actives (+trialing), MRR, plan mix ----
+  // Accumulators are shared across BOTH accounts so the report shows one
+  // combined picture rather than two half-pictures.
   let activeCount = 0;
   let trialingCount = 0;
   let mrrCents = 0;
   const planMix = new Map<string, number>();
-  for (const status of ["active", "trialing"] as const) {
-    for await (const sub of stripe.subscriptions.list({ status, limit: 100, expand: ["data.discounts"] })) {
-      cacheSub(sub);
-      if (!ours(sub) || isFullyDiscounted(sub) || isTestSub(sub)) continue;
-      if (status === "active") activeCount++;
-      else trialingCount++;
-      for (const item of sub.items?.data ?? []) {
-        mrrCents += monthlyCents(item);
-        const label = PLAN_LABELS[item.price?.id ?? ""] ?? item.price?.nickname ?? item.price?.id ?? "?";
-        planMix.set(label, (planMix.get(label) ?? 0) + 1);
-      }
-    }
-  }
-
-  // ---- new subscribers (60d lookback covers 30d + prev 30d) ----
   const newSubs = newWin();
-  for await (const sub of stripe.subscriptions.list({
-    status: "all",
-    created: { gte: nowSec - 60 * DAY },
-    limit: 100,
-    expand: ["data.discounts"],
-  })) {
-    cacheSub(sub);
-    if (!ours(sub)) continue;
-    // Checkout creates the Stripe subscription BEFORE payment; incomplete_*
-    // are abandoned carts, not signups.
-    if (sub.status === "incomplete" || sub.status === "incomplete_expired") continue;
-    if (isFullyDiscounted(sub) || isTestSub(sub)) continue; // test/free users
-    addToWindows(newSubs, sub.created, nowSec);
-  }
-
-  // ---- cancellations (caveat: Stripe omits canceled subs of deleted customers) ----
   const cancels = newWin();
-  // Bounded scan: the list API can't filter by canceled_at, so bound by
-  // created instead. Any sub cancelable within our 60d windows existed
-  // recently; a 2-year created horizon comfortably covers every SSS sub
-  // (product launched 2026-04) while keeping this loop from paging the
-  // shared account's entire cancellation history forever.
-  for await (const sub of stripe.subscriptions.list({
-    status: "canceled",
-    created: { gte: nowSec - 730 * DAY },
-    limit: 100,
-    expand: ["data.discounts"],
-  })) {
-    cacheSub(sub);
-    if (!ours(sub) || isFullyDiscounted(sub) || isTestSub(sub)) continue;
-    if (sub.canceled_at) addToWindows(cancels, sub.canceled_at, nowSec);
-  }
-
-  // ---- revenue: paid invoices > $0 (100%-off promos emit real paid $0 invoices) ----
   const revenue = newWin();
-  const invoiceSub = new Map<string, string | null>(); // reused for refund attribution
-  for await (const inv of stripe.invoices.list({
-    status: "paid",
-    created: { gte: nowSec - 60 * DAY },
-    limit: 100,
-  })) {
-    const subId = invoiceSubId(inv);
-    if (inv.id) invoiceSub.set(inv.id, subId);
-    if ((inv.amount_paid ?? 0) <= 0) continue;
-    if (!(await subIsOurs(subId))) continue;
-    addToWindows(revenue, inv.created, nowSec, inv.amount_paid ?? 0);
-  }
-
-  // ---- failed payments (24h + 7d): open/uncollectible with attempts ----
+  const refunds = newWin();
   let failed1 = 0;
   let failed7 = 0;
-  for (const status of ["open", "uncollectible"] as const) {
+
+  for (const account of STRIPE_ACCOUNTS) {
+    // A missing key means that account is not configured yet — skip rather
+    // than fail the whole report.
+    if (!Deno.env.get(envKeyFor(account, "SECRET_KEY"))) {
+      console.log(`slack-stats: skipping ${account} — no secret key configured`);
+      continue;
+    }
+    const stripe = stripeFor(account);
+
+    // subId -> is it a countable SSS subscription. PER ACCOUNT on purpose: a
+    // sub_... id is only meaningful on the account that issued it, so one
+    // shared cache would let a leadoni id answer an astronaut lookup.
+    // Seeded by every sub we page through; lazy retrieve for invoice/refund
+    // subs we haven't seen (bounded to one lookup per distinct sub).
+    const subCache = new Map<string, boolean>();
+    // deno-lint-ignore no-explicit-any
+    const cacheSub = (s: any) => subCache.set(s.id, ours(s, account) && !isTestSub(s));
+    const subIsOurs = async (subId: string | null): Promise<boolean> => {
+      if (!subId) return false;
+      const hit = subCache.get(subId);
+      if (hit !== undefined) return hit;
+      let val = false;
+      try {
+        const sub = await stripe.subscriptions.retrieve(subId);
+        val = ours(sub, account) && !isTestSub(sub);
+      } catch (e) {
+        console.warn(`subscriptions.retrieve failed on ${account}:`, subId, e);
+      }
+      subCache.set(subId, val);
+      return val;
+    };
+
+    // ---- right now: actives (+trialing), MRR, plan mix ----
+    for (const status of ["active", "trialing"] as const) {
+      for await (const sub of stripe.subscriptions.list({ status, limit: 100, expand: ["data.discounts"] })) {
+        cacheSub(sub);
+        if (!ours(sub, account) || isFullyDiscounted(sub) || isTestSub(sub)) continue;
+        if (status === "active") activeCount++;
+        else trialingCount++;
+        for (const item of sub.items?.data ?? []) {
+          mrrCents += monthlyCents(item);
+          const label = PLAN_LABELS[item.price?.id ?? ""] ?? item.price?.nickname ?? item.price?.id ?? "?";
+          planMix.set(label, (planMix.get(label) ?? 0) + 1);
+        }
+      }
+    }
+
+    // ---- new subscribers (60d lookback covers 30d + prev 30d) ----
+    for await (const sub of stripe.subscriptions.list({
+      status: "all",
+      created: { gte: nowSec - 60 * DAY },
+      limit: 100,
+      expand: ["data.discounts"],
+    })) {
+      cacheSub(sub);
+      if (!ours(sub, account)) continue;
+      // Checkout creates the Stripe subscription BEFORE payment; incomplete_*
+      // are abandoned carts, not signups.
+      if (sub.status === "incomplete" || sub.status === "incomplete_expired") continue;
+      if (isFullyDiscounted(sub) || isTestSub(sub)) continue; // test/free users
+      addToWindows(newSubs, sub.created, nowSec);
+    }
+
+    // ---- cancellations (caveat: Stripe omits canceled subs of deleted customers) ----
+    // Bounded scan: the list API can't filter by canceled_at, so bound by
+    // created instead. Any sub cancelable within our 60d windows existed
+    // recently; a 2-year created horizon comfortably covers every SSS sub
+    // (product launched 2026-04) while keeping this loop from paging the
+    // shared account's entire cancellation history forever.
+    for await (const sub of stripe.subscriptions.list({
+      status: "canceled",
+      created: { gte: nowSec - 730 * DAY },
+      limit: 100,
+      expand: ["data.discounts"],
+    })) {
+      cacheSub(sub);
+      if (!ours(sub, account) || isFullyDiscounted(sub) || isTestSub(sub)) continue;
+      if (sub.canceled_at) addToWindows(cancels, sub.canceled_at, nowSec);
+    }
+
+    // ---- revenue: paid invoices > $0 (100%-off promos emit real paid $0 invoices) ----
+    const invoiceSub = new Map<string, string | null>(); // reused for refund attribution
     for await (const inv of stripe.invoices.list({
-      status,
-      created: { gte: nowSec - 7 * DAY },
+      status: "paid",
+      created: { gte: nowSec - 60 * DAY },
       limit: 100,
     })) {
-      if ((inv.attempt_count ?? 0) === 0) continue;
-      if (!(await subIsOurs(invoiceSubId(inv)))) continue;
-      failed7++;
-      if (inv.created >= nowSec - 1 * DAY) failed1++;
+      const subId = invoiceSubId(inv);
+      if (inv.id) invoiceSub.set(inv.id, subId);
+      if ((inv.amount_paid ?? 0) <= 0) continue;
+      if (!(await subIsOurs(subId))) continue;
+      addToWindows(revenue, inv.created, nowSec, inv.amount_paid ?? 0);
     }
-  }
 
-  // ---- refunds (succeeded only), attributed to SSS via invoice -> sub ----
-  const refunds = newWin();
-  for await (const r of stripe.refunds.list({ created: { gte: nowSec - 60 * DAY }, limit: 100 })) {
-    if (r.status !== "succeeded") continue;
-    const subId = await refundSubId(r, invoiceSub);
-    if (!(await subIsOurs(subId))) continue;
-    addToWindows(refunds, r.created, nowSec, r.amount ?? 0);
+    // ---- failed payments (24h + 7d): open/uncollectible with attempts ----
+    for (const status of ["open", "uncollectible"] as const) {
+      for await (const inv of stripe.invoices.list({
+        status,
+        created: { gte: nowSec - 7 * DAY },
+        limit: 100,
+      })) {
+        if ((inv.attempt_count ?? 0) === 0) continue;
+        if (!(await subIsOurs(invoiceSubId(inv)))) continue;
+        failed7++;
+        if (inv.created >= nowSec - 1 * DAY) failed1++;
+      }
+    }
+
+    // ---- refunds (succeeded only), attributed to SSS via invoice -> sub ----
+    for await (const r of stripe.refunds.list({ created: { gte: nowSec - 60 * DAY }, limit: 100 })) {
+      if (r.status !== "succeeded") continue;
+      const subId = await refundSubId(r, invoiceSub, stripe, account);
+      if (!(await subIsOurs(subId))) continue;
+      addToWindows(refunds, r.created, nowSec, r.amount ?? 0);
+    }
   }
 
   // ---- leads (Supabase quiz_sessions) ----
@@ -308,7 +343,7 @@ async function gatherStatsText(): Promise<string> {
   const churn30 = churnDen === 0 ? "n/a" : `${((cancels.d30 / churnDen) * 100).toFixed(1)}%`;
   const mix = [...planMix.entries()].map(([k, v]) => `${k}×${v}`).join(" / ") || "—";
 
-  console.log(`gatherStats took ${Date.now() - t0}ms (subCache: ${subCache.size} subs)`);
+  console.log(`gatherStats took ${Date.now() - t0}ms across ${STRIPE_ACCOUNTS.length} accounts`);
   return [
     `*📊 Stuff So Sweet — right now*`,
     `Active: *${activeCount}*${trialingCount ? ` (+${trialingCount} trialing)` : ""} · MRR: *${usd(mrrCents)}* · Plans: ${mix}`,
@@ -330,7 +365,7 @@ async function gatherStatsText(): Promise<string> {
 // Basil moved the charge/PI -> invoice link to the InvoicePayment resource,
 // and npm:stripe@17's SDK predates it. Query the REST endpoint directly so
 // attribution works regardless of SDK version.
-async function invoiceIdForPaymentIntent(pi: string): Promise<string | null> {
+async function invoiceIdForPaymentIntent(pi: string, account: StripeAccount): Promise<string | null> {
   try {
     const params = new URLSearchParams({
       "payment[type]": "payment_intent",
@@ -339,7 +374,7 @@ async function invoiceIdForPaymentIntent(pi: string): Promise<string | null> {
     });
     const res = await fetch(`https://api.stripe.com/v1/invoice_payments?${params}`, {
       headers: {
-        Authorization: `Bearer ${Deno.env.get("STRIPE_SECRET_KEY")}`,
+        Authorization: `Bearer ${Deno.env.get(envKeyFor(account, "SECRET_KEY"))}`,
         "Stripe-Version": "2025-03-31.basil",
       },
     });
@@ -364,11 +399,17 @@ async function invoiceIdForPaymentIntent(pi: string): Promise<string | null> {
 // REST invoice_payments lookup -> invoice; legacy charge.invoice is the
 // fallback. Unattributable refunds are excluded and logged.
 // deno-lint-ignore no-explicit-any
-async function refundSubId(r: any, invoiceSub: Map<string, string | null>): Promise<string | null> {
+async function refundSubId(
+  r: any,
+  invoiceSub: Map<string, string | null>,
+  // deno-lint-ignore no-explicit-any
+  stripe: any,
+  account: StripeAccount,
+): Promise<string | null> {
   try {
     let invId: string | null = null;
     const pi = typeof r.payment_intent === "string" ? r.payment_intent : r.payment_intent?.id;
-    if (pi) invId = await invoiceIdForPaymentIntent(pi);
+    if (pi) invId = await invoiceIdForPaymentIntent(pi, account);
     if (!invId && r.charge) {
       const chargeId = typeof r.charge === "string" ? r.charge : r.charge.id;
       // deno-lint-ignore no-explicit-any
