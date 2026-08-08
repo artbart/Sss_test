@@ -204,9 +204,24 @@ manual. Capture the old values in Phase 3 to avoid this.
 
 ## Verification checklist
 
-- [ ] `/stats` returns real numbers in the new workspace
+- [x] `/stats-sss` returns real numbers in the new workspace — confirmed
+      2026-08-08 09:21 in `#sss-notifications`. Ack at 09:20, report at 09:21,
+      exercising the full ack → `waitUntil` → `response_url` path. Output
+      included the *Last 24 hours* block, i.e. the deployed-ahead version the
+      Phase 2 drift check preserved.
+- [x] Bot can post to the target channel — direct `chat.postMessage` returned
+      `ok: true` before any secret was overwritten.
 - [ ] `account_created` alert lands in the new channel, and the `public.users`
       row exists for the test email
 - [ ] Old workspace channel receives nothing
-- [ ] Old bot token still valid (my-photo-alive unaffected)
-- [ ] `DEPLOY.md` no longer describes the old workspace
+- [ ] Old workspace's `/stats` slash command deleted
+- [x] Old bot token left untouched (my-photo-alive unaffected)
+- [x] `DEPLOY.md` no longer describes the old workspace
+
+## Out of scope, noticed during verification
+
+The `/stats` plan mix prints a raw price id (`price_1Tire8KD4axecwd4N3hOVBOX`)
+because `PLAN_LABELS` in `slack-stats/index.ts` is built from only
+`STRIPE_PRICE_1W/4W/8W`, while the project also defines `STRIPE_PRICE_LITE`
+and `STRIPE_PRICE_LIFETIME`. Pre-existing and unrelated to this migration;
+left alone deliberately.
