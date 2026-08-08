@@ -246,6 +246,29 @@ with leadoni, changes what customers see in the funnel, and would make
 `/stats-sss` sum two currencies as though they were one — a customer-visible
 change to solve a back-office problem.
 
+## Deploy status — refactor live 2026-08-08, signups still on leadoni
+
+Steps 1-3 of the cutover order below are DONE. `SIGNUP_ACCOUNT` remains
+`"leadoni"`, so no customer has been routed anywhere new.
+
+Pre-deploy drift check found **real drift on `create-subscription`**: the
+deployed function carried an uncommitted email-canonicalisation fix (prefer the
+quiz session's email over `body.email`, because a user can type a different
+address into Stripe's Payment Element billing field — the mismatch "used to
+silently create orphan stories with lead_email=<stripe email>, unreachable by
+the user's magic-link account"). Deploying the branch as-was would have
+reverted it silently. Recovered in commit `84027d6`; the branch then differed
+from deployed only by the four intended dual-account changes. Third confirmed
+instance of deployed-ahead-of-local in this repo.
+
+Verified after deploy:
+
+- `/stats-sss` returns 200 and acks normally.
+- Webhook dual verification: an astronaut-signed event returns 200, and a
+  deliberately bad signature returns 400. The 400 proves the loop tried
+  astronaut, failed, tried leadoni, failed — so the leadoni branch works too,
+  which could not otherwise be tested without its plaintext signing secret.
+
 ## Cutover order
 
 1. Migration (additive, safe to apply any time).
