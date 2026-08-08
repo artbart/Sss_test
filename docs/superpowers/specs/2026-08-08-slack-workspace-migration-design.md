@@ -97,12 +97,28 @@ channel ID (`C…`).
 The app must be fully installed and the bot invited *before* Phase 3, so there
 is no window where alerts land nowhere.
 
-### Phase 2 — Pre-flight drift check
+### Phase 2 — Pre-flight drift check — DONE 2026-08-08
 
-`supabase functions download` for `stripe-webhook`, `notify-account-created`,
-`slack-stats`; diff against `sss5/supabase/functions/`. Deployed versions may
-be ahead of this tree. If any file differs, stop and reconcile before
-redeploying — a blind redeploy would revert deployed work.
+Downloaded all three deployed functions and diffed against
+`sss5/supabase/functions/`. Note that each function carries its own snapshot
+of `_shared/` taken at its deploy time, so the copies can and do diverge —
+download per function into separate dirs, or later downloads overwrite the
+`_shared/` of earlier ones and the comparison silently lies.
+
+Result:
+
+- `stripe-webhook` — `index.ts` and its `_shared/slack.ts` byte-identical.
+- `slack-stats` — **deployed was ahead**: 424 lines vs 407, carrying a
+  `*Last 24 hours* (vs prev 24h)` block (`d1`/`prev1` windows, `failed1`,
+  `leads1`/`leadsPrev1`) absent from this tree. Redeploying from local would
+  have deleted that feature. Deployed was a strict superset, so local was
+  reconciled by copying the live source over it (commit `91a1cdb`).
+- `notify-account-created` — drifted the *other* way: its deployed bundle
+  holds an older `_shared/slack.ts` predating `lifetime_purchase` and
+  `lifetime_cancel_failed`. Harmless, since this function only ever emits
+  `account_created`; redeploying it is purely additive.
+
+Local and deployed now agree for every file Phase 3 touches.
 
 ### Phase 3 — Cutover
 
