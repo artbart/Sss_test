@@ -16,6 +16,7 @@ import { handlePreflight, jsonResponse } from "../_shared/cors.ts";
 import {
   stripeFor,
   planConfig,
+  priceFor,
   normEmail,
   assertAccount,
   type StripeAccount,
@@ -85,7 +86,10 @@ Deno.serve(async (req: Request) => {
   // STRIPE_TEST_PROMO and STRIPE_PRICE_TEST are set.
   const promo = (body.promo ?? "").toString().trim();
   const testPromo = Deno.env.get("STRIPE_TEST_PROMO") ?? "";
-  const testPriceId = Deno.env.get("STRIPE_PRICE_TEST") ?? "";
+  // Account-scoped: each Stripe account has its OWN test price object. Reading
+  // the unprefixed STRIPE_PRICE_TEST here would hand leadoni's price id to
+  // astronaut and fail with resource_missing.
+  const testPriceId = priceFor(SIGNUP_ACCOUNT, "TEST") ?? "";
   const useTestPrice = !!testPromo && !!testPriceId && promo === testPromo;
   const effectivePriceId = useTestPrice ? testPriceId : cfg.priceId;
   const effectiveCouponId = useTestPrice ? undefined : cfg.couponId;
