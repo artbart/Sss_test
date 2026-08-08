@@ -214,6 +214,12 @@ the main payoff of the explicit column over date-based routing.
 
 ## Verification
 
+**No test-mode dry run** (user decision, 2026-08-08). Verification is against
+live with a real card. That raises the stakes on the cutover order above:
+step 2 exists precisely so the refactor is proven under real traffic while
+`create-subscription` still points at leadoni, leaving step 4 as a one-line
+flip.
+
 - One real signup end-to-end on astronaut: checkout → webhook → `users` row
   with `stripe_account='astronaut'` → 🎉 Slack alert in `#sss-notifications`.
 - On an existing leadoni customer: a cancel and a retention save-offer, proving
@@ -221,9 +227,18 @@ the main payoff of the explicit column over date-based routing.
 - A story-pack purchase on each account.
 - `/stats-sss` shows combined figures with no double-counting.
 
-## Noticed, out of scope
+## Noticed during the audit
 
-`/stats-sss` prints `price_1Tire8KD4axecwd4N3hOVBOX×2` in its plan mix — that
-is leadoni's **TEST 50c** price, so two test subscriptions are being counted in
-live stats. Separately, `PLAN_LABELS` in `slack-stats` maps only
-`STRIPE_PRICE_1W/4W/8W`, ignoring `LITE` and `LIFETIME`. Both pre-existing.
+**Fixed 2026-08-08 (commit `3d8c30f`), ahead of this work:** `/stats-sss` was
+counting two subscriptions on leadoni's TEST 50c price as live customers. They
+slipped through both existing guards — `ours()` accepts them because they carry
+`metadata.session_id`, and `isFullyDiscounted()` misses them because they pay
+real money ($0.50). They inflated active count, MRR and plan mix, and showed up
+as the raw id `price_1Tire8KD4axecwd4N3hOVBOX×2`. Now excluded everywhere via
+`isTestSub()`, keyed on `STRIPE_PRICE_TEST`. When astronaut goes live its own
+test price must join that set, or the same distortion returns on the new
+account.
+
+**Still open, out of scope:** `PLAN_LABELS` in `slack-stats` maps only
+`STRIPE_PRICE_1W/4W/8W`, ignoring `LITE` and `LIFETIME`, so those plans print
+as raw ids or nicknames in the plan mix.
