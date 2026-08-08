@@ -13,13 +13,31 @@
 import type Stripe from "npm:stripe@17";
 import { adminClient } from "../_shared/db.ts";
 import { handlePreflight, jsonResponse } from "../_shared/cors.ts";
-import { stripe, planConfig, normEmail } from "../_shared/stripe.ts";
+import {
+  stripeFor,
+  planConfig,
+  normEmail,
+  assertAccount,
+  type StripeAccount,
+} from "../_shared/stripe.ts";
+
+// The Stripe account NEW signups are created on. Every other function routes
+// per-customer via users.stripe_account; this one is the single place that
+// decides where brand-new customers land. Flipped to "astronaut" at cutover —
+// see docs/superpowers/plans/2026-08-08-stripe-dual-account.md Task 9.
+const SIGNUP_ACCOUNT: StripeAccount = "leadoni";
 import { getQuizTableName, type QuizVersion } from "../_shared/version_router.ts";
 
 Deno.serve(async (req: Request) => {
   const pre = handlePreflight(req);
   if (pre) return pre;
   if (req.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405);
+
+  // Fails loudly if SIGNUP_ACCOUNT's secret key belongs to the other account.
+  // Both accounts are named "StuffSoSweet", so this is the only cheap guard
+  // against silently creating customers on the wrong one.
+  await assertAccount(SIGNUP_ACCOUNT);
+  const stripe = stripeFor(SIGNUP_ACCOUNT);
 
   let body: {
     session_id?: string; email?: string; plan?: string; promo?: string;
@@ -51,7 +69,7 @@ Deno.serve(async (req: Request) => {
   if (userAgent) metaMeta.meta_ua = userAgent;
   if (body.event_source_url) metaMeta.meta_src = String(body.event_source_url).slice(0, 300);
 
-  const cfg = planConfig(plan);
+  const cfg = planConfig(SIGNUP_ACCOUNT, plan);
   if (!cfg) return jsonResponse({ error: "Unknown plan" }, 400);
 
   // Internal testing: a secret promo (passed as ?promo=) charges $0.50 via a
@@ -74,26 +92,45 @@ Deno.serve(async (req: Request) => {
   let quizVersion: QuizVersion = 1;
   let existing: { stripe_customer_id: string | null; stripe_subscription_id: string | null; subscription_status: string | null } | null = null;
 
+  // v2+: pull `email` from the quiz session too and prefer it over body.email.
+  // This defends against users typing a different email into Stripe's Payment
+  // Element billing-details field vs. the quiz email — that mismatch used to
+  // silently create orphan stories with lead_email=<stripe email>, unreachable
+  // by the user's magic-link account (which uses the quiz email).
+  let quizSessionEmail: string | null = null;
+
   const { data: v2Row } = await db
     .from("quiz2_sessions")
-    .select("stripe_customer_id, stripe_subscription_id, subscription_status")
+    .select("email, stripe_customer_id, stripe_subscription_id, subscription_status")
     .eq("id", sessionId)
     .maybeSingle();
   if (v2Row) {
     quizVersion = 2;
     existing = v2Row;
+    quizSessionEmail = (v2Row as { email?: string }).email?.toLowerCase() ?? null;
   } else {
     const { data: v1Row } = await db
       .from("quiz_sessions")
-      .select("stripe_customer_id, stripe_subscription_id, subscription_status")
+      .select("email, stripe_customer_id, stripe_subscription_id, subscription_status")
       .eq("id", sessionId)
       .maybeSingle();
     if (v1Row) {
       quizVersion = 1;
       existing = v1Row;
+      quizSessionEmail = (v1Row as { email?: string }).email?.toLowerCase() ?? null;
     }
   }
   const quizTable = getQuizTableName(quizVersion);
+
+  // ⚑ Source-of-truth override: if the quiz session already captured an email,
+  // that's the authoritative one. Ignore whatever the frontend sent as body.email
+  // (which may be a different Stripe Payment Element autofill). Preserves the
+  // 1:1 mapping between quiz email → magic-link account → Stripe customer.
+  const canonicalEmail = quizSessionEmail || email;
+  const emailMismatch = quizSessionEmail && quizSessionEmail !== email;
+  if (emailMismatch) {
+    console.warn(`[create-subscription] email mismatch: quiz=${quizSessionEmail} vs body=${email} — using quiz email`);
+  }
 
   let customerId = existing?.stripe_customer_id ?? null;
 
@@ -118,9 +155,9 @@ Deno.serve(async (req: Request) => {
 
   // Find or create the Stripe Customer by email.
   if (!customerId) {
-    const found = await stripe.customers.list({ email, limit: 1 });
+    const found = await stripe.customers.list({ email: canonicalEmail, limit: 1 });
     customerId = found.data[0]?.id ??
-      (await stripe.customers.create({ email, metadata: { session_id: sessionId } })).id;
+      (await stripe.customers.create({ email: canonicalEmail, metadata: { session_id: sessionId } })).id;
   }
 
   // Duplicate-charge guard: if this customer already has a LIVE Stuff So Sweet
@@ -162,7 +199,7 @@ Deno.serve(async (req: Request) => {
       expand: ["latest_invoice.confirmation_secret"],
       metadata: {
         session_id: sessionId,
-        email,
+        email: canonicalEmail,
         plan,
         quiz_version: String(quizVersion),
         ...metaMeta,
@@ -186,6 +223,7 @@ Deno.serve(async (req: Request) => {
     plan,
     stripe_customer_id: customerId,
     stripe_subscription_id: sub.id,
+    stripe_account: SIGNUP_ACCOUNT,
     subscription_status: "incomplete",
   }, { onConflict: "id" });
   if (upsertErr) console.error(`${quizTable} mirror upsert failed:`, upsertErr);

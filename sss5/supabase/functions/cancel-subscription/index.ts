@@ -10,7 +10,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 import { handlePreflight, jsonResponse } from "../_shared/cors.ts";
 import { adminClient } from "../_shared/db.ts";
-import { stripe } from "../_shared/stripe.ts";
+import { stripeFor, parseAccount } from "../_shared/stripe.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -37,12 +37,16 @@ Deno.serve(async (req: Request) => {
   const db = adminClient();
   const { data: profile, error: profErr } = await db
     .from("users")
-    .select("stripe_subscription_id, subscription_status")
+    .select("stripe_subscription_id, subscription_status, stripe_account")
     .eq("id", user.id)
     .maybeSingle();
   if (profErr || !profile?.stripe_subscription_id) {
     return jsonResponse({ error: "No subscription found for this account" }, 404);
   }
+
+  // A sub_... id is only meaningful on the account that issued it; on the other
+  // one it is simply resource_missing.
+  const stripe = stripeFor(parseAccount(profile.stripe_account));
 
   let sub;
   try {

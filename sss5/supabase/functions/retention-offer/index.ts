@@ -16,7 +16,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 import { handlePreflight, jsonResponse } from "../_shared/cors.ts";
 import { adminClient } from "../_shared/db.ts";
-import { stripe } from "../_shared/stripe.ts";
+import { stripeFor, parseAccount, priceFor } from "../_shared/stripe.ts";
 import { nextRung, REASONS, type CancelReason, type Rung } from "../_shared/retention.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -85,11 +85,17 @@ Deno.serve(async (req: Request) => {
   // dies with it. Keep this select to columns that predate the feature.
   const { data: profile, error: profileErr } = await db
     .from("users")
-    .select("id, email, stripe_subscription_id, stripe_customer_id")
+    .select("id, email, stripe_subscription_id, stripe_customer_id, stripe_account")
     .eq("id", user.id)
     .maybeSingle();
   if (profileErr) return jsonResponse({ error: "Could not load account" }, 500);
   if (!profile) return jsonResponse({ error: "No account found for this user" }, 404);
+
+  // Every sub_/cus_ id below belongs to exactly one account. Bind the matching
+  // client once; prices are resolved per-account at each rung. The SAVE50
+  // coupon is NOT account-scoped — id bxuG6R1e was created identically on both.
+  const account = parseAccount(profile.stripe_account);
+  const stripe = stripeFor(account);
 
   // Reason is recorded BEFORE any offer is shown, so an abandoned modal still
   // yields the reason — the most valuable output of this whole flow. This
@@ -172,7 +178,7 @@ Deno.serve(async (req: Request) => {
         const sub = await stripe.subscriptions.retrieve(profile.stripe_subscription_id);
         if ((sub.discounts ?? []).length > 0) unavailable.push("discount");
         if (sub.pause_collection) unavailable.push("pause");
-        const litePriceId = Deno.env.get("STRIPE_PRICE_LITE");
+        const litePriceId = priceFor(account, "LITE");
         if (litePriceId && (sub.items?.data ?? []).some((i) => i.price?.id === litePriceId)) {
           unavailable.push("downgrade");
         }
@@ -373,9 +379,9 @@ Deno.serve(async (req: Request) => {
       // dropping the user to the Lite story quota while still being billed
       // full price, having been talked out of cancelling by a downgrade that
       // never happened. Fail loudly before touching Stripe.
-      const litePriceId = Deno.env.get("STRIPE_PRICE_LITE");
+      const litePriceId = priceFor(account, "LITE");
       if (!litePriceId) {
-        console.error("retention-offer: STRIPE_PRICE_LITE is not set — refusing to apply downgrade");
+        console.error(`retention-offer: no LITE price for account ${account} — refusing to apply downgrade`);
         return jsonResponse({ error: "Could not apply that offer" }, 502);
       }
 
@@ -426,10 +432,10 @@ Deno.serve(async (req: Request) => {
       // fail before calling Stripe. Since Task 6 ships before the human
       // creates the Stripe price and sets these secrets, unset is the
       // EXPECTED state on first deploy.
-      const lifetimePriceId = Deno.env.get("STRIPE_PRICE_LIFETIME");
+      const lifetimePriceId = priceFor(account, "LIFETIME");
       const appUrl = Deno.env.get("APP_URL");
       if (!lifetimePriceId || !appUrl) {
-        console.error("retention-offer: STRIPE_PRICE_LIFETIME or APP_URL is not set — refusing to start lifetime checkout");
+        console.error(`retention-offer: no LIFETIME price for account ${account}, or APP_URL unset — refusing to start lifetime checkout`);
         return jsonResponse({ error: "Could not start checkout" }, 502);
       }
 

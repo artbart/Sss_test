@@ -17,7 +17,14 @@
 //         checkout.session.completed (one-time lifetime purchase)
 
 import { adminClient } from "../_shared/db.ts";
-import { stripe, cryptoProvider } from "../_shared/stripe.ts";
+import {
+  stripeFor,
+  cryptoProvider,
+  STRIPE_ACCOUNTS,
+  envKeyFor,
+  requiresOwnershipMarker,
+  type StripeAccount,
+} from "../_shared/stripe.ts";
 import { sendCapiPurchase } from "../_shared/meta.ts";
 import { notifySlack } from "../_shared/slack.ts";
 import { capturePosthog } from "../_shared/posthog.ts";
@@ -30,7 +37,9 @@ import {
 } from "../_shared/version_router.ts";
 import type Stripe from "npm:stripe@17";
 
-const WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET")!;
+// Signing secrets are read per-account inside verifyEvent(), not hoisted here:
+// STRIPE_WEBHOOK_SECRET is leadoni's, STRIPE_ASTRONAUT_WEBHOOK_SECRET is
+// astronaut's, and which one applies depends on the request.
 const ACK = () => new Response("ok", { status: 200 });
 
 // Run a fire-and-forget side effect without delaying the ACK to Stripe.
@@ -61,10 +70,40 @@ function invoiceSubId(inv: any): string | null {
   return inv?.parent?.subscription_details?.subscription ?? inv?.subscription ?? null;
 }
 
-// Ownership marker: our subscriptions always carry metadata.session_id.
+// Ownership marker: on leadoni — shared with PhaseMap — our subscriptions are
+// identified by metadata.session_id. astronaut is SSS-dedicated, so everything
+// arriving from it is ours by definition.
 // deno-lint-ignore no-explicit-any
-function ours(sub: any): boolean {
+function ours(sub: any, account: StripeAccount): boolean {
+  if (!requiresOwnershipMarker(account)) return true;
   return !!sub?.metadata?.session_id;
+}
+
+// ONE endpoint URL is registered in BOTH Stripe accounts, so the account an
+// event came from is identified by WHICH signing secret verifies it. An HMAC is
+// microseconds, so the failed first attempt costs nothing measurable.
+async function verifyEvent(
+  raw: string,
+  sig: string,
+): Promise<{ event: Stripe.Event; account: StripeAccount } | null> {
+  for (const account of STRIPE_ACCOUNTS) {
+    const secret = Deno.env.get(envKeyFor(account, "WEBHOOK_SECRET"));
+    if (!secret) continue;
+    try {
+      const event = await stripeFor(account).webhooks.constructEventAsync(
+        raw,
+        sig,
+        secret,
+        undefined,
+        cryptoProvider,
+      );
+      return { event, account };
+    } catch {
+      // Wrong account's secret — try the next one. A genuinely forged payload
+      // fails every account and falls through to the 400 below.
+    }
+  }
+  return null;
 }
 
 Deno.serve(async (req: Request) => {
@@ -74,13 +113,18 @@ Deno.serve(async (req: Request) => {
   if (!sig) return new Response("Missing signature", { status: 400 });
 
   const raw = await req.text();
-  let event: Stripe.Event;
-  try {
-    event = await stripe.webhooks.constructEventAsync(raw, sig, WEBHOOK_SECRET, undefined, cryptoProvider);
-  } catch (e) {
-    console.error("signature verification failed:", e);
+  const verified = await verifyEvent(raw, sig);
+  if (!verified) {
+    console.error("signature verification failed against every configured account");
     return new Response("Bad signature", { status: 400 });
   }
+  // `account` must be THREADED through every handler below, never re-derived.
+  // A follow-up call like subscriptions.cancel() on the wrong client throws,
+  // which for lifetime fulfilment means the customer holds lifetime AND keeps
+  // being billed.
+  const { event, account } = verified;
+  const stripe = stripeFor(account);
+  console.log(`webhook ${event.type} from ${account}`);
 
   const db = adminClient();
 
@@ -494,7 +538,7 @@ Deno.serve(async (req: Request) => {
       return ACK(); // event type we don't handle
     }
 
-    if (!ours(sub)) return ACK(); // not a Stuff So Sweet subscription
+    if (!ours(sub, account)) return ACK(); // not a Stuff So Sweet subscription
 
     // Idempotency (only for our events): first writer wins.
     const { error: dupErr } = await db.from("stripe_events").insert({ id: event.id, type: event.type });
@@ -507,11 +551,16 @@ Deno.serve(async (req: Request) => {
     const quizTable = getQuizTableName(quizVersion);
     const storiesFk = getStoriesFkColumn(quizVersion);
     const period = subPeriod(sub);
+    // stripe_account rides along on every subscription write, to both `users`
+    // and the quiz tables. The webhook is the authoritative source here — it
+    // knows which account the event actually came from — so this also self-heals
+    // any row that ended up with the wrong value.
     const subFields = {
       subscription_status: event.type === "customer.subscription.deleted" ? "canceled" : sub.status,
       current_period_start: period.start,
       current_period_end: period.end,
       cancel_at_period_end: sub.cancel_at_period_end ?? false,
+      stripe_account: account,
     };
 
     if (event.type === "invoice.paid") {
