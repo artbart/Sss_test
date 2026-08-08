@@ -8,8 +8,12 @@
 // EdgeRuntime.waitUntil -> POST the report to response_url (Slack accepts it
 // for up to 30 minutes). On failure, POST an ephemeral error instead.
 //
-// TWO STRIPE ACCOUNTS: figures are gathered from leadoni and astronaut and
-// summed into one combined report. leadoni is shared with PhaseMap, so only
+// PER-WORKSPACE SCOPE: each Slack workspace has its own signing secret, so
+// whichever secret verifies the request identifies the workspace — and thus
+// which Stripe account to report on. Astronautai -> astronaut, MPA -> leadoni.
+// The `all` argument returns the combined view from either side.
+//
+// TWO STRIPE ACCOUNTS: leadoni is shared with PhaseMap, so only
 // subscriptions carrying metadata.session_id count there (ours() — same
 // ownership rule as stripe-webhook); astronaut is SSS-dedicated, so
 // everything on it counts. Invoices/refunds are attributed via their
@@ -26,7 +30,16 @@ import {
 } from "../_shared/stripe.ts";
 import { adminClient } from "../_shared/db.ts";
 
-const SIGNING_SECRET = Deno.env.get("SLACK_SIGNING_SECRET");
+// Each Slack workspace has its OWN signing secret, so whichever secret
+// verifies a request identifies the workspace it came from — the same
+// identification trick stripe-webhook uses for Stripe accounts. team_id is in
+// the payload but cannot be used instead: no body field is trustworthy until
+// the signature is verified, and verifying needs the secret already.
+const WORKSPACES: ReadonlyArray<{ envKey: string; account: StripeAccount }> = [
+  { envKey: "SLACK_SIGNING_SECRET", account: "astronaut" },      // Astronautai
+  { envKey: "SLACK_MPA_SIGNING_SECRET", account: "leadoni" },    // MPA
+];
+
 const enc = new TextEncoder();
 const DAY = 86_400;
 
@@ -52,15 +65,10 @@ function timingSafeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
-async function validSignature(req: Request, rawBody: string): Promise<boolean> {
-  const ts = req.headers.get("x-slack-request-timestamp") ?? "";
-  const sig = req.headers.get("x-slack-signature") ?? "";
-  if (!ts || !sig) return false;
-  const age = Math.abs(Date.now() / 1000 - Number(ts));
-  if (!Number.isFinite(age) || age > 300) return false; // replay guard: 5 min
+async function signatureMatches(secret: string, ts: string, rawBody: string, sig: string): Promise<boolean> {
   const key = await crypto.subtle.importKey(
     "raw",
-    enc.encode(SIGNING_SECRET!),
+    enc.encode(secret),
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"],
@@ -68,6 +76,24 @@ async function validSignature(req: Request, rawBody: string): Promise<boolean> {
   const mac = await crypto.subtle.sign("HMAC", key, enc.encode(`v0:${ts}:${rawBody}`));
   const hex = Array.from(new Uint8Array(mac)).map((b) => b.toString(16).padStart(2, "0")).join("");
   return timingSafeEqual(`v0=${hex}`, sig);
+}
+
+// Returns the Stripe account the calling workspace owns, or null if the
+// request is signed by no configured workspace. An unset secret simply means
+// that workspace is not wired up yet — its /stats keeps 401ing, and pasting
+// the secret switches it on with no redeploy.
+async function verifyWorkspace(req: Request, rawBody: string): Promise<StripeAccount | null> {
+  const ts = req.headers.get("x-slack-request-timestamp") ?? "";
+  const sig = req.headers.get("x-slack-signature") ?? "";
+  if (!ts || !sig) return null;
+  const age = Math.abs(Date.now() / 1000 - Number(ts));
+  if (!Number.isFinite(age) || age > 300) return null; // replay guard: 5 min
+  for (const ws of WORKSPACES) {
+    const secret = Deno.env.get(ws.envKey);
+    if (!secret) continue;
+    if (await signatureMatches(secret, ts, rawBody, sig)) return ws.account;
+  }
+  return null;
 }
 
 // ---------- SSS ownership + Basil helpers (same rules as stripe-webhook) ----------
@@ -191,7 +217,7 @@ async function leadCount(db: any, fromIso: string, toIso: string): Promise<numbe
   return count ?? 0;
 }
 
-async function gatherStatsText(): Promise<string> {
+async function gatherStatsText(accounts: readonly StripeAccount[]): Promise<string> {
   const t0 = Date.now();
   const nowSec = Math.floor(Date.now() / 1000);
   const db = adminClient();
@@ -209,7 +235,7 @@ async function gatherStatsText(): Promise<string> {
   let failed1 = 0;
   let failed7 = 0;
 
-  for (const account of STRIPE_ACCOUNTS) {
+  for (const account of accounts) {
     // A missing key means that account is not configured yet — skip rather
     // than fail the whole report.
     if (!Deno.env.get(envKeyFor(account, "SECRET_KEY"))) {
@@ -327,6 +353,11 @@ async function gatherStatsText(): Promise<string> {
   }
 
   // ---- leads (Supabase quiz_sessions) ----
+  // Leads are captured BEFORE payment, so they belong to no Stripe account.
+  // Rendered only when astronaut is in scope, per the per-workspace design —
+  // otherwise the same number would appear in both workspaces' reports and
+  // conversion would divide one account's subs by SSS-wide leads.
+  const showLeads = accounts.includes("astronaut");
   const iso = (sec: number) => new Date(sec * 1000).toISOString();
   const [leads1, leadsPrev1, leads7, leadsPrev7, leads30, leadsPrev30] = await Promise.all([
     leadCount(db, iso(nowSec - 1 * DAY), iso(nowSec + 60)),
@@ -338,27 +369,34 @@ async function gatherStatsText(): Promise<string> {
   ]);
 
   // ---- derived ----
-  const conversion30 = leads30 === 0 ? "n/a" : `${((newSubs.d30 / leads30) * 100).toFixed(1)}%`;
+  // n/a rather than a misleading 0.0% when the reported account has no new
+  // subs yet — matches pct()'s existing never-divide-by-zero convention.
+  const conversion30 = (leads30 === 0 || newSubs.d30 === 0)
+    ? "n/a"
+    : `${((newSubs.d30 / leads30) * 100).toFixed(1)}%`;
   const churnDen = activeCount + cancels.d30;
   const churn30 = churnDen === 0 ? "n/a" : `${((cancels.d30 / churnDen) * 100).toFixed(1)}%`;
   const mix = [...planMix.entries()].map(([k, v]) => `${k}×${v}`).join(" / ") || "—";
 
-  console.log(`gatherStats took ${Date.now() - t0}ms across ${STRIPE_ACCOUNTS.length} accounts`);
+  const scope = accounts.length === 1 ? accounts[0] : "all accounts";
+  console.log(`gatherStats took ${Date.now() - t0}ms for ${scope}`);
   return [
-    `*📊 Stuff So Sweet — right now*`,
+    `*📊 Stuff So Sweet (${scope}) — right now*`,
     `Active: *${activeCount}*${trialingCount ? ` (+${trialingCount} trialing)` : ""} · MRR: *${usd(mrrCents)}* · Plans: ${mix}`,
     ``,
     `*Last 24 hours* (vs prev 24h)`,
-    `New subs *${newSubs.d1}* (${pct(newSubs.d1, newSubs.prev1)}) · Cancels ${cancels.d1} (${pct(cancels.d1, cancels.prev1)}) · Revenue *${usd(revenue.d1)}* (${pct(revenue.d1, revenue.prev1)}) · Refunds ${usd(refunds.d1)} · Leads ${leads1} (${pct(leads1, leadsPrev1)})`,
+    `New subs *${newSubs.d1}* (${pct(newSubs.d1, newSubs.prev1)}) · Cancels ${cancels.d1} (${pct(cancels.d1, cancels.prev1)}) · Revenue *${usd(revenue.d1)}* (${pct(revenue.d1, revenue.prev1)}) · Refunds ${usd(refunds.d1)}${showLeads ? ` · Leads ${leads1} (${pct(leads1, leadsPrev1)})` : ``}`,
     `Failed payments (24h): ${failed1}`,
     ``,
     `*Last 7 days* (vs prev 7d)`,
-    `New subs *${newSubs.d7}* (${pct(newSubs.d7, newSubs.prev7)}) · Cancels ${cancels.d7} (${pct(cancels.d7, cancels.prev7)}) · Revenue *${usd(revenue.d7)}* (${pct(revenue.d7, revenue.prev7)}) · Refunds ${usd(refunds.d7)} · Leads ${leads7} (${pct(leads7, leadsPrev7)})`,
+    `New subs *${newSubs.d7}* (${pct(newSubs.d7, newSubs.prev7)}) · Cancels ${cancels.d7} (${pct(cancels.d7, cancels.prev7)}) · Revenue *${usd(revenue.d7)}* (${pct(revenue.d7, revenue.prev7)}) · Refunds ${usd(refunds.d7)}${showLeads ? ` · Leads ${leads7} (${pct(leads7, leadsPrev7)})` : ``}`,
     `Failed payments (7d): ${failed7}`,
     ``,
     `*Last 30 days* (vs prev 30d)`,
-    `New subs *${newSubs.d30}* (${pct(newSubs.d30, newSubs.prev30)}) · Cancels ${cancels.d30} (${pct(cancels.d30, cancels.prev30)}) · Revenue *${usd(revenue.d30)}* (${pct(revenue.d30, revenue.prev30)}) · Refunds ${usd(refunds.d30)} · Leads ${leads30} (${pct(leads30, leadsPrev30)})`,
-    `Lead→paid conversion (30d): *${conversion30}* · Churn (30d): *${churn30}*`,
+    `New subs *${newSubs.d30}* (${pct(newSubs.d30, newSubs.prev30)}) · Cancels ${cancels.d30} (${pct(cancels.d30, cancels.prev30)}) · Revenue *${usd(revenue.d30)}* (${pct(revenue.d30, revenue.prev30)}) · Refunds ${usd(refunds.d30)}${showLeads ? ` · Leads ${leads30} (${pct(leads30, leadsPrev30)})` : ``}`,
+    showLeads
+      ? `Lead→paid conversion (30d): *${conversion30}* · Churn (30d): *${churn30}*`
+      : `Churn (30d): *${churn30}*`,
   ].join("\n");
 }
 
@@ -446,19 +484,24 @@ async function postToResponseUrl(url: string, payload: unknown): Promise<void> {
 
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
-  if (!SIGNING_SECRET) return new Response("SLACK_SIGNING_SECRET not set", { status: 503 });
 
   // Raw body FIRST (byte-exact for HMAC), then parse as form data.
   const raw = await req.text();
-  if (!(await validSignature(req, raw))) return new Response("Bad signature", { status: 401 });
+  const workspaceAccount = await verifyWorkspace(req, raw);
+  if (!workspaceAccount) return new Response("Bad signature", { status: 401 });
 
   const params = new URLSearchParams(raw);
   const responseUrl = params.get("response_url") ?? "";
   if (!responseUrl) return new Response("Missing response_url", { status: 400 });
 
+  // Each workspace reports on the account it owns; `all` asks for the combined
+  // view from either side.
+  const wantsAll = (params.get("text") ?? "").trim().toLowerCase() === "all";
+  const accounts = wantsAll ? STRIPE_ACCOUNTS : [workspaceAccount];
+
   const job = (async () => {
     try {
-      const text = await gatherStatsText();
+      const text = await gatherStatsText(accounts);
       console.log("stats computed:\n" + text);
       await postToResponseUrl(responseUrl, { response_type: "in_channel", text });
     } catch (e) {
