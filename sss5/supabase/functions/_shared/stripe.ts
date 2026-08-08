@@ -31,7 +31,12 @@ export function stripeFor(a: StripeAccount): Stripe {
   const key = Deno.env.get(envKey);
   if (!key) throw new Error(`${envKey} is not set`);
   const client = new Stripe(key, {
-    apiVersion: "2025-03-31.basil",
+    // npm:stripe@17's types only know "2025-02-24.acacia", but this codebase is
+    // written against Basil semantics throughout (invoice.parent.
+    // subscription_details, confirmation_secret, the invoice_payments REST
+    // fallback in slack-stats). The runtime value is correct; the types are
+    // stale, so cast rather than downgrade the pin.
+    apiVersion: "2025-03-31.basil" as Stripe.StripeConfig["apiVersion"],
     httpClient: Stripe.createFetchHttpClient(),
   });
   CLIENTS.set(a, client);
