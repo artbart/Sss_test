@@ -1171,8 +1171,10 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const SUBMIT_QUIZ_URL = `${SUPABASE_URL}/functions/v1/submit-quiz2`;
 const CREATE_SUBSCRIPTION_URL = `${SUPABASE_URL}/functions/v1/create-subscription`;
 
-// Stripe publishable key (TEST). Safe to ship. Swap to the live pk_live_ key at go-live.
-const STRIPE_PUBLISHABLE_KEY = "pk_live_51TRcmOKD4axecwd4ACFmdInTT88jkMg9c7Sr7Fy5RgGdBGUbSoMfqFYOZcp9wg1V3YW2qHk6K7upgNqkQWaBQqxz00agSU8gvc";
+// Stripe publishable key for the astronaut account (acct_1U287e), live since
+// 2026-08-08. Safe to ship — publishable keys are public by design. MUST match
+// SIGNUP_ACCOUNT in supabase/functions/create-subscription/index.ts.
+const STRIPE_PUBLISHABLE_KEY = "pk_live_51U287eKdnhowNC0W2El5F5tnREZd1h6gJpNquWoYH3qE1dXxIN5hgLXlJquMjCZaAPJTVjagfTTrxjotd6KCqYws00c5Em8gEd";
 const stripeClient = (typeof Stripe === "function") ? Stripe(STRIPE_PUBLISHABLE_KEY) : null;
 let stripeElements = null;   // set when the Payment Element mounts
 

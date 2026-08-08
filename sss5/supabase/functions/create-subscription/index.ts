@@ -23,9 +23,16 @@ import {
 
 // The Stripe account NEW signups are created on. Every other function routes
 // per-customer via users.stripe_account; this one is the single place that
-// decides where brand-new customers land. Flipped to "astronaut" at cutover —
-// see docs/superpowers/plans/2026-08-08-stripe-dual-account.md Task 9.
-const SIGNUP_ACCOUNT: StripeAccount = "leadoni";
+// decides where brand-new customers land.
+//
+// Cut over to astronaut on 2026-08-08. Existing leadoni customers keep being
+// billed on leadoni and keep full self-serve (cancel, retention, story packs)
+// via their users.stripe_account value — nothing about them changed.
+//
+// MUST stay in step with STRIPE_PUBLISHABLE_KEY in quiz/a.html and
+// quiz2/index.html: the browser confirms the PaymentIntent this function
+// creates, so a mismatch fails every checkout.
+const SIGNUP_ACCOUNT: StripeAccount = "astronaut";
 import { getQuizTableName, type QuizVersion } from "../_shared/version_router.ts";
 
 Deno.serve(async (req: Request) => {
