@@ -85,6 +85,21 @@ function isFullyDiscounted(sub: any): boolean {
   return false;
 }
 
+// Subscriptions on a TEST price are ours and pay real (tiny) money, so neither
+// ours() nor isFullyDiscounted() catches them — they were silently inflating
+// active count, MRR and plan mix. Excluded from ALL stats.
+const TEST_PRICE_IDS = new Set(
+  [Deno.env.get("STRIPE_PRICE_TEST")].filter((v): v is string => !!v),
+);
+
+// deno-lint-ignore no-explicit-any
+function isTestSub(sub: any): boolean {
+  for (const item of sub?.items?.data ?? []) {
+    if (item?.price?.id && TEST_PRICE_IDS.has(item.price.id)) return true;
+  }
+  return false;
+}
+
 // List-price MRR contribution of one subscription item, in cents/month.
 // deno-lint-ignore no-explicit-any
 function monthlyCents(item: any): number {
@@ -167,7 +182,7 @@ async function gatherStatsText(): Promise<string> {
   // lookup per distinct sub per invocation — matters on the shared account).
   const subCache = new Map<string, boolean>();
   // deno-lint-ignore no-explicit-any
-  const cacheSub = (s: any) => subCache.set(s.id, ours(s));
+  const cacheSub = (s: any) => subCache.set(s.id, ours(s) && !isTestSub(s));
   async function subIsOurs(subId: string | null): Promise<boolean> {
     if (!subId) return false;
     const hit = subCache.get(subId);
@@ -190,7 +205,7 @@ async function gatherStatsText(): Promise<string> {
   for (const status of ["active", "trialing"] as const) {
     for await (const sub of stripe.subscriptions.list({ status, limit: 100, expand: ["data.discounts"] })) {
       cacheSub(sub);
-      if (!ours(sub) || isFullyDiscounted(sub)) continue;
+      if (!ours(sub) || isFullyDiscounted(sub) || isTestSub(sub)) continue;
       if (status === "active") activeCount++;
       else trialingCount++;
       for (const item of sub.items?.data ?? []) {
@@ -214,7 +229,7 @@ async function gatherStatsText(): Promise<string> {
     // Checkout creates the Stripe subscription BEFORE payment; incomplete_*
     // are abandoned carts, not signups.
     if (sub.status === "incomplete" || sub.status === "incomplete_expired") continue;
-    if (isFullyDiscounted(sub)) continue; // test/free users
+    if (isFullyDiscounted(sub) || isTestSub(sub)) continue; // test/free users
     addToWindows(newSubs, sub.created, nowSec);
   }
 
@@ -232,7 +247,7 @@ async function gatherStatsText(): Promise<string> {
     expand: ["data.discounts"],
   })) {
     cacheSub(sub);
-    if (!ours(sub) || isFullyDiscounted(sub)) continue;
+    if (!ours(sub) || isFullyDiscounted(sub) || isTestSub(sub)) continue;
     if (sub.canceled_at) addToWindows(cancels, sub.canceled_at, nowSec);
   }
 
