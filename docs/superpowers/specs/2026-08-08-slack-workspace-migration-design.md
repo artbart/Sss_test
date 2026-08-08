@@ -50,6 +50,18 @@ workspaces during a transition, any change to alert content or triggers.
   at the same
   `https://gmhbcxylqubhxozomhlt.supabase.co/functions/v1/slack-stats`. Only
   *who may call it* changes, via the new signing secret.
+- **A NEW Slack app, not the existing "SSS" app.** Considered and rejected:
+  reusing the current app by activating public distribution and installing it
+  into the new workspace. A Slack app is owned by its creating workspace, so
+  this needs the distribution checklist (or a shared Enterprise Grid org,
+  which does not apply here). Worse, the signing secret and the slash-command
+  request URL are *app-level* — shared by every install — so a reused app left
+  installed in the old workspace keeps serving `/stats` there, exposing MRR,
+  revenue and churn to the workspace we are leaving. Removing the `/stats`
+  command to stop that would disable it in the new workspace too; the old
+  *install* would have to be deleted as a separate, easy-to-forget step. A new
+  app severs the old workspace by construction. Its only cost is one extra
+  `secrets set` in a cutover already swapping two other values.
 
 ## Invariants (must survive the migration)
 
