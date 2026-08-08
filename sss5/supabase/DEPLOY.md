@@ -34,9 +34,9 @@ below). Add:
 | `MAIL_FROM_NAME` | *(no longer required — display name is hardcoded to "Stuff So Sweet" in `_shared/resend.ts`)* |
 | `MAIL_REPLY_TO` | `stories.stuffsosweet@gmail.com` |
 | `CHAPTER_URL_BASE` | `https://stuffsosweet.com/chapter_update.html` |
-| `SLACK_BOT_TOKEN` | `xoxb-...` Slack bot token (same bot reused from my-photo-alive) |
-| `SLACK_CHANNEL_PURCHASES` | Channel ID (`C...`) for purchase/renewal/failure/cancel notifications. The bot must be invited to this channel. |
-| `SLACK_SIGNING_SECRET` | Signing secret of the dedicated "SSS" Slack app (Basic Information). Unset ⇒ /stats returns 503. |
+| `SLACK_BOT_TOKEN` | `xoxb-...` bot token of the "SSS" app in the **Astronautai** workspace (`T0BFDGLUVLJ`). Bot user `sss2`. Migrated here 2026-08-08 off the old workspace, whose bot was shared with my-photo-alive — that old token is still live and still used by that product, so do not revoke it. |
+| `SLACK_CHANNEL_PURCHASES` | Channel ID for purchase/renewal/failure/cancel notifications — currently `#sss-notifications` (`C0BNX0L4K8S`) in Astronautai. The bot must be invited to this channel, or posts fail as `not_in_channel` and are only visible in the function logs. |
+| `SLACK_SIGNING_SECRET` | Signing secret of the "SSS" Slack app in Astronautai (Basic Information). Unset ⇒ `/stats-sss` returns 503; stale ⇒ 401 and Slack shows "the app did not respond". |
 | `ACCOUNT_WEBHOOK_SECRET` | Random hex; must match the x-webhook-secret header baked into the users_account_created_webhook trigger. Rotate both together. |
 
 (`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are auto-provided by Supabase
@@ -132,10 +132,15 @@ Until you do this, only your account email gets emails.
 
 ## Slack /stats + account-created alerts (one-time setup)
 
-1. api.slack.com → Create App "SSS" → Slash Command `/stats` → request URL
+1. api.slack.com → Create App "SSS" → bot scopes `chat:write` + `commands` →
+   Slash Command `/stats-sss` → request URL
    `https://gmhbcxylqubhxozomhlt.supabase.co/functions/v1/slack-stats` →
    Install to workspace. Copy Basic Information → Signing Secret into
-   `SLACK_SIGNING_SECRET`.
+   `SLACK_SIGNING_SECRET`. The command name is arbitrary — `slack-stats`
+   never reads the `command` field, only the signature and `response_url`.
+   Do NOT opt into token rotation: `_shared/slack.ts` reads a static
+   `SLACK_BOT_TOKEN` with no refresh logic, so a rotating token would work
+   for hours and then silently expire.
 2. Precondition: confirm the webhooks helper exists — in the SQL editor run
    `select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
    where n.nspname = 'supabase_functions' and p.proname = 'http_request';`
@@ -146,9 +151,17 @@ Until you do this, only your account email gets emails.
    with `__ACCOUNT_WEBHOOK_SECRET__` substituted for the same value (e.g. `sed
    "s/__ACCOUNT_WEBHOOK_SECRET__/$SECRET/" sss5/supabase/migrations/20260720_account_created_webhook.sql`).
    Never commit the real value.
-4. Deploy `slack-stats` and `notify-account-created` with `--no-verify-jwt`.
-5. Verify with `/stats` in Slack: `operation_timeout` ⇒ the ack/response_url
-   async pattern is broken; `dispatch_failed` ⇒ wrong URL or unset secret.
+4. Deploy `slack-stats` and `notify-account-created`. `config.toml` already
+   pins `verify_jwt = false` for both, so deploying from `sss5/` preserves it
+   — the old `--no-verify-jwt` flag is no longer needed.
+5. Verify with `/stats-sss` in Slack: `operation_timeout` ⇒ the ack/response_url
+   async pattern is broken; `dispatch_failed` ⇒ wrong URL or unset secret;
+   "the app did not respond" with a fast `401` in the edge logs ⇒ the signing
+   secret doesn't match the app that owns the command. Note `supabase
+   functions deploy` prints "No change found" and skips creating a version
+   when the source is byte-identical — so after changing only a secret,
+   confirm the new value is actually live rather than assuming the deploy
+   recycled the worker.
    Also create a test account (fresh email, magic-link login) and confirm
    BOTH the 👤 Slack alert AND that a `public.users` row exists for it — the
    trigger fires inside the signup path, so this check protects against a

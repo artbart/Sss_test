@@ -120,7 +120,39 @@ Result:
 
 Local and deployed now agree for every file Phase 3 touches.
 
-### Phase 3 — Cutover
+### Phase 3 — Cutover — DONE 2026-08-08
+
+Destination confirmed via `auth.test`: workspace **Astronautai** (`T0BFDGLUVLJ`),
+bot user `sss2`, channel `#sss-notifications` (`C0BNX0L4K8S`). Slash command is
+`/stats-sss` — the name is arbitrary, `slack-stats` never reads the `command`
+field.
+
+Sequencing that mattered: `SLACK_SIGNING_SECRET` was set first and alone,
+because it only affects `slack-stats` (already failing, so no way to regress).
+`SLACK_BOT_TOKEN` and `SLACK_CHANNEL_PURCHASES` were set together in one call —
+a new token against an old-workspace channel ID would have made every alert
+fail `channel_not_found`.
+
+Before overwriting, `chat.postMessage` was called directly with the new token
+and channel: `ok: true`. That confirmed the bot invite and `chat:write` up
+front, rather than discovering `not_in_channel` later through silence.
+
+Old values were NOT captured — `secrets list` returns hashes and the question
+went unanswered. Rollback is therefore the manual path (see Rollback).
+
+`--no-verify-jwt` proved unnecessary: `config.toml` already pins
+`verify_jwt = false` for all three functions, so deploying from `sss5/`
+preserves it.
+
+**Gotcha:** `supabase functions deploy slack-stats` printed *"No change found
+in Function"* because local had just been reconciled to match deployed
+byte-for-byte. Since the new secret is only read at worker boot, that raised
+the question of whether the running worker still held the old value. Verified
+by forging a correctly-signed Slack request with the new secret: HTTP 200, and
+the edge logs show the request served by **version 6** while the earlier 401s
+were version 4. The deploy did land.
+
+#### Original plan
 
 Capture the current secret values first if they can still be revealed (the CLI
 returns hashes, so this may require the Supabase dashboard). Then overwrite on
